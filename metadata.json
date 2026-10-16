@@ -1,0 +1,6 @@
+{
+  "name": "PLN ULP Baguala - GIS Peta Tiang & AI Predictive Maintenance",
+  "description": "Sistem GIS Pemetaan Tiang PLN ULP Baguala Ambon dengan KMZ Google Earth, Jarak Aman Kabel <3m, dan Dashboard Analisis AI Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* Global Sharp Typography & Font Anti-Aliasing (Zero Blurriness) */
+html, body, input, button, select, textarea {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* Silky smooth menu tab transition with iOS-like spring ease */
+@keyframes tabFadeSmooth {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+  }
+}
+
+/* Sharp, pure-opacity & micro-settle animation */
+.animate-tab-fade-slide {
+  animation: tabFadeSmooth 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.pulse-glow-amber {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Crystal-clear Leaflet map and popup typography */
+.leaflet-container {
+  font-family: inherit !important;
+  background-color: #020617;
+  outline: none;
+  cursor: default;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* Ensure map cursor defaults to an arrow (panah), interactive pins/cables to pointer, and only active pan is grabbing */
+.leaflet-container,
+.leaflet-container.leaflet-grab,
+.leaflet-grab {
+  cursor: default !important;
+}
+
+.leaflet-container.leaflet-dragging,
+.leaflet-container.leaflet-dragging.leaflet-grab,
+.leaflet-dragging .leaflet-grab {
+  cursor: grabbing !important;
+}
+
+.leaflet-interactive,
+.leaflet-marker-icon,
+.custom-pole-marker,
+.custom-pole-marker * {
+  cursor: pointer !important;
+}
+
+/* Cable pulling mode: crosshair cursor */
+.leaflet-container.cable-pulling-mode,
+.leaflet-container.cable-pulling-mode.leaflet-grab,
+.leaflet-container.cable-pulling-mode .leaflet-interactive {
+  cursor: crosshair !important;
+}
+
+.leaflet-popup {
+  filter: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+  font-size: 12px !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+.leaflet-popup-tip {
+  background: #ffffff !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Custom sleek dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.6);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.9);
+}
+
+/* Official A4 Print Layout for SPK */
+@page {
+  size: A4 portrait;
+  margin: 10mm 12mm;
+}
+
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide app navigation, sidebar, drawers, modals, buttons */
+  header,
+  nav,
+  aside,
+  button,
+  .print\:hidden,
+  .no-print,
+  #app-navbar {
+    display: none !important;
+  }
+
+  /* Reset wrappers so the page is not constrained or clipped */
+  #root,
+  main,
+  .spk-screen-container,
+  .spk-wrapper {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .spk-sidebar-panel {
+    display: none !important;
+  }
+
+  .spk-a4-sheet {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 10mm 14mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+
