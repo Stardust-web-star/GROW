@@ -1762,7 +1762,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {onOpenFeederDrawer && (
             <button
               onClick={onOpenFeederDrawer}
-              className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-teal-500/30 bg-slate-950/80 backdrop-blur-md hover:bg-slate-900 text-slate-200 hover:text-white font-bold transition-all cursor-pointer shadow-inner text-xs shrink-0"
+              className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-teal-500/30 bg-slate-950/80 backdrop-blur-md hover:bg-slate-900 text-slate-200 hover:text-white font-bold cursor-pointer shadow-inner text-xs shrink-0 btn-tactile"
               title="Buka Panel Pengelola Penyulang & Warna Kabel"
             >
               <Layers className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -1775,7 +1775,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <div className="flex items-center bg-slate-950/80 backdrop-blur-md p-0.5 rounded-lg border border-teal-500/30 shadow-inner shrink-0 h-8">
             <button
               onClick={() => setCableColorMode('byClearance')}
-              className={`flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-md cursor-pointer btn-tactile ${
                 cableColorMode === 'byClearance'
                   ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-semibold'
@@ -1787,7 +1787,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </button>
             <button
               onClick={() => setCableColorMode('byFeeder')}
-              className={`flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-md transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 text-xs rounded-md cursor-pointer btn-tactile ${
                 cableColorMode === 'byFeeder'
                   ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80 font-semibold'
@@ -1805,7 +1805,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* 5. Tambah Tiang */}
           <button
             onClick={onAddCustomPole}
-            className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 border border-amber-300 px-3 h-8 rounded-lg font-black text-xs shadow-md transition-all cursor-pointer whitespace-nowrap active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 border border-amber-300 px-3 h-8 rounded-lg font-black text-xs shadow-md cursor-pointer whitespace-nowrap btn-tactile shrink-0"
             title="Tambah Titik Tiang Baru secara manual"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1831,7 +1831,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   }
                 }
               }}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
                 isPullingCable
                   ? 'bg-teal-500 text-slate-950 font-black shadow-xs'
                   : 'text-teal-400 hover:bg-slate-800/80'
@@ -1852,7 +1852,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   setMeasuredDistance(null);
                 }
               }}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
                 isMeasuring
                   ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
                   : 'text-emerald-400 hover:bg-slate-800/80'
@@ -1865,7 +1865,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
             <button
               onClick={() => setShowRowOnly(!showRowOnly)}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
                 showRowOnly
                   ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
                   : 'text-amber-400 hover:bg-slate-800/80'
@@ -1878,7 +1878,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
             <button
               onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
                 showHeatmap
                   ? 'bg-rose-600 text-white font-black shadow-xs'
                   : 'text-rose-400 hover:bg-slate-800/80'
@@ -1897,7 +1897,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <div className="flex items-center gap-1 bg-slate-950/80 backdrop-blur-md p-0.5 rounded-lg border border-teal-500/30 shadow-inner h-8 shrink-0">
             <button
               onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
-              className={`px-2.5 h-7 text-xs font-bold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 h-7 text-xs font-bold rounded-md cursor-pointer flex items-center gap-1.5 btn-tactile ${
                 mapType === 'satellite'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
@@ -1909,7 +1909,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
             <button
               onClick={() => setPinStyle(pinStyle === 'googleEarth' ? 'badge' : 'googleEarth')}
-              className={`px-2.5 h-7 text-xs font-bold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 h-7 text-xs font-bold rounded-md cursor-pointer flex items-center gap-1.5 btn-tactile ${
                 pinStyle === 'googleEarth'
                   ? 'bg-teal-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
@@ -1932,7 +1932,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   setSelectedFeeder('ALL');
                   setShowRowOnly(false);
                 }}
-                className="ml-1 text-[11px] text-amber-300 hover:text-white underline cursor-pointer font-bold"
+                className="ml-1 text-[11px] text-amber-300 hover:text-white underline cursor-pointer font-bold btn-tactile"
                 title="Reset semua filter"
               >
                 Reset
@@ -1946,7 +1946,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* 8. Tombol Sembunyikan Menu (Pop In) */}
           <button
             onClick={() => setIsToolbarOpen(false)}
-            className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-teal-500/30 bg-slate-950/80 backdrop-blur-md hover:bg-slate-900 text-teal-200 hover:text-amber-300 font-bold transition-all cursor-pointer shadow-inner text-xs shrink-0 active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-teal-500/30 bg-slate-950/80 backdrop-blur-md hover:bg-slate-900 text-teal-200 hover:text-amber-300 font-bold cursor-pointer shadow-inner text-xs shrink-0 btn-tactile"
             title="Sembunyikan Bilah Menu (Pop In)"
           >
             <ChevronUp className="w-3.5 h-3.5" />

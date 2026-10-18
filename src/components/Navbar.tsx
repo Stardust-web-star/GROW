@@ -56,25 +56,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="hidden md:flex items-center bg-slate-950/70 backdrop-blur-md p-1 rounded-xl border border-teal-500/30 shadow-md shrink-0 gap-1">
             <button
               onClick={() => setActiveTab('map')}
-              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'map'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
             >
-              <Map className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'map' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <Map className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'map' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span>Peta GIS</span>
             </button>
 
             <button
               onClick={() => setActiveTab('clearance')}
-              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'clearance'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
             >
-              <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'clearance' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <AlertTriangle className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'clearance' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span>Jarak ROW</span>
               <span className="hidden xl:inline">& Kabel</span>
               {rowViolations > 0 && (
@@ -88,51 +88,51 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => setActiveTab('ai')}
-              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'ai'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
             >
-              <BarChart3 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'ai' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <BarChart3 className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'ai' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span>GROW AI</span>
             </button>
 
             <button
               onClick={() => setActiveTab('spk')}
-              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'spk'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
             >
-              <FileText className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'spk' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <FileText className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'spk' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span className="hidden lg:inline">Surat Kerja</span>
               <span>(SPK)</span>
             </button>
 
             <button
               onClick={() => setActiveTab('kmz')}
-              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'kmz'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
             >
-              <Upload className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'kmz' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <Upload className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'kmz' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span>Unggah KMZ</span>
             </button>
 
             <button
               onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg transition-colors duration-150 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
                 activeTab === 'users'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                  ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                  : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
               }`}
               title="Kelola Pengguna & Akun Akses Sistem"
             >
-              <Users className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'users' ? 'text-slate-950' : 'text-amber-400'}`} />
+              <Users className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'users' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
               <span className="hidden lg:inline">Management</span>
               <span>User</span>
             </button>
@@ -156,7 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={onOpenAiAssistant}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 border border-amber-300 px-3.5 h-9 rounded-xl text-xs font-black shadow-md cursor-pointer whitespace-nowrap transition-colors"
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 border border-amber-300 px-3.5 h-9 rounded-xl text-xs font-black shadow-md cursor-pointer whitespace-nowrap btn-tactile hover:shadow-amber-400/25"
             >
               <Bot className="w-4 h-4 text-slate-950 shrink-0" />
               <span>Tanya GROW AI</span>
@@ -172,7 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {onLogout && (
                   <button
                     onClick={onLogout}
-                    className="flex items-center gap-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs"
+                    className="flex items-center gap-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 h-8 rounded-lg text-xs font-bold cursor-pointer shadow-xs btn-tactile"
                     title="Keluar dari Sistem GROW"
                   >
                     <LogOut className="w-3.5 h-3.5" />
@@ -190,9 +190,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="relative z-10 md:hidden flex items-center justify-around bg-slate-950/85 backdrop-blur-md border-t border-teal-500/30 p-2 text-xs overflow-x-auto gap-1">
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer btn-tactile ${
             activeTab === 'map'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >
@@ -201,9 +201,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('clearance')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg relative transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg relative cursor-pointer btn-tactile ${
             activeTab === 'clearance'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >
@@ -217,9 +217,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer btn-tactile ${
             activeTab === 'ai'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >
@@ -228,9 +228,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('spk')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer btn-tactile ${
             activeTab === 'spk'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >
@@ -239,9 +239,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('kmz')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer btn-tactile ${
             activeTab === 'kmz'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >
@@ -250,9 +250,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+          className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg cursor-pointer btn-tactile ${
             activeTab === 'users'
-              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40'
+              ? 'text-amber-400 font-black bg-amber-500/20 border border-amber-500/40 scale-105'
               : 'text-slate-200 hover:text-white font-semibold'
           }`}
         >

@@ -14,6 +14,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLoggingInSuccess, setIsLoggingInSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
@@ -49,7 +50,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
       sessionStorage.setItem('grow_pln_user', JSON.stringify(data.user));
       sessionStorage.setItem('grow_last_activity', Date.now().toString());
       localStorage.removeItem('grow_pln_user');
-      onLoginSuccess(data.user);
+      setIsLoggingInSuccess(true);
+      setTimeout(() => {
+        onLoginSuccess(data.user);
+      }, 350);
     } catch (err: any) {
       console.error('Login error:', err);
       // Fallback verification for offline / direct match
@@ -68,7 +72,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
         sessionStorage.setItem('grow_pln_user', JSON.stringify(defaultUser));
         sessionStorage.setItem('grow_last_activity', Date.now().toString());
         localStorage.removeItem('grow_pln_user');
-        onLoginSuccess(defaultUser);
+        setIsLoggingInSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(defaultUser);
+        }, 350);
       } else {
         setError(err.message || 'User ID atau password tidak valid.');
       }
@@ -108,7 +115,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* 2. Main Login Card (Split 2-Panel Exactly Like Reference Image) */}
-      <div className="relative z-10 w-full max-w-4xl bg-slate-900/95 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col md:flex-row transition-all duration-300">
+      <div className={`relative z-10 w-full max-w-4xl bg-slate-900/95 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col md:flex-row transition-all duration-350 ease-out ${isLoggingInSuccess ? 'animate-login-exit pointer-events-none' : 'animate-login-enter'}`}>
         
         {/* --- LEFT PANEL: PLN Brand & GROW Identity (Teal/Emerald to Deep Cyan Gradient) --- */}
         <div className="md:w-5/12 bg-gradient-to-br from-[#064e43] via-[#0a3847] to-[#041c30] p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-b md:border-b-0 md:border-r border-teal-500/20 text-white">
@@ -244,15 +251,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit Button with Dynamic Success State */}
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full mt-2 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white font-black py-3 px-4 rounded-xl shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 text-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                disabled={loading || isLoggingInSuccess}
+                className={`w-full mt-2 font-black py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all duration-300 cursor-pointer btn-tactile disabled:opacity-90 ${
+                  isLoggingInSuccess
+                    ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/40 scale-[1.02]'
+                    : 'bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white shadow-cyan-900/40'
+                }`}
               >
-                {loading ? (
+                {isLoggingInSuccess ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <CheckCircle2 className="w-5 h-5 text-slate-950 animate-bounce" />
+                    <span>Autentikasi Berhasil! Membuka Dashboard...</span>
+                  </>
+                ) : loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     <span>Memverifikasi Akun...</span>
                   </>
                 ) : (

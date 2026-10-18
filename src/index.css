@@ -11,11 +11,59 @@ html, body, input, button, select, textarea {
 @keyframes tabFadeSmooth {
   0% {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px) scale(0.998);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Dashboard Login Entry Animation */
+@keyframes dashboardFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.992) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Dashboard Exit Animation (Logout) */
+@keyframes dashboardFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.985) translateY(-8px);
+  }
+}
+
+/* Login Card Entry Animation */
+@keyframes loginPortalEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Login Card Exit Animation (on Login Success) */
+@keyframes loginPortalExit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02) translateY(-6px);
   }
 }
 
@@ -28,11 +76,54 @@ html, body, input, button, select, textarea {
   }
 }
 
-/* Sharp, pure-opacity & micro-settle animation */
+/* Sharp, pure-opacity & micro-settle animation for tab transitions */
 .animate-tab-fade-slide {
-  animation: tabFadeSmooth 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: tabFadeSmooth 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
   backface-visibility: hidden;
   transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+/* Dashboard Entry & Exit */
+.animate-dashboard-enter {
+  animation: dashboardFadeIn 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+.animate-dashboard-exit {
+  animation: dashboardFadeOut 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+/* Login Screen Entry & Exit */
+.animate-login-enter {
+  animation: loginPortalEnter 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+.animate-login-exit {
+  animation: loginPortalExit 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+/* Tactile Micro-Interactions for Buttons and Interactive Controls */
+.btn-tactile {
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.btn-tactile:hover {
+  transform: translateY(-1px);
+}
+.btn-tactile:active {
+  transform: scale(0.96) translateY(0);
 }
 
 .pulse-glow-amber {

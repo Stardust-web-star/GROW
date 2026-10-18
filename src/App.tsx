@@ -49,17 +49,24 @@ export default function App() {
     return null;
   });
 
+  // Logout Animation state
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   const handleLogout = useCallback((reason?: 'manual' | 'inactivity') => {
-    sessionStorage.removeItem('grow_pln_user');
-    sessionStorage.removeItem('grow_last_activity');
-    localStorage.removeItem('grow_pln_user');
-    setCurrentUser(null);
-    setActiveTab('map');
-    if (reason === 'inactivity') {
-      setSessionExpiredMessage('Sesi Anda telah berakhir otomatis karena tidak ada interaksi selama 7 menit. Silakan login kembali.');
-    } else {
-      setSessionExpiredMessage(null);
-    }
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      sessionStorage.removeItem('grow_pln_user');
+      sessionStorage.removeItem('grow_last_activity');
+      localStorage.removeItem('grow_pln_user');
+      setCurrentUser(null);
+      setIsLoggingOut(false);
+      setActiveTab('map');
+      if (reason === 'inactivity') {
+        setSessionExpiredMessage('Sesi Anda telah berakhir otomatis karena tidak ada interaksi selama 7 menit. Silakan login kembali.');
+      } else {
+        setSessionExpiredMessage(null);
+      }
+    }, 280);
   }, []);
 
   // 7-Minute Inactivity Auto-Logout Tracker
@@ -489,7 +496,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col">
+    <div className={`min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col ${isLoggingOut ? 'animate-dashboard-exit pointer-events-none' : 'animate-dashboard-enter'}`}>
       
       {/* Navbar Header */}
       <Navbar
