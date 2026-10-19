@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount } from '../types';
+import { getApiUrl } from '../utils/apiConfig';
 import { 
   Users, UserPlus, Shield, ShieldCheck, Key, Search, Trash2, Edit, CheckCircle, 
   XCircle, RefreshCw, AlertTriangle, UserCheck, Lock, Building, Mail, Sparkles 
@@ -44,7 +45,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch(getApiUrl('/api/users'));
       const data = await res.json();
       if (data.users) {
         setUsers(data.users);
@@ -104,7 +105,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
     setFormSubmitting(true);
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch(getApiUrl('/api/users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,7 +155,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         updatePayload.password = editPassword.trim();
       }
 
-      const res = await fetch(`/api/users/${encodeURIComponent(editingUser.id)}`, {
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(editingUser.id)}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload)
@@ -176,7 +177,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     if (!deletingUser) return;
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(deletingUser.id)}`, {
+      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(deletingUser.id)}`), {
         method: 'DELETE'
       });
       const data = await res.json();

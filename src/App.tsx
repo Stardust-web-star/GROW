@@ -12,7 +12,23 @@ import { AiAssistantDrawer } from './components/AiAssistantDrawer';
 import { FeederManagerDrawer } from './components/FeederManagerDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
-import { Plus, X } from 'lucide-react';
+import { getApiUrl } from './utils/apiConfig';
+import {
+  syncSaveCableSpan,
+  syncDeleteCableSpan,
+  syncSavePole,
+  syncDeletePole,
+  syncSaveSpk,
+  subscribeToRealtimeSpans,
+  subscribeToRealtimePoles,
+  subscribeToRealtimeSpks,
+  subscribeToSyncHeartbeat,
+  getCurrentPlatformOrigin,
+  StoredSpanRecord,
+  StoredPoleRecord,
+  SyncStateDoc
+} from './utils/firebaseSync';
+import { Plus, X, RefreshCw, CheckCircle, Wifi, Cloud, Zap } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
@@ -217,37 +233,161 @@ export default function App() {
   const [newPoleLocation, setNewPoleLocation] = useState('Jl. Syaranualo, Passo, Ambon');
   const [newPoleClearance, setNewPoleClearance] = useState(3.5);
 
+  // Real-time Cloud Two-Way Sync Notification & Status (Google AI Studio <-> Vercel)
+  const [syncStatus, setSyncStatus] = useState<'connected' | 'syncing' | 'offline'>('connected');
+  const [lastSyncOrigin, setLastSyncOrigin] = useState<string>('Cloud Firestore');
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [syncToast, setSyncToast] = useState<{ origin: string; action: string; details?: string } | null>(null);
+  const syncToastTimerRef = useRef<any>(null);
+
   const fetchPoles = async () => {
     try {
-      const res = await fetch('/api/poles');
+      const res = await fetch(getApiUrl('/api/poles'));
       const data = await res.json();
       if (data.poles && data.poles.length > 0) setPoles(data.poles);
       if (data.spans && data.spans.length > 0) setSpans(data.spans);
       if (data.masterName) setMasterName(data.masterName);
     } catch (err) {
-      console.error('Error fetching poles:', err);
+      console.warn('Initial local poles fetch notice:', err);
     }
   };
 
   const fetchSpks = async () => {
     try {
-      const res = await fetch('/api/spk');
+      const res = await fetch(getApiUrl('/api/spk'));
       const data = await res.json();
       if (data.spks) setSpks(data.spks);
     } catch (err) {
-      console.error('Error fetching SPKs:', err);
+      console.warn('Initial local SPKs fetch notice:', err);
     }
   };
 
+  // Real-time 2-Way Synchronization Listeners (Firebase Firestore)
   useEffect(() => {
+    // 1. Listen for real-time Cable Spans (Tarik kabel, ubah kondisi kabel, hapus kabel)
+    const unsubSpans = subscribeToRealtimeSpans((spansMap) => {
+      if (!spansMap || spansMap.size === 0) return;
+      setSpans(prevSpans => {
+        const next = [...prevSpans];
+        const indexMap = new Map<string, number>();
+        next.forEach((s, i) => indexMap.set(s.id, i));
+
+        spansMap.forEach((override, spanId) => {
+          const idx = indexMap.get(spanId);
+          if (override._isDeleted) {
+            if (idx !== undefined) {
+              next.splice(idx, 1);
+              indexMap.clear();
+              next.forEach((s, i) => indexMap.set(s.id, i));
+            }
+          } else {
+            const cleanSpan: CableSpan = {
+              id: override.id || spanId,
+              fromPoleId: override.fromPoleId || '',
+              toPoleId: override.toPoleId || '',
+              conductorType: override.conductorType || 'AACS 150 mm²',
+              lengthMeters: override.lengthMeters || 45,
+              clearanceMeters: override.clearanceMeters ?? 4.0,
+              hasViolation: override.hasViolation ?? false,
+              violationType: override.violationType,
+              cableCondition: override.cableCondition || 'Baik',
+              feeder: override.feeder,
+              treeDistanceMeters: override.treeDistanceMeters,
+              buildingDistanceMeters: override.buildingDistanceMeters,
+              notes: override.notes || '',
+              photoUrl: override.photoUrl
+            };
+            if (idx !== undefined) {
+              next[idx] = { ...next[idx], ...cleanSpan };
+            } else {
+              next.push(cleanSpan);
+              indexMap.set(spanId, next.length - 1);
+            }
+          }
+        });
+        return next;
+      });
+    });
+
+    // 2. Listen for real-time Poles (Kondisi tiang, jarak aman kabel/ROW, inspeksi, hapus tiang)
+    const unsubPoles = subscribeToRealtimePoles((polesMap) => {
+      if (!polesMap || polesMap.size === 0) return;
+      setPoles(prevPoles => {
+        const next = [...prevPoles];
+        const indexMap = new Map<string, number>();
+        next.forEach((p, i) => indexMap.set(p.id, i));
+
+        polesMap.forEach((override, poleId) => {
+          const idx = indexMap.get(poleId);
+          if (override._isDeleted) {
+            if (idx !== undefined) {
+              next.splice(idx, 1);
+              indexMap.clear();
+              next.forEach((p, i) => indexMap.set(p.id, i));
+            }
+          } else {
+            if (idx !== undefined) {
+              next[idx] = { ...next[idx], ...override } as PoleData;
+            } else {
+              next.unshift(override as PoleData);
+              indexMap.clear();
+              next.forEach((p, i) => indexMap.set(p.id, i));
+            }
+          }
+        });
+        return next;
+      });
+    });
+
+    // 3. Listen for real-time SPKs
+    const unsubSpks = subscribeToRealtimeSpks((spkList) => {
+      if (!spkList || spkList.length === 0) return;
+      setSpks(prevSpks => {
+        const existingIds = new Set(spkList.map(s => s.id));
+        const filteredPrev = prevSpks.filter(s => !existingIds.has(s.id));
+        return [...spkList, ...filteredPrev];
+      });
+    });
+
+    // 4. Listen for sync heartbeat (triggers toast when other side updates data)
+    const currentOrigin = getCurrentPlatformOrigin();
+    const unsubHeartbeat = subscribeToSyncHeartbeat((state) => {
+      setLastSyncOrigin(state.origin);
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncTime(timeStr);
+      setSyncStatus('connected');
+
+      // If modification was triggered from the other platform, alert user in real-time
+      if (state.origin !== currentOrigin) {
+        if (syncToastTimerRef.current) clearTimeout(syncToastTimerRef.current);
+        setSyncToast({
+          origin: state.origin,
+          action: state.action,
+          details: state.details
+        });
+        syncToastTimerRef.current = setTimeout(() => {
+          setSyncToast(null);
+        }, 5000);
+      }
+    });
+
+    // Initial load from local backend if available
     fetchPoles();
     fetchSpks();
+
+    return () => {
+      unsubSpans();
+      unsubPoles();
+      unsubSpks();
+      unsubHeartbeat();
+      if (syncToastTimerRef.current) clearTimeout(syncToastTimerRef.current);
+    };
   }, []);
 
   // Handlers
   const handleRestoreMasterData = async () => {
     try {
-      const res = await fetch('/api/master/restore', { method: 'POST' });
+      const res = await fetch(getApiUrl('/api/master/restore'), { method: 'POST' });
       if (res.ok) {
         await fetchPoles();
         setActiveTab('map');
@@ -259,7 +399,7 @@ export default function App() {
 
   const handleImportKmzPoles = async (importedPoles: PoleData[], importedSpans: CableSpan[], replaceExisting: boolean) => {
     try {
-      const res = await fetch('/api/poles/bulk-import', {
+      const res = await fetch(getApiUrl('/api/poles/bulk-import'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ poles: importedPoles, spans: importedSpans, replaceExisting })
@@ -273,7 +413,9 @@ export default function App() {
     }
   };
 
+  // 1. Tarik Kabel / Tambah Bentangan (Two-Way Sync: Google AI Studio <-> Vercel)
   const handleCreateSpan = async (newSpan: CableSpan) => {
+    // Optimistic local update
     setSpans(prev => {
       const filtered = prev.filter(s =>
         !(s.fromPoleId === newSpan.fromPoleId && s.toPoleId === newSpan.toPoleId) &&
@@ -282,31 +424,48 @@ export default function App() {
       return [...filtered, newSpan];
     });
 
+    // Direct Real-Time Cloud Firestore Sync (Synchronizes instantly with Vercel)
     try {
-      await fetch('/api/spans', {
+      await syncSaveCableSpan(newSpan);
+    } catch (syncErr) {
+      console.warn('Sync span to Firestore error:', syncErr);
+    }
+
+    // Local backend server fallback
+    try {
+      await fetch(getApiUrl('/api/spans'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSpan)
       });
     } catch (err) {
-      console.error('Error creating span:', err);
+      // safe fallback
     }
   };
 
+  // 2. Ubah Kondisi Bentangan Kabel (Two-Way Sync)
   const handleUpdateSpan = async (updatedSpan: CableSpan) => {
     setSpans(prev => prev.map(s => s.id === updatedSpan.id ? updatedSpan : s));
 
+    // Direct Real-Time Cloud Firestore Sync
     try {
-      await fetch(`/api/spans/${encodeURIComponent(updatedSpan.id)}`, {
+      await syncSaveCableSpan(updatedSpan);
+    } catch (syncErr) {
+      console.warn('Sync updated span to Firestore error:', syncErr);
+    }
+
+    try {
+      await fetch(getApiUrl(`/api/spans/${encodeURIComponent(updatedSpan.id)}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedSpan)
       });
     } catch (err) {
-      console.error('Error updating span:', err);
+      // safe fallback
     }
   };
 
+  // 3. Hapus Bentangan Kabel (Two-Way Sync)
   const handleDeleteSpan = async (spanId: string, fromPoleId?: string, toPoleId?: string) => {
     const targetId = (spanId || '').trim().toLowerCase();
     const pFrom = (fromPoleId || '').trim().toLowerCase();
@@ -326,47 +485,69 @@ export default function App() {
       return true;
     }));
 
+    // Direct Real-Time Cloud Firestore Sync
+    try {
+      await syncDeleteCableSpan(spanId, fromPoleId, toPoleId);
+    } catch (syncErr) {
+      console.warn('Sync delete span to Firestore error:', syncErr);
+    }
+
     try {
       const url = fromPoleId && toPoleId
-        ? `/api/spans/${encodeURIComponent(spanId)}?from=${encodeURIComponent(fromPoleId)}&to=${encodeURIComponent(toPoleId)}`
-        : `/api/spans/${encodeURIComponent(spanId)}`;
+        ? getApiUrl(`/api/spans/${encodeURIComponent(spanId)}?from=${encodeURIComponent(fromPoleId)}&to=${encodeURIComponent(toPoleId)}`)
+        : getApiUrl(`/api/spans/${encodeURIComponent(spanId)}`);
       await fetch(url, {
         method: 'DELETE'
       });
     } catch (err) {
-      console.error('Error deleting span:', err);
+      // safe fallback
     }
   };
 
+  // 4. Hapus Tiang (Two-Way Sync)
   const handleDeletePole = async (poleId: string) => {
-    // Optimistically update local state immediately so marker vanishes on click!
     setPoles(prevPoles => prevPoles.filter(p => p.id !== poleId && p.code !== poleId));
     setSpans(prevSpans => prevSpans.filter(s => s.fromPoleId !== poleId && s.toPoleId !== poleId));
 
+    // Direct Real-Time Cloud Firestore Sync
     try {
-      await fetch(`/api/poles/${encodeURIComponent(poleId)}`, {
+      await syncDeletePole(poleId);
+    } catch (syncErr) {
+      console.warn('Sync delete pole to Firestore error:', syncErr);
+    }
+
+    try {
+      await fetch(getApiUrl(`/api/poles/${encodeURIComponent(poleId)}`), {
         method: 'DELETE'
       });
-      await fetchPoles();
     } catch (err) {
-      console.error('Error deleting pole:', err);
+      // safe fallback
     }
   };
 
+  // 5. Perubahan Kondisi Tiang (Two-Way Sync)
   const handleUpdatePole = async (updatedPole: PoleData) => {
     setPoles(prev => prev.map(p => p.id === updatedPole.id ? updatedPole : p));
 
+    // Direct Real-Time Cloud Firestore Sync
     try {
-      await fetch(`/api/poles/${encodeURIComponent(updatedPole.id)}`, {
+      await syncSavePole(updatedPole);
+    } catch (syncErr) {
+      console.warn('Sync update pole to Firestore error:', syncErr);
+    }
+
+    try {
+      await fetch(getApiUrl(`/api/poles/${encodeURIComponent(updatedPole.id)}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedPole)
       });
     } catch (err) {
-      console.error('Error updating pole:', err);
+      // safe fallback
     }
   };
 
+  // 6. Perubahan Jarak ROW & Kondisi Kabel/Tiang (Two-Way Sync)
   const handleUpdateClearance = async (poleId: string, newDistance: number) => {
     try {
       const pole = poles.find(p => p.id === poleId);
@@ -378,7 +559,22 @@ export default function App() {
           ? 'Pelanggaran ROW Pohon (<3.0m)'
           : 'Aman (≥3.0m)';
 
-      await fetch(`/api/poles/${poleId}`, {
+      const updatedPole: PoleData = {
+        ...pole,
+        clearanceDistanceMeters: newDistance,
+        clearanceStatus: updatedStatus
+      };
+
+      setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
+
+      // Direct Real-Time Cloud Firestore Sync
+      try {
+        await syncSavePole(updatedPole);
+      } catch (syncErr) {
+        console.warn('Sync clearance update to Firestore error:', syncErr);
+      }
+
+      await fetch(getApiUrl(`/api/poles/${poleId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -386,39 +582,80 @@ export default function App() {
           clearanceStatus: updatedStatus
         })
       });
-
-      await fetchPoles();
     } catch (err) {
       console.error('Error updating clearance distance:', err);
     }
   };
 
+  // 7. Input Inspeksi Tiang & Kabel (Two-Way Sync)
   const handleSubmitInspection = async (poleId: string, inspection: InspectionRecord) => {
     try {
-      await fetch(`/api/poles/${poleId}/inspections`, {
+      const pole = poles.find(p => p.id === poleId);
+      if (!pole) return;
+
+      const updatedPole: PoleData = {
+        ...pole,
+        lastInspectionDate: inspection.date || new Date().toISOString().split('T')[0],
+        physicalCondition: inspection.condition || pole.physicalCondition,
+        clearanceDistanceMeters: inspection.cableClearanceMeters ?? pole.clearanceDistanceMeters,
+        clearanceStatus: inspection.cableClearanceMeters !== undefined
+          ? (inspection.cableClearanceMeters < 1.5 ? 'Bahaya Kritis (<1.5m)' : inspection.cableClearanceMeters < 3.0 ? 'Pelanggaran ROW Pohon (<3.0m)' : 'Aman (≥3.0m)')
+          : pole.clearanceStatus,
+        clearanceObject: inspection.clearanceObject || pole.clearanceObject,
+        inspectionHistory: [inspection, ...(pole.inspectionHistory || [])]
+      };
+
+      setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
+
+      // Direct Real-Time Cloud Firestore Sync
+      try {
+        await syncSavePole(updatedPole);
+      } catch (syncErr) {
+        console.warn('Sync inspection to Firestore error:', syncErr);
+      }
+
+      await fetch(getApiUrl(`/api/poles/${poleId}/inspections`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(inspection)
       });
-      await fetchPoles();
     } catch (err) {
       console.error('Error submitting inspection:', err);
     }
   };
 
+  // 8. Pembuatan SPK (Two-Way Sync)
   const handleCreateSpk = async (newSpk: MaintenanceWorkOrder) => {
+    setSpks(prev => [newSpk, ...prev]);
+
+    // Update target pole SPK status
+    if (newSpk.poleId) {
+      const targetPole = poles.find(p => p.id === newSpk.poleId);
+      if (targetPole) {
+        const updatedPole = { ...targetPole, spkStatus: 'SPK Diterbitkan' as const };
+        setPoles(prev => prev.map(p => p.id === newSpk.poleId ? updatedPole : p));
+        syncSavePole(updatedPole).catch(() => {});
+      }
+    }
+
+    // Direct Real-Time Cloud Firestore Sync
     try {
-      await fetch('/api/spk', {
+      await syncSaveSpk(newSpk);
+    } catch (syncErr) {
+      console.warn('Sync SPK to Firestore error:', syncErr);
+    }
+
+    try {
+      await fetch(getApiUrl('/api/spk'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSpk)
       });
-      await fetchSpks();
-      await fetchPoles();
-      setActiveTab('spk');
     } catch (err) {
-      console.error('Error creating SPK:', err);
+      // safe fallback
     }
+
+    setActiveTab('spk');
   };
 
   const handleAutoGenerateSpksFromAi = async (spkDrafts: Partial<MaintenanceWorkOrder>[]) => {
@@ -442,6 +679,7 @@ export default function App() {
     }
   };
 
+  // 9. Tambah Tiang Baru (Two-Way Sync)
   const handleSaveNewPole = async (e: React.FormEvent) => {
     e.preventDefault();
     const poleId = newPoleId || `BGL-NEW-${String(poles.length + 1).padStart(3, '0')}`;
@@ -465,17 +703,25 @@ export default function App() {
       inspectionHistory: []
     };
 
+    setPoles(prev => [newPole, ...prev]);
+    setShowAddPoleModal(false);
+    setActiveTab('map');
+
+    // Direct Real-Time Cloud Firestore Sync
     try {
-      await fetch('/api/poles', {
+      await syncSavePole(newPole);
+    } catch (syncErr) {
+      console.warn('Sync new pole to Firestore error:', syncErr);
+    }
+
+    try {
+      await fetch(getApiUrl('/api/poles'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPole)
       });
-      await fetchPoles();
-      setShowAddPoleModal(false);
-      setActiveTab('map');
     } catch (err) {
-      console.error('Error saving new pole:', err);
+      // safe fallback
     }
   };
 
@@ -509,6 +755,9 @@ export default function App() {
         masterName={masterName}
         currentUser={currentUser}
         onLogout={handleLogout}
+        syncStatus={syncStatus}
+        lastSyncOrigin={lastSyncOrigin}
+        lastSyncTime={lastSyncTime}
       />
 
       {/* Main Content Area */}
@@ -759,6 +1008,36 @@ export default function App() {
           setActiveTab('kmz');
         }}
       />
+      {/* Real-Time Two-Way Sync Live Toast Notification (Google AI Studio <-> Vercel) */}
+      {syncToast && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-950/95 text-white px-4 py-3 rounded-2xl border border-teal-500/60 shadow-2xl backdrop-blur-md animate-fade-slide-in select-none"
+        >
+          <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/30">
+            <RefreshCw className="w-4 h-4 animate-spin text-teal-300" />
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-teal-300">Sync 2-Arah Terdeteksi</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-900/80 text-teal-200 border border-teal-600/50 font-semibold">
+                dari {syncToast.origin}
+              </span>
+            </div>
+            <span className="text-xs text-slate-300 mt-0.5 max-w-sm truncate">
+              {syncToast.details || syncToast.action}
+            </span>
+          </div>
+          <button
+            onClick={() => setSyncToast(null)}
+            className="ml-2 text-slate-400 hover:text-white p-1 rounded-md cursor-pointer hover:bg-slate-800 transition-colors"
+            title="Tutup Notifikasi"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </aside>
+      )}
 
     </div>
   );

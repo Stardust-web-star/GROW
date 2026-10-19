@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PoleData, AiAnalysisResult, MaintenanceWorkOrder } from '../types';
+import { getApiUrl } from '../utils/apiConfig';
 import { Bot, Sparkles, RefreshCw, AlertTriangle, ShieldCheck, CheckCircle2, ArrowRight, Zap, FileText } from 'lucide-react';
 
 interface AiPredictiveDashboardProps {
@@ -25,7 +26,7 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/ai/analyze', {
+      const res = await fetch(getApiUrl('/api/ai/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ poles })

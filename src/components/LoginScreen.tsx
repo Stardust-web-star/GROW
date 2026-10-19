@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserAccount } from '../types';
 import { GisPlnLogo } from './GisPlnLogo';
 import { PlnBadge } from './PlnBadge';
+import { getApiUrl } from '../utils/apiConfig';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, Key, AlertCircle, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -34,7 +35,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userId.trim(), password: password.trim() })

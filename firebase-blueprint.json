@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "Pole": {
+      "title": "Pole",
+      "description": "PLN electrical distribution pole data",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "feeder": { "type": "string" },
+        "type": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "locationName": { "type": "string" },
+        "material": { "type": "string" },
+        "heightMeters": { "type": "number" },
+        "physicalCondition": { "type": "string" },
+        "installationYear": { "type": "number" },
+        "lastInspectionDate": { "type": "string" },
+        "clearanceDistanceMeters": { "type": "number" },
+        "clearanceStatus": { "type": "string" },
+        "clearanceObject": { "type": "string" },
+        "spkStatus": { "type": "string" }
+      },
+      "required": ["id", "lat", "lng"]
+    },
+    "CableSpan": {
+      "title": "CableSpan",
+      "description": "Electrical cable span connection between two poles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fromPoleId": { "type": "string" },
+        "toPoleId": { "type": "string" },
+        "cableType": { "type": "string" },
+        "conductorType": { "type": "string" },
+        "condition": { "type": "string" },
+        "lengthMeters": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "fromPoleId", "toPoleId"]
+    },
+    "WorkOrder": {
+      "title": "WorkOrder",
+      "description": "Maintenance Work Order SPK for pole repair or tree trimming",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "spkNumber": { "type": "string" },
+        "poleId": { "type": "string" },
+        "locationName": { "type": "string" },
+        "issueType": { "type": "string" },
+        "priority": { "type": "string" },
+        "assignedTeam": { "type": "string" },
+        "scheduledDate": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "spkNumber", "status"]
+    },
+    "SyncMetadata": {
+      "title": "SyncMetadata",
+      "description": "Global sync metadata and update counter across AI Studio and Vercel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "lastUpdated": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "version": { "type": "number" }
+      },
+      "required": ["id", "version"]
+    }
+  },
+  "firestore": {
+    "/poles_custom/{poleId}": {
+      "schema": "Pole",
+      "description": "Custom & modified distribution poles"
+    },
+    "/spans_custom/{spanId}": {
+      "schema": "CableSpan",
+      "description": "Custom & modified cable connections between poles"
+    },
+    "/spks/{spkId}": {
+      "schema": "WorkOrder",
+      "description": "Maintenance work orders"
+    },
+    "/sync/{docId}": {
+      "schema": "SyncMetadata",
+      "description": "Real-time sync metadata across environments"
+    }
+  }
+}

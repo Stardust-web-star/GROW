@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getApiUrl } from '../utils/apiConfig';
 import { Bot, X, Send, Sparkles, User, RefreshCw, BookOpen } from 'lucide-react';
 
 interface AiAssistantDrawerProps {
@@ -31,7 +32,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
     setLoading(true);
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch(getApiUrl('/api/ai/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question })

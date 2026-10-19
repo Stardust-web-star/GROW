@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Rules for PLN ULP Baguala GROW GIS System (AI Studio <-> Vercel Two-Way Sync)
+    match /poles_custom/{poleId} {
+      allow read, write: if true;
+    }
+
+    match /spans_custom/{spanId} {
+      allow read, write: if true;
+    }
+
+    match /spks/{spkId} {
+      allow read, write: if true;
+    }
+
+    match /sync/{docId} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

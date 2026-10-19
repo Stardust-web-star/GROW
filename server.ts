@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,7 +17,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
+// Enable CORS for all origins (supports Vercel deployments, custom domains, and local preview)
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
+}));
+
 app.use(express.json({ limit: '50mb' }));
+
+// 2-Way Sync Tracking Version
+let syncVersion = Date.now();
+
+function touchSyncVersion(action?: string) {
+  syncVersion = Date.now();
+  console.log(`[Sync] Version updated: ${syncVersion} (${action || 'data_modified'})`);
+}
 
 // Path to Persistent Master Data (TITIK TIANG BGL.kml)
 const MASTER_DATA_PATH = path.join(__dirname, 'src/data/masterPoles.json');
@@ -43,7 +60,7 @@ function loadMasterData(): { poles: PoleData[]; spans: CableSpan[] } {
   };
 }
 
-function saveMasterData() {
+function saveMasterData(actionDesc?: string) {
   try {
     const dataToSave = {
       masterName: 'TITIK TIANG BGL.kml',
@@ -55,6 +72,7 @@ function saveMasterData() {
       spans: spansDatabase
     };
     fs.writeFileSync(MASTER_DATA_PATH, JSON.stringify(dataToSave, null, 2), 'utf-8');
+    touchSyncVersion(actionDesc || `persisted_${polesDatabase.length}_poles_${spansDatabase.length}_spans`);
     console.log(`[MasterData] Persisted ${polesDatabase.length} poles to ${MASTER_DATA_PATH}`);
   } catch (err) {
     console.error('[MasterData] Error writing master file:', err);
@@ -118,6 +136,7 @@ function loadUsersData(): UserAccount[] {
 function saveUsersData() {
   try {
     fs.writeFileSync(USERS_DATA_PATH, JSON.stringify(usersDatabase, null, 2), 'utf-8');
+    touchSyncVersion('users_saved');
   } catch (err) {
     console.error('[Users] Error writing users file:', err);
   }
@@ -126,12 +145,26 @@ function saveUsersData() {
 let usersDatabase: UserAccount[] = loadUsersData();
 
 // API Routes
+
+// Real-Time 2-Way Sync Version Check Endpoint (AI Studio <-> Vercel)
+app.get('/api/sync/version', (req, res) => {
+  res.json({
+    version: syncVersion,
+    polesCount: polesDatabase.length,
+    spansCount: spansDatabase.length,
+    spksCount: spksDatabase.length,
+    usersCount: usersDatabase.length,
+    timestamp: Date.now()
+  });
+});
+
 app.get('/api/poles', (req, res) => {
   res.json({
     poles: polesDatabase,
     spans: spansDatabase,
     masterName: 'TITIK TIANG BGL.kml',
-    isMasterData: true
+    isMasterData: true,
+    version: syncVersion
   });
 });
 
@@ -140,7 +173,8 @@ app.get('/api/master/info', (req, res) => {
     masterName: 'TITIK TIANG BGL.kml',
     polesCount: polesDatabase.length,
     spansCount: spansDatabase.length,
-    lastUpdated: new Date().toISOString()
+    lastUpdated: new Date().toISOString(),
+    version: syncVersion
   });
 });
 
@@ -148,11 +182,13 @@ app.post('/api/master/restore', (req, res) => {
   const reloaded = loadMasterData();
   polesDatabase = reloaded.poles;
   spansDatabase = reloaded.spans;
+  saveMasterData('master_restored');
   res.json({
     success: true,
     message: 'Master data TITIK TIANG BGL.kml berhasil dimuat ulang.',
     polesCount: polesDatabase.length,
-    spansCount: spansDatabase.length
+    spansCount: spansDatabase.length,
+    version: syncVersion
   });
 });
 
@@ -341,10 +377,12 @@ app.post('/api/spk', (req, res) => {
     const poleIndex = polesDatabase.findIndex(p => p.id === newSpk.poleId);
     if (poleIndex !== -1) {
       polesDatabase[poleIndex].spkStatus = 'SPK Diterbitkan';
+      saveMasterData('spk_pole_updated');
     }
   }
 
-  res.status(201).json({ success: true, spk: newSpk });
+  touchSyncVersion('spk_created');
+  res.status(201).json({ success: true, spk: newSpk, version: syncVersion });
 });
 
 // Authentication Endpoint
