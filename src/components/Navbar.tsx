@@ -3,11 +3,14 @@ import { Map, BarChart3, AlertTriangle, FileText, Upload, Bot, Zap, Users, LogOu
 import { GisPlnLogo } from './GisPlnLogo';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
 import { UserAccount } from '../types';
+import { SyncStatusBadge } from './SyncStatusBadge';
+import { SystemMetaState } from '../lib/firebase';
 
 interface NavbarProps {
   activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
   setActiveTab: (tab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => void;
   totalPoles: number;
+  totalSpans?: number;
   rowViolations: number;
   criticalPoles: number;
   onOpenAiAssistant: () => void;
@@ -15,19 +18,22 @@ interface NavbarProps {
   currentUser?: UserAccount | null;
   onLogout?: () => void;
   isCloudConnected?: boolean;
+  systemMeta?: SystemMetaState | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   totalPoles,
+  totalSpans = 0,
   rowViolations,
   criticalPoles,
   onOpenAiAssistant,
   masterName = 'TITIK TIANG BGL.kml',
   currentUser,
   onLogout,
-  isCloudConnected = true
+  isCloudConnected = true,
+  systemMeta = null
 }) => {
   return (
     <header id="app-navbar" className="relative text-white sticky top-0 z-40 shadow-xl select-none print:hidden border-b border-teal-500/30 overflow-hidden">
@@ -156,18 +162,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* Real-time 2-Way Sync Status (AI Studio ⇄ Vercel) */}
-            <div 
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-emerald-500/50 rounded-xl text-[11px] font-semibold text-emerald-300 shadow-md backdrop-blur-md"
-              title="Sinkronisasi Otomatis 2-Arah Aktif: Perubahan data di Vercel maupun Google AI Studio tersimpan dan terupdate real-time via Cloud Firestore"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="hidden sm:inline font-mono text-[10px] text-emerald-200 tracking-tight">Sync 2-Arah AI Studio ⇄ Vercel</span>
-              <span className="sm:hidden font-mono text-[10px] text-emerald-200">Cloud Sync</span>
-            </div>
+            {/* Interactive Real-Time 2-Way Sync Badge (AI Studio ⇄ Vercel) */}
+            <SyncStatusBadge
+              systemMeta={systemMeta || null}
+              totalPoles={totalPoles}
+              totalSpans={totalSpans || 0}
+              isCloudConnected={isCloudConnected}
+            />
 
             <button
               onClick={onOpenAiAssistant}

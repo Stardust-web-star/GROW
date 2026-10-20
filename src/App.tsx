@@ -27,6 +27,7 @@ import {
   mergePolesWithCloud,
   mergeSpansWithCloud
 } from './lib/syncManager';
+import { SystemMetaState } from './lib/firebase';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
@@ -160,6 +161,7 @@ export default function App() {
   const [spks, setSpks] = useState<MaintenanceWorkOrder[]>(INITIAL_SPKS);
   const [masterName, setMasterName] = useState<string>('TITIK TIANG BGL.kml');
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(true);
+  const [systemMeta, setSystemMeta] = useState<SystemMetaState | null>(null);
 
   // Synchronization refs for instant live updates across AI Studio & Vercel
   const basePolesRef = useRef<PoleData[]>(INITIAL_POLES);
@@ -282,6 +284,7 @@ export default function App() {
     // 1. Subscribe to App State (deletion ledger & global settings)
     const unsubAppState = subscribeToAppState((appState) => {
       if (appState) {
+        setSystemMeta(appState);
         if (appState.deletedPoleIds && Array.isArray(appState.deletedPoleIds)) {
           deletedPoleIdsRef.current = new Set(appState.deletedPoleIds.map(id => (id || '').toLowerCase()));
         }
@@ -723,6 +726,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={handleSelectTab}
         totalPoles={poles.length}
+        totalSpans={spans.length}
         rowViolations={rowViolations}
         criticalPoles={criticalPoles}
         onOpenAiAssistant={() => setShowAiAssistant(true)}
@@ -730,6 +734,7 @@ export default function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         isCloudConnected={isCloudSyncing}
+        systemMeta={systemMeta}
       />
 
       {/* Main Content Area */}

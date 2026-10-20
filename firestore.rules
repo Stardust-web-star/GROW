@@ -35,11 +35,16 @@ service cloud.firestore {
              data.lng is number && data.lng >= -180.0 && data.lng <= 180.0 &&
              (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 256)) &&
              (!('material' in data) || (data.material is string && data.material.size() <= 32)) &&
+             (!('heightMeters' in data) || (data.heightMeters is number)) &&
+             (!('installationYear' in data) || (data.installationYear is number)) &&
              (!('physicalCondition' in data) || (data.physicalCondition is string && data.physicalCondition.size() <= 64)) &&
              (!('clearanceDistanceMeters' in data) || (data.clearanceDistanceMeters is number)) &&
              (!('clearanceStatus' in data) || (data.clearanceStatus is string && data.clearanceStatus.size() <= 128)) &&
+             (!('clearanceObject' in data) || (data.clearanceObject is string && data.clearanceObject.size() <= 128)) &&
+             (!('spkStatus' in data) || (data.spkStatus is string && data.spkStatus.size() <= 64)) &&
              (!('notes' in data) || (data.notes is string && data.notes.size() <= 2048)) &&
-             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000));
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
     match /poles/{poleId} {
@@ -54,13 +59,18 @@ service cloud.firestore {
       return data.id is string && data.id.size() <= 128 &&
              data.fromPoleId is string && data.fromPoleId.size() <= 128 &&
              data.toPoleId is string && data.toPoleId.size() <= 128 &&
+             (!('feeder' in data) || (data.feeder is string && data.feeder.size() <= 128)) &&
              (!('conductorType' in data) || (data.conductorType is string && data.conductorType.size() <= 128)) &&
              (!('lengthMeters' in data) || (data.lengthMeters is number)) &&
              (!('clearanceMeters' in data) || (data.clearanceMeters is number)) &&
+             (!('treeDistanceMeters' in data) || (data.treeDistanceMeters is number)) &&
+             (!('buildingDistanceMeters' in data) || (data.buildingDistanceMeters is number)) &&
              (!('hasViolation' in data) || (data.hasViolation is bool)) &&
+             (!('violationType' in data) || (data.violationType is string && data.violationType.size() <= 128)) &&
              (!('cableCondition' in data) || (data.cableCondition is string && data.cableCondition.size() <= 128)) &&
              (!('notes' in data) || (data.notes is string && data.notes.size() <= 2048)) &&
-             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000));
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
     match /spans/{spanId} {
@@ -80,7 +90,8 @@ service cloud.firestore {
              (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 256)) &&
              (!('priority' in data) || (data.priority is string && data.priority.size() <= 64)) &&
              (!('assignedTeam' in data) || (data.assignedTeam is string && data.assignedTeam.size() <= 128)) &&
-             (!('aiRecommendation' in data) || (data.aiRecommendation is string && data.aiRecommendation.size() <= 2048));
+             (!('aiRecommendation' in data) || (data.aiRecommendation is string && data.aiRecommendation.size() <= 2048)) &&
+             (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
     match /spks/{spkId} {
@@ -114,6 +125,8 @@ service cloud.firestore {
       return data.id is string && data.id.size() <= 64 &&
              data.lastUpdated is string && data.lastUpdated.size() <= 64 &&
              (!('masterName' in data) || (data.masterName is string && data.masterName.size() <= 128)) &&
+             (!('deletedPoleIds' in data) || (data.deletedPoleIds is list)) &&
+             (!('deletedSpanIds' in data) || (data.deletedSpanIds is list)) &&
              (!('feederColors' in data) || (data.feederColors is string && data.feederColors.size() <= 10000));
     }
 

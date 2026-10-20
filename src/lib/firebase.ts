@@ -85,9 +85,28 @@ export interface AppSyncState {
   id: string;
   masterName?: string;
   lastUpdated: string;
+  lastAction?: string;
+  lastSource?: string;
+  totalPolesCount?: number;
+  totalSpansCount?: number;
   deletedPoleIds?: string[];
   deletedSpanIds?: string[];
   feederColors?: string;
+}
+
+export type SystemMetaState = AppSyncState;
+
+export function getCurrentEnvironmentTag(): string {
+  if (typeof window === 'undefined') return 'Node Server';
+  const host = window.location.hostname;
+  if (host.includes('vercel.app')) return 'Dashboard Vercel';
+  if (host.includes('run.app') || host.includes('aistudio')) return 'Dashboard Google AI Studio';
+  if (host.includes('localhost') || host === '127.0.0.1') return 'Localhost / Dev Server';
+  return `Host: ${host}`;
+}
+
+export async function touchSystemMeta(meta: Partial<SystemMetaState>) {
+  return saveAppStateToCloud(meta);
 }
 
 // Real-time synchronization listeners
@@ -181,87 +200,123 @@ export function subscribeToAppState(onUpdate: (state: AppSyncState | null) => vo
   );
 }
 
+/**
+ * Recursively remove undefined values from objects/arrays so Firestore doesn't reject them.
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof data === 'object') {
+    const cleaned: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined) {
+        cleaned[key] = sanitizeForFirestore(val);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
+
 // Direct cloud mutation methods
 export async function savePoleToCloud(pole: PoleData) {
-  const cleanId = pole.id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = (pole.id || `POLE-${Date.now()}`).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `poles/${cleanId}`;
   try {
-    const dataToSave = {
+    const dataToSave = sanitizeForFirestore({
       ...pole,
       id: cleanId,
+      lat: Number(pole.lat),
+      lng: Number(pole.lng),
       updatedAt: new Date().toISOString()
-    };
+    });
     await setDoc(doc(db, 'poles', cleanId), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] ✅ Pole ${cleanId} saved to cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deletePoleFromCloud(poleId: string) {
-  const cleanId = poleId.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = poleId.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `poles/${cleanId}`;
   try {
     await deleteDoc(doc(db, 'poles', cleanId));
+    console.log(`[Firestore Sync] 🗑️ Pole ${cleanId} deleted from cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
 export async function saveSpanToCloud(span: CableSpan) {
-  const cleanId = (span.id || `SPAN-${Date.now()}`).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = (span.id || `SPAN-${Date.now()}`).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `spans/${cleanId}`;
   try {
-    const dataToSave = {
+    const dataToSave = sanitizeForFirestore({
       ...span,
       id: cleanId,
+      lengthMeters: Number(span.lengthMeters || 0),
+      clearanceMeters: Number(span.clearanceMeters || 0),
       updatedAt: new Date().toISOString()
-    };
+    });
     await setDoc(doc(db, 'spans', cleanId), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] ✅ Cable Span ${cleanId} saved to cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteSpanFromCloud(spanId: string) {
-  const cleanId = spanId.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = spanId.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `spans/${cleanId}`;
   try {
     await deleteDoc(doc(db, 'spans', cleanId));
+    console.log(`[Firestore Sync] 🗑️ Cable Span ${cleanId} deleted from cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
 export async function saveSpkToCloud(spk: MaintenanceWorkOrder) {
-  const cleanId = spk.id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = spk.id.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `spks/${cleanId}`;
   try {
-    const dataToSave = {
+    const dataToSave = sanitizeForFirestore({
       ...spk,
       id: cleanId,
       updatedAt: new Date().toISOString()
-    };
+    });
     await setDoc(doc(db, 'spks', cleanId), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] ✅ SPK ${cleanId} saved to cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function saveUserToCloud(user: UserAccount) {
-  const cleanId = user.id.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = user.id.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `users/${cleanId}`;
   try {
-    await setDoc(doc(db, 'users', cleanId), user, { merge: true });
+    const dataToSave = sanitizeForFirestore(user);
+    await setDoc(doc(db, 'users', cleanId), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] ✅ User ${cleanId} saved to cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
 export async function deleteUserFromCloud(userId: string) {
-  const cleanId = userId.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const cleanId = userId.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `users/${cleanId}`;
   try {
     await deleteDoc(doc(db, 'users', cleanId));
+    console.log(`[Firestore Sync] 🗑️ User ${cleanId} deleted from cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
@@ -270,15 +325,13 @@ export async function deleteUserFromCloud(userId: string) {
 export async function saveAppStateToCloud(state: Partial<AppSyncState>) {
   const path = 'app_state/global';
   try {
-    await setDoc(
-      doc(db, 'app_state', 'global'),
-      {
-        id: 'global',
-        ...state,
-        lastUpdated: new Date().toISOString()
-      },
-      { merge: true }
-    );
+    const dataToSave = sanitizeForFirestore({
+      id: 'global',
+      ...state,
+      lastUpdated: new Date().toISOString()
+    });
+    await setDoc(doc(db, 'app_state', 'global'), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] 🔄 App state ledger updated in cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
