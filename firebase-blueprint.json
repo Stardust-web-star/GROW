@@ -1,109 +1,127 @@
 {
   "entities": {
-    "CableSpan": {
-      "title": "CableSpan",
-      "description": "Bentangan kabel distribusi listrik JTM/JTR, interaksi tarik kabel, dan kondisi kabel",
+    "Pole": {
+      "title": "Pole",
+      "description": "PLN distribution pole data including physical condition, coordinates, and vegetation clearance",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "description": "ID unik bentangan kabel" },
-        "fromPoleId": { "type": "string", "maxLength": 128, "description": "ID tiang asal" },
-        "toPoleId": { "type": "string", "maxLength": 128, "description": "ID tiang tujuan" },
-        "conductorType": { "type": "string", "maxLength": 64, "description": "Jenis penghantar/kabel" },
-        "lengthMeters": { "type": "number", "description": "Panjang bentangan dalam meter" },
-        "clearanceMeters": { "type": "number", "description": "Jarak aman kabel ke objek" },
-        "hasViolation": { "type": "boolean", "description": "Status anomali / pelanggaran jarak aman" },
-        "violationType": { "type": "string", "maxLength": 128, "description": "Tipe pelanggaran jika ada" },
-        "feeder": { "type": "string", "maxLength": 128, "description": "Nama penyulang / feeder" },
-        "cableCondition": { "type": "string", "maxLength": 64, "description": "Kondisi fisik kabel (Baik, Kendor, Terkelupas, dll)" },
-        "treeDistanceMeters": { "type": "number", "description": "Jarak ke pohon terdekat" },
-        "buildingDistanceMeters": { "type": "number", "description": "Jarak ke bangunan terdekat" },
-        "notes": { "type": "string", "maxLength": 500, "description": "Catatan teknis lapangan" },
-        "photoUrl": { "type": "string", "maxLength": 1024, "description": "URL foto kondisi kabel" },
-        "updatedAt": { "type": "string", "maxLength": 64, "description": "Timestamp ISO pembaruan terakhir" },
-        "source": { "type": "string", "maxLength": 32, "description": "Asal pembaruan (vercel / google-ai-studio)" }
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique Pole ID" },
+        "code": { "type": "string", "maxLength": 128, "description": "PLN pole asset code" },
+        "feeder": { "type": "string", "maxLength": 128, "description": "Feeder line name" },
+        "type": { "type": "string", "enum": ["TM", "TR", "Gardu Trafo", "TT"], "description": "Pole voltage type" },
+        "lat": { "type": "number", "description": "Latitude coordinate" },
+        "lng": { "type": "number", "description": "Longitude coordinate" },
+        "locationName": { "type": "string", "maxLength": 256, "description": "Pole location description" },
+        "material": { "type": "string", "enum": ["Beton", "Besi"], "description": "Pole material" },
+        "heightMeters": { "type": "number", "description": "Pole height in meters" },
+        "physicalCondition": { "type": "string", "enum": ["Baik", "Perlu Perbaikan", "Miring / Retak", "Korosi Kritis"], "description": "Pole physical condition" },
+        "installationYear": { "type": "number", "description": "Installation year" },
+        "lastInspectionDate": { "type": "string", "maxLength": 64, "description": "Last inspection date string" },
+        "clearanceDistanceMeters": { "type": "number", "description": "Clearance distance in meters" },
+        "clearanceStatus": { "type": "string", "maxLength": 128, "description": "ROW status" },
+        "clearanceObject": { "type": "string", "maxLength": 128, "description": "Object near the line" },
+        "spkStatus": { "type": "string", "enum": ["Belum SPK", "SPK Diterbitkan", "Selesai Dikerjakan"], "description": "Work order status" },
+        "notes": { "type": "string", "maxLength": 1000, "description": "Additional notes" },
+        "photoUrl": { "type": "string", "maxLength": 2048, "description": "Photo URL" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Last updated timestamp" }
+      },
+      "required": ["id", "code", "feeder", "lat", "lng"]
+    },
+    "CableSpan": {
+      "title": "CableSpan",
+      "description": "Cable span connection between two poles with clearance and physical condition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "Unique Cable Span ID" },
+        "fromPoleId": { "type": "string", "maxLength": 128, "description": "Source pole ID" },
+        "toPoleId": { "type": "string", "maxLength": 128, "description": "Target pole ID" },
+        "conductorType": { "type": "string", "maxLength": 128, "description": "Cable conductor type" },
+        "lengthMeters": { "type": "number", "description": "Span length in meters" },
+        "clearanceMeters": { "type": "number", "description": "Clearance in meters" },
+        "hasViolation": { "type": "boolean", "description": "Whether span violates ROW" },
+        "violationType": { "type": "string", "maxLength": 128, "description": "ROW violation classification" },
+        "feeder": { "type": "string", "maxLength": 128, "description": "Feeder name" },
+        "cableCondition": { "type": "string", "maxLength": 128, "description": "Physical condition of cable" },
+        "treeDistanceMeters": { "type": "number", "description": "Distance to vegetation in meters" },
+        "buildingDistanceMeters": { "type": "number", "description": "Distance to structure in meters" },
+        "notes": { "type": "string", "maxLength": 1000, "description": "Field notes" },
+        "photoUrl": { "type": "string", "maxLength": 2048, "description": "Photo URL" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Last updated timestamp" }
       },
       "required": ["id", "fromPoleId", "toPoleId"]
     },
-    "PoleUpdate": {
-      "title": "PoleUpdate",
-      "description": "Pembaruan kondisi tiang listrik PLN, inspeksi lapangan, dan jarak clearance",
+    "MaintenanceWorkOrder": {
+      "title": "MaintenanceWorkOrder",
+      "description": "PLN maintenance work order (SPK)",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "description": "ID unik tiang PLN" },
-        "code": { "type": "string", "maxLength": 64, "description": "Kode tiang PLN" },
-        "physicalCondition": { "type": "string", "maxLength": 64, "description": "Kondisi fisik tiang (Baik, Perlu Perbaikan, Miring / Retak, Korosi Kritis)" },
-        "clearanceDistanceMeters": { "type": "number", "description": "Jarak aman kabel ke objek terdekat" },
-        "clearanceStatus": { "type": "string", "maxLength": 64, "description": "Status clearance (Aman / Bahaya)" },
-        "clearanceObject": { "type": "string", "maxLength": 128, "description": "Objek clearance terdekat" },
-        "lastInspectionDate": { "type": "string", "maxLength": 32, "description": "Tanggal inspeksi terakhir" },
-        "spkStatus": { "type": "string", "maxLength": 64, "description": "Status SPK pemeliharaan" },
-        "notes": { "type": "string", "maxLength": 500, "description": "Catatan inspeksi atau anomali" },
-        "photoUrl": { "type": "string", "maxLength": 1024, "description": "URL foto tiang terkini" },
-        "updatedAt": { "type": "string", "maxLength": 64, "description": "Timestamp ISO pembaruan" },
-        "source": { "type": "string", "maxLength": 32, "description": "Asal pembaruan (vercel / google-ai-studio)" }
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "SPK ID" },
+        "spkNumber": { "type": "string", "maxLength": 128, "description": "Official SPK number" },
+        "poleId": { "type": "string", "maxLength": 128, "description": "Target pole ID" },
+        "locationName": { "type": "string", "maxLength": 256, "description": "Work site location" },
+        "issueType": { "type": "string", "maxLength": 128, "description": "Maintenance issue" },
+        "priority": { "type": "string", "enum": ["Kritis", "Tinggi", "Sedang", "Rutin"], "description": "Priority level" },
+        "assignedTeam": { "type": "string", "maxLength": 128, "description": "Assigned field unit team" },
+        "scheduledDate": { "type": "string", "maxLength": 64, "description": "Execution schedule date" },
+        "status": { "type": "string", "enum": ["Draf", "Disetujui", "Dalam Pengerjaan", "Selesai"], "description": "Work order progress" },
+        "aiRecommendation": { "type": "string", "maxLength": 1000, "description": "AI recommendation summary" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "Creation date" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Last updated timestamp" }
       },
-      "required": ["id"]
+      "required": ["id", "spkNumber", "poleId", "status"]
     },
-    "WorkOrder": {
-      "title": "WorkOrder",
-      "description": "Surat Perintah Kerja (SPK) Pemeliharaan Tiang dan Kabel",
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "PLN GROW user account profile and role information",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "description": "ID SPK" },
-        "spkNumber": { "type": "string", "maxLength": 64, "description": "Nomor surat perintah kerja" },
-        "poleId": { "type": "string", "maxLength": 128, "description": "ID tiang terkait" },
-        "locationName": { "type": "string", "maxLength": 256, "description": "Lokasi pekerjaan" },
-        "issueType": { "type": "string", "maxLength": 128, "description": "Tipe kendala / masalah" },
-        "priority": { "type": "string", "maxLength": 32, "description": "Tingkat prioritas" },
-        "assignedTeam": { "type": "string", "maxLength": 128, "description": "Tim lapangan yang ditugaskan" },
-        "scheduledDate": { "type": "string", "maxLength": 32, "description": "Jadwal pengerjaan" },
-        "status": { "type": "string", "maxLength": 64, "description": "Status pengerjaan SPK" },
-        "createdAt": { "type": "string", "maxLength": 32, "description": "Tanggal pembuatan SPK" }
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$", "description": "User document ID" },
+        "userId": { "type": "string", "maxLength": 64, "description": "PLN User ID e.g. 9925045ZY" },
+        "name": { "type": "string", "maxLength": 128, "description": "Full name" },
+        "role": { "type": "string", "enum": ["Administrator", "Supervisor Teknik", "Petugas Yantek", "Operator GIS"], "description": "Application role" },
+        "unit": { "type": "string", "maxLength": 128, "description": "PLN work unit" },
+        "email": { "type": "string", "maxLength": 128, "description": "Contact email" },
+        "status": { "type": "string", "enum": ["Aktif", "Nonaktif"], "description": "Account status" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "Creation date" },
+        "lastLogin": { "type": "string", "maxLength": 64, "description": "Last login date" }
       },
-      "required": ["id", "spkNumber", "poleId"]
+      "required": ["id", "userId", "name", "role", "status"]
     },
-    "SyncEvent": {
-      "title": "SyncEvent",
-      "description": "Kanal siaran event sinkronisasi dua arah real-time antara Vercel dan Google AI Studio",
+    "AppState": {
+      "title": "AppState",
+      "description": "Global application sync state and deleted IDs tracker",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128, "description": "ID event" },
-        "action": { "type": "string", "maxLength": 64, "description": "Jenis aksi (tarik_kabel, update_tiang, update_kabel, hapus_kabel, spk)" },
-        "source": { "type": "string", "maxLength": 32, "description": "Sumber pengirim: vercel atau google-ai-studio" },
-        "timestamp": { "type": "number", "description": "Timestamp milidetik saat aksi terjadi" },
-        "summary": { "type": "string", "maxLength": 256, "description": "Keterangan singkat aksi perubahan" }
+        "id": { "type": "string", "maxLength": 64, "description": "Document ID" },
+        "masterName": { "type": "string", "maxLength": 128, "description": "Master dataset name" },
+        "lastUpdated": { "type": "string", "maxLength": 64, "description": "Last synchronization timestamp" },
+        "deletedPoleIds": { "type": "array", "description": "List of deleted pole IDs" },
+        "deletedSpanIds": { "type": "array", "description": "List of deleted span IDs" },
+        "feederColors": { "type": "string", "maxLength": 5000, "description": "JSON stringified feeder color map" }
       },
-      "required": ["id", "action", "source", "timestamp"]
-    },
-    "TestConnection": {
-      "title": "TestConnection",
-      "description": "Uji konektivitas Firestore",
-      "type": "object",
-      "properties": {
-        "status": { "type": "string", "maxLength": 32, "description": "Status koneksi" }
-      }
+      "required": ["id", "lastUpdated"]
     }
   },
   "firestore": {
+    "/poles/{poleId}": {
+      "schema": "Pole",
+      "description": "Live synchronized PLN poles collection"
+    },
     "/spans/{spanId}": {
       "schema": "CableSpan",
-      "description": "Bentangan kabel PLN dan interaksi penarikan kabel"
-    },
-    "/pole_updates/{poleId}": {
-      "schema": "PoleUpdate",
-      "description": "Pembaruan kondisi fisik dan clearance tiang listrik"
+      "description": "Live synchronized cable spans collection"
     },
     "/spks/{spkId}": {
-      "schema": "WorkOrder",
-      "description": "Daftar SPK pemeliharaan tiang dan kabel"
+      "schema": "MaintenanceWorkOrder",
+      "description": "PLN maintenance work orders collection"
     },
-    "/sync_events/{eventId}": {
-      "schema": "SyncEvent",
-      "description": "Log event sinkronisasi real-time dua arah"
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "PLN user accounts"
     },
-    "/test/{testId}": {
-      "schema": "TestConnection",
-      "description": "Collection uji koneksi Firestore"
+    "/app_state/{stateId}": {
+      "schema": "AppState",
+      "description": "Global synchronization metadata and deletion ledger"
     }
   }
 }

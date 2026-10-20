@@ -13,21 +13,20 @@ import { FeederManagerDrawer } from './components/FeederManagerDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
 import { Plus, X } from 'lucide-react';
-import { testConnection } from './lib/firebase';
 import {
-  listenToCableSpans,
-  listenToPoleUpdates,
-  listenToSpks,
-  listenToSyncEvents,
-  pushCableSpanToCloud,
-  removeCableSpanFromCloud,
-  pushPoleUpdateToCloud,
-  pushSpkToCloud,
-  SyncEvent,
-  getCurrentClientSource
-} from './lib/realtimeSync';
-import { SyncStatusWidget } from './components/SyncStatusWidget';
-import { SyncToast } from './components/SyncToast';
+  savePoleToCloud,
+  deletePoleFromCloud,
+  saveSpanToCloud,
+  deleteSpanFromCloud,
+  saveSpkToCloud,
+  saveAppStateToCloud,
+  subscribeToPoles,
+  subscribeToSpans,
+  subscribeToSpks,
+  subscribeToAppState,
+  mergePolesWithCloud,
+  mergeSpansWithCloud
+} from './lib/syncManager';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
@@ -160,6 +159,15 @@ export default function App() {
   const [spans, setSpans] = useState<CableSpan[]>(INITIAL_SPANS);
   const [spks, setSpks] = useState<MaintenanceWorkOrder[]>(INITIAL_SPKS);
   const [masterName, setMasterName] = useState<string>('TITIK TIANG BGL.kml');
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(true);
+
+  // Synchronization refs for instant live updates across AI Studio & Vercel
+  const basePolesRef = useRef<PoleData[]>(INITIAL_POLES);
+  const baseSpansRef = useRef<CableSpan[]>(INITIAL_SPANS);
+  const cloudPolesRef = useRef<PoleData[]>([]);
+  const cloudSpansRef = useRef<CableSpan[]>([]);
+  const deletedPoleIdsRef = useRef<Set<string>>(new Set());
+  const deletedSpanIdsRef = useRef<Set<string>>(new Set());
 
   const [inspectingPole, setInspectingPole] = useState<PoleData | null>(null);
   const [showAddPoleModal, setShowAddPoleModal] = useState<boolean>(false);
@@ -200,7 +208,11 @@ export default function App() {
   const [feederVisibility, setFeederVisibility] = useState<Record<string, boolean>>({});
 
   const handleUpdateFeederColor = (feederName: string, newColor: string) => {
-    setFeederColors(prev => ({ ...prev, [feederName]: newColor }));
+    setFeederColors(prev => {
+      const updated = { ...prev, [feederName]: newColor };
+      saveAppStateToCloud({ feederColors: JSON.stringify(updated) }).catch(() => {});
+      return updated;
+    });
   };
 
   const handleToggleFeederVisibility = (feederName: string) => {
@@ -232,31 +244,24 @@ export default function App() {
   const [newPoleLocation, setNewPoleLocation] = useState('Jl. Syaranualo, Passo, Ambon');
   const [newPoleClearance, setNewPoleClearance] = useState(3.5);
 
-  // Real-time Two-Way Sync State (Google AI Studio ⇄ Vercel)
-  const [isCloudConnected, setIsCloudConnected] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [activeSyncEvents, setActiveSyncEvents] = useState<SyncEvent[]>([]);
-  const [latestSyncToast, setLatestSyncToast] = useState<SyncEvent | null>(null);
-  const [syncedSpansCount, setSyncedSpansCount] = useState<number>(0);
-  const [syncedPolesCount, setSyncedPolesCount] = useState<number>(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
   const fetchPoles = async () => {
     try {
       const res = await fetch('/api/poles');
       if (res.ok) {
         const data = await res.json();
-        if (data.poles && data.poles.length > 0) setPoles(data.poles);
-        if (data.spans && data.spans.length > 0) setSpans(data.spans);
+        if (data.poles && data.poles.length > 0) {
+          basePolesRef.current = data.poles;
+          setPoles(mergePolesWithCloud(data.poles, cloudPolesRef.current, deletedPoleIdsRef.current));
+        }
+        if (data.spans && data.spans.length > 0) {
+          baseSpansRef.current = data.spans;
+          setSpans(mergeSpansWithCloud(data.spans, cloudSpansRef.current, deletedSpanIdsRef.current));
+        }
         if (data.masterName) setMasterName(data.masterName);
-        return;
       }
     } catch (err) {
-      console.warn('Local API unavailable (e.g. running on Vercel client), falling back to bundled master data:', err);
+      // Backend not running (e.g. static on Vercel), handled by bundled data & Firestore
     }
-    // Safe fallback for Vercel deployment if server is not attached:
-    setPoles(INITIAL_POLES);
-    setSpans(INITIAL_SPANS);
   };
 
   const fetchSpks = async () => {
@@ -264,112 +269,88 @@ export default function App() {
       const res = await fetch('/api/spk');
       if (res.ok) {
         const data = await res.json();
-        if (data.spks) setSpks(data.spks);
+        if (data.spks && data.spks.length > 0) setSpks(data.spks);
       }
-    } catch (err) {
-      console.warn('SPK API unavailable:', err);
-    }
+    } catch (err) {}
   };
 
-  // Bidirectional Real-time Listeners (Google AI Studio ⇄ Vercel via Cloud Firestore)
+  // Two-Way Real-Time Synchronization Listener Setup
   useEffect(() => {
     fetchPoles();
     fetchSpks();
 
-    // Verify Cloud Firestore connection
-    testConnection().then(connected => {
-      setIsCloudConnected(connected);
-      if (connected) setLastSyncTime(new Date());
+    // 1. Subscribe to App State (deletion ledger & global settings)
+    const unsubAppState = subscribeToAppState((appState) => {
+      if (appState) {
+        if (appState.deletedPoleIds && Array.isArray(appState.deletedPoleIds)) {
+          deletedPoleIdsRef.current = new Set(appState.deletedPoleIds.map(id => (id || '').toLowerCase()));
+        }
+        if (appState.deletedSpanIds && Array.isArray(appState.deletedSpanIds)) {
+          deletedSpanIdsRef.current = new Set(appState.deletedSpanIds.map(id => (id || '').toLowerCase()));
+        }
+        if (appState.feederColors) {
+          try {
+            const parsed = JSON.parse(appState.feederColors);
+            setFeederColors(prev => ({ ...prev, ...parsed }));
+          } catch (e) {}
+        }
+        // Re-merge with active deletion ledger
+        setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
+        setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
+      }
     });
 
-    // 1. Live listener for Cable Spans (Tarik Kabel & Perubahan Kondisi Kabel)
-    const unsubSpans = listenToCableSpans(
-      (cloudSpansMap) => {
-        const cloudSpansList = Object.values(cloudSpansMap);
-        setSyncedSpansCount(cloudSpansList.length);
-        setLastSyncTime(new Date());
-        setIsCloudConnected(true);
+    // 2. Subscribe to Real-Time Cloud Poles (updated or created on Vercel or AI Studio)
+    const unsubPoles = subscribeToPoles((cloudPoles) => {
+      cloudPolesRef.current = cloudPoles || [];
+      setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
+      setIsCloudSyncing(true);
+    }, () => {
+      setIsCloudSyncing(false);
+    });
 
-        setSpans(prevSpans => {
-          const map = new Map<string, CableSpan>();
-          prevSpans.forEach(s => map.set(s.id, s));
-          cloudSpansList.forEach(s => map.set(s.id, s));
-          return Array.from(map.values());
-        });
-      },
-      (err) => console.warn('Spans listener note:', err)
-    );
+    // 3. Subscribe to Real-Time Cloud Cable Spans (tarik kabel, ubah kondisi di Vercel atau AI Studio)
+    const unsubSpans = subscribeToSpans((cloudSpans) => {
+      cloudSpansRef.current = cloudSpans || [];
+      setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
+      setIsCloudSyncing(true);
+    }, () => {
+      setIsCloudSyncing(false);
+    });
 
-    // 2. Live listener for Pole Updates (Perubahan Kondisi Fisik, Clearance, Inspeksi)
-    const unsubPoles = listenToPoleUpdates(
-      (poleUpdatesMap) => {
-        const updateKeys = Object.keys(poleUpdatesMap);
-        setSyncedPolesCount(updateKeys.length);
-        setLastSyncTime(new Date());
-        setIsCloudConnected(true);
-
-        if (updateKeys.length > 0) {
-          setPoles(prevPoles =>
-            prevPoles.map(pole => {
-              const cloudUpdate = poleUpdatesMap[pole.id];
-              if (cloudUpdate) {
-                return { ...pole, ...cloudUpdate };
-              }
-              return pole;
-            })
-          );
-        }
-      },
-      (err) => console.warn('Poles listener note:', err)
-    );
-
-    // 3. Live listener for SPKs
-    const unsubSpks = listenToSpks(
-      (cloudSpks) => {
-        if (cloudSpks && cloudSpks.length > 0) {
-          setSpks(prev => {
-            const map = new Map<string, MaintenanceWorkOrder>();
-            prev.forEach(s => map.set(s.id, s));
-            cloudSpks.forEach(s => map.set(s.id, s));
-            return Array.from(map.values());
-          });
-        }
-      },
-      (err) => console.warn('SPKs listener note:', err)
-    );
-
-    // 4. Live listener for Real-time Sync Broadcast Events (Toast notifications)
-    const unsubEvents = listenToSyncEvents((event) => {
-      setActiveSyncEvents(prev => [event, ...prev.slice(0, 19)]);
-      setLatestSyncToast(event);
-      setLastSyncTime(new Date(event.timestamp));
+    // 4. Subscribe to Real-Time Work Orders (SPK)
+    const unsubSpks = subscribeToSpks((cloudSpks) => {
+      if (cloudSpks && cloudSpks.length > 0) {
+        setSpks(cloudSpks);
+      }
     });
 
     return () => {
-      unsubSpans();
+      unsubAppState();
       unsubPoles();
+      unsubSpans();
       unsubSpks();
-      unsubEvents();
     };
   }, []);
 
-  const handleManualSyncRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchPoles();
-    await fetchSpks();
-    await testConnection();
-    setLastSyncTime(new Date());
-    setTimeout(() => setIsRefreshing(false), 500);
-  };
-
-  // Handlers with automatic two-way cloud broadcast
+  // Handlers with Two-Way Real-time Cloud Synchronization
   const handleRestoreMasterData = async () => {
     try {
-      const res = await fetch('/api/master/restore', { method: 'POST' });
-      if (res.ok) {
-        await fetchPoles();
-        setActiveTab('map');
-      }
+      deletedPoleIdsRef.current.clear();
+      deletedSpanIdsRef.current.clear();
+      await saveAppStateToCloud({
+        deletedPoleIds: [],
+        deletedSpanIds: []
+      });
+
+      setPoles([...INITIAL_POLES]);
+      setSpans([...INITIAL_SPANS]);
+
+      try {
+        await fetch('/api/master/restore', { method: 'POST' });
+      } catch (e) {}
+
+      setActiveTab('map');
     } catch (err) {
       console.error('Error restoring master data:', err);
     }
@@ -377,22 +358,42 @@ export default function App() {
 
   const handleImportKmzPoles = async (importedPoles: PoleData[], importedSpans: CableSpan[], replaceExisting: boolean) => {
     try {
-      const res = await fetch('/api/poles/bulk-import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poles: importedPoles, spans: importedSpans, replaceExisting })
-      });
-      if (res.ok) {
-        await fetchPoles();
-        setActiveTab('map');
+      if (replaceExisting) {
+        basePolesRef.current = [...importedPoles];
+        baseSpansRef.current = [...importedSpans];
+        setPoles([...importedPoles]);
+        setSpans([...importedSpans]);
+      } else {
+        basePolesRef.current = [...importedPoles, ...basePolesRef.current];
+        baseSpansRef.current = [...importedSpans, ...baseSpansRef.current];
+        setPoles(prev => [...importedPoles, ...prev]);
+        setSpans(prev => [...importedSpans, ...prev]);
       }
+
+      // Save key new poles to Firestore
+      for (const p of importedPoles.slice(0, 50)) {
+        savePoleToCloud(p).catch(() => {});
+      }
+      for (const s of importedSpans.slice(0, 50)) {
+        saveSpanToCloud(s).catch(() => {});
+      }
+
+      try {
+        await fetch('/api/poles/bulk-import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poles: importedPoles, spans: importedSpans, replaceExisting })
+        });
+      } catch (e) {}
+
+      setActiveTab('map');
     } catch (err) {
       console.error('Error importing KMZ poles:', err);
     }
   };
 
   const handleCreateSpan = async (newSpan: CableSpan) => {
-    // 1. Optimistic update in local state
+    // 1. Optimistic state update
     setSpans(prev => {
       const filtered = prev.filter(s =>
         !(s.fromPoleId === newSpan.fromPoleId && s.toPoleId === newSpan.toPoleId) &&
@@ -401,10 +402,14 @@ export default function App() {
       return [...filtered, newSpan];
     });
 
-    // 2. Broadcast and persist to Cloud Firestore (instantly received by Vercel / Google AI Studio peer)
-    await pushCableSpanToCloud(newSpan, true);
+    // 2. Persist to Cloud Firestore (syncs across AI Studio and Vercel in real time)
+    try {
+      await saveSpanToCloud(newSpan);
+    } catch (err) {
+      console.error('Error saving span to Cloud Firestore:', err);
+    }
 
-    // 3. Persist to local server if available
+    // 3. Notify local backend if running
     try {
       await fetch('/api/spans', {
         method: 'POST',
@@ -415,13 +420,17 @@ export default function App() {
   };
 
   const handleUpdateSpan = async (updatedSpan: CableSpan) => {
-    // 1. Optimistic update
+    // 1. Optimistic state update
     setSpans(prev => prev.map(s => s.id === updatedSpan.id ? updatedSpan : s));
 
-    // 2. Broadcast to Cloud Firestore
-    await pushCableSpanToCloud(updatedSpan, false);
+    // 2. Persist to Cloud Firestore
+    try {
+      await saveSpanToCloud(updatedSpan);
+    } catch (err) {
+      console.error('Error updating span in Cloud Firestore:', err);
+    }
 
-    // 3. Persist to local server
+    // 3. Notify local backend if running
     try {
       await fetch(`/api/spans/${encodeURIComponent(updatedSpan.id)}`, {
         method: 'PUT',
@@ -436,7 +445,7 @@ export default function App() {
     const pFrom = (fromPoleId || '').trim().toLowerCase();
     const pTo = (toPoleId || '').trim().toLowerCase();
 
-    // 1. Optimistic update
+    // 1. Optimistic state update
     setSpans(prev => prev.filter(s => {
       const sId = (s.id || '').trim().toLowerCase();
       if (sId === targetId) return false;
@@ -450,40 +459,72 @@ export default function App() {
       return true;
     }));
 
-    // 2. Remove from Cloud Firestore
-    await removeCableSpanFromCloud(spanId);
+    // 2. Add to deletion ledger
+    deletedSpanIdsRef.current.add(targetId);
+    if (spanId) deletedSpanIdsRef.current.add(spanId);
+    if (pFrom && pTo) {
+      const pair = pFrom < pTo ? `${pFrom}<->${pTo}` : `${pTo}<->${pFrom}`;
+      deletedSpanIdsRef.current.add(pair);
+    }
 
-    // 3. Local server removal
+    // 3. Persist deletion to Cloud Firestore
+    try {
+      await deleteSpanFromCloud(spanId);
+      await saveAppStateToCloud({
+        deletedSpanIds: Array.from(deletedSpanIdsRef.current)
+      });
+    } catch (err) {
+      console.error('Error deleting span in Cloud Firestore:', err);
+    }
+
+    // 4. Notify local backend
     try {
       const url = fromPoleId && toPoleId
         ? `/api/spans/${encodeURIComponent(spanId)}?from=${encodeURIComponent(fromPoleId)}&to=${encodeURIComponent(toPoleId)}`
         : `/api/spans/${encodeURIComponent(spanId)}`;
-      await fetch(url, {
-        method: 'DELETE'
-      });
+      await fetch(url, { method: 'DELETE' });
     } catch (err) {}
   };
 
   const handleDeletePole = async (poleId: string) => {
-    setPoles(prevPoles => prevPoles.filter(p => p.id !== poleId && p.code !== poleId));
-    setSpans(prevSpans => prevSpans.filter(s => s.fromPoleId !== poleId && s.toPoleId !== poleId));
+    const cleanId = poleId.trim().toLowerCase();
 
+    // 1. Optimistically update local state immediately
+    setPoles(prevPoles => prevPoles.filter(p => p.id.toLowerCase() !== cleanId && p.code.toLowerCase() !== cleanId));
+    setSpans(prevSpans => prevSpans.filter(s => s.fromPoleId.toLowerCase() !== cleanId && s.toPoleId.toLowerCase() !== cleanId));
+
+    // 2. Add to deletion ledger
+    deletedPoleIdsRef.current.add(cleanId);
+    deletedPoleIdsRef.current.add(poleId);
+
+    // 3. Persist deletion to Cloud Firestore
     try {
-      await fetch(`/api/poles/${encodeURIComponent(poleId)}`, {
-        method: 'DELETE'
+      await deletePoleFromCloud(poleId);
+      await saveAppStateToCloud({
+        deletedPoleIds: Array.from(deletedPoleIdsRef.current)
       });
-      await fetchPoles();
+    } catch (err) {
+      console.error('Error deleting pole in Cloud Firestore:', err);
+    }
+
+    // 4. Notify local backend
+    try {
+      await fetch(`/api/poles/${encodeURIComponent(poleId)}`, { method: 'DELETE' });
     } catch (err) {}
   };
 
   const handleUpdatePole = async (updatedPole: PoleData) => {
-    // 1. Optimistic update
+    // 1. Optimistic state update
     setPoles(prev => prev.map(p => p.id === updatedPole.id ? updatedPole : p));
 
-    // 2. Broadcast to Cloud Firestore
-    await pushPoleUpdateToCloud(updatedPole.id, updatedPole);
+    // 2. Persist to Cloud Firestore
+    try {
+      await savePoleToCloud(updatedPole);
+    } catch (err) {
+      console.error('Error updating pole in Cloud Firestore:', err);
+    }
 
-    // 3. Persist to local server
+    // 3. Notify local backend
     try {
       await fetch(`/api/poles/${encodeURIComponent(updatedPole.id)}`, {
         method: 'PUT',
@@ -503,16 +544,20 @@ export default function App() {
         ? 'Pelanggaran ROW Pohon (<3.0m)'
         : 'Aman (≥3.0m)';
 
-    // 1. Optimistic update
-    setPoles(prev => prev.map(p => p.id === poleId ? { ...p, clearanceDistanceMeters: newDistance, clearanceStatus: updatedStatus } : p));
-
-    // 2. Broadcast to Cloud Firestore
-    await pushPoleUpdateToCloud(poleId, {
+    const updatedPole: PoleData = {
+      ...pole,
       clearanceDistanceMeters: newDistance,
       clearanceStatus: updatedStatus
-    });
+    };
 
-    // 3. Persist to local server
+    setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
+
+    try {
+      await savePoleToCloud(updatedPole);
+    } catch (err) {
+      console.error('Error updating clearance in Cloud Firestore:', err);
+    }
+
     try {
       await fetch(`/api/poles/${poleId}`, {
         method: 'PUT',
@@ -526,39 +571,29 @@ export default function App() {
   };
 
   const handleSubmitInspection = async (poleId: string, inspection: InspectionRecord) => {
-    const updatedStatus = inspection.cableClearanceMeters < 1.5
-      ? 'Bahaya Kritis (<1.5m)'
-      : inspection.cableClearanceMeters < 3.0
-        ? 'Pelanggaran ROW Pohon (<3.0m)'
-        : 'Aman (≥3.0m)';
+    const pole = poles.find(p => p.id === poleId);
+    if (!pole) return;
 
-    // 1. Optimistic update
-    setPoles(prev => prev.map(p => {
-      if (p.id === poleId) {
-        return {
-          ...p,
-          lastInspectionDate: inspection.date,
-          physicalCondition: inspection.condition,
-          clearanceDistanceMeters: inspection.cableClearanceMeters,
-          clearanceStatus: updatedStatus,
-          clearanceObject: inspection.clearanceObject,
-          inspectionHistory: [inspection, ...(p.inspectionHistory || [])]
-        };
-      }
-      return p;
-    }));
+    const updatedPole: PoleData = {
+      ...pole,
+      lastInspectionDate: inspection.date || new Date().toISOString().split('T')[0],
+      physicalCondition: inspection.condition || pole.physicalCondition,
+      clearanceDistanceMeters: inspection.cableClearanceMeters ?? pole.clearanceDistanceMeters,
+      clearanceStatus: inspection.cableClearanceMeters !== undefined
+        ? (inspection.cableClearanceMeters < 1.5 ? 'Bahaya Kritis (<1.5m)' : inspection.cableClearanceMeters < 3.0 ? 'Pelanggaran ROW Pohon (<3.0m)' : 'Aman (≥3.0m)')
+        : pole.clearanceStatus,
+      clearanceObject: inspection.clearanceObject || pole.clearanceObject,
+      inspectionHistory: [inspection, ...(pole.inspectionHistory || [])]
+    };
 
-    // 2. Broadcast to Cloud Firestore
-    await pushPoleUpdateToCloud(poleId, {
-      physicalCondition: inspection.condition,
-      clearanceDistanceMeters: inspection.cableClearanceMeters,
-      clearanceStatus: updatedStatus,
-      clearanceObject: inspection.clearanceObject,
-      lastInspectionDate: inspection.date,
-      notes: inspection.notes
-    });
+    setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
 
-    // 3. Persist to local server
+    try {
+      await savePoleToCloud(updatedPole);
+    } catch (err) {
+      console.error('Error submitting inspection to Cloud Firestore:', err);
+    }
+
     try {
       await fetch(`/api/poles/${poleId}/inspections`, {
         method: 'POST',
@@ -569,17 +604,26 @@ export default function App() {
   };
 
   const handleCreateSpk = async (newSpk: MaintenanceWorkOrder) => {
-    // 1. Optimistic update
     setSpks(prev => [newSpk, ...prev]);
+
+    // Update target pole spkStatus
     if (newSpk.poleId) {
-      setPoles(prev => prev.map(p => p.id === newSpk.poleId ? { ...p, spkStatus: 'SPK Diterbitkan' } : p));
-      await pushPoleUpdateToCloud(newSpk.poleId, { spkStatus: 'SPK Diterbitkan' });
+      setPoles(prev => prev.map(p => {
+        if (p.id === newSpk.poleId) {
+          const updated = { ...p, spkStatus: 'SPK Diterbitkan' as const };
+          savePoleToCloud(updated).catch(() => {});
+          return updated;
+        }
+        return p;
+      }));
     }
 
-    // 2. Broadcast to Cloud Firestore
-    await pushSpkToCloud(newSpk);
+    try {
+      await saveSpkToCloud(newSpk);
+    } catch (err) {
+      console.error('Error saving SPK to Cloud Firestore:', err);
+    }
 
-    // 3. Persist to local server
     try {
       await fetch('/api/spk', {
         method: 'POST',
@@ -587,6 +631,7 @@ export default function App() {
         body: JSON.stringify(newSpk)
       });
     } catch (err) {}
+
     setActiveTab('spk');
   };
 
@@ -634,18 +679,24 @@ export default function App() {
       inspectionHistory: []
     };
 
+    setPoles(prev => [newPole, ...prev]);
+
+    try {
+      await savePoleToCloud(newPole);
+    } catch (err) {
+      console.error('Error saving new pole to Cloud Firestore:', err);
+    }
+
     try {
       await fetch('/api/poles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPole)
       });
-      await fetchPoles();
-      setShowAddPoleModal(false);
-      setActiveTab('map');
-    } catch (err) {
-      console.error('Error saving new pole:', err);
-    }
+    } catch (err) {}
+
+    setShowAddPoleModal(false);
+    setActiveTab('map');
   };
 
   const rowViolations = poles.filter(p => p.clearanceDistanceMeters < 3.0).length;
@@ -678,17 +729,7 @@ export default function App() {
         masterName={masterName}
         currentUser={currentUser}
         onLogout={handleLogout}
-      />
-
-      {/* Real-time Two-Way Sync Bar (Google AI Studio ⇄ Vercel) */}
-      <SyncStatusWidget
-        isCloudConnected={isCloudConnected}
-        activeEvents={activeSyncEvents}
-        lastSyncTime={lastSyncTime}
-        syncedSpansCount={syncedSpansCount}
-        syncedPolesCount={syncedPolesCount}
-        onManualRefresh={handleManualSyncRefresh}
-        isRefreshing={isRefreshing}
+        isCloudConnected={isCloudSyncing}
       />
 
       {/* Main Content Area */}
@@ -938,12 +979,6 @@ export default function App() {
           setShowFeederDrawer(false);
           setActiveTab('kmz');
         }}
-      />
-
-      {/* Real-time Bidirectional Notification Toast */}
-      <SyncToast
-        event={latestSyncToast}
-        onClose={() => setLatestSyncToast(null)}
       />
 
     </div>

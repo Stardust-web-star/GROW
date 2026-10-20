@@ -1,108 +1,127 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default-deny catch-all
+
+    // Global deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
+    // Hardened ID validation guard
     function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$');
     }
 
+    // Helper functions
     function incoming() {
       return request.resource.data;
     }
 
-    // CableSpan validation
-    function isValidCableSpan(data) {
-      return data.id is string && data.id.size() <= 128
-        && data.fromPoleId is string && data.fromPoleId.size() <= 128
-        && data.toPoleId is string && data.toPoleId.size() <= 128
-        && (!('conductorType' in data) || (data.conductorType is string && data.conductorType.size() <= 64))
-        && (!('lengthMeters' in data) || (data.lengthMeters is number))
-        && (!('clearanceMeters' in data) || (data.clearanceMeters is number))
-        && (!('hasViolation' in data) || (data.hasViolation is bool))
-        && (!('violationType' in data) || (data.violationType is string && data.violationType.size() <= 128))
-        && (!('feeder' in data) || (data.feeder is string && data.feeder.size() <= 128))
-        && (!('cableCondition' in data) || (data.cableCondition is string && data.cableCondition.size() <= 64))
-        && (!('treeDistanceMeters' in data) || (data.treeDistanceMeters is number))
-        && (!('buildingDistanceMeters' in data) || (data.buildingDistanceMeters is number))
-        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
-        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1024))
-        && (!('source' in data) || (data.source is string && data.source.size() <= 32));
+    function existing() {
+      return resource.data;
     }
 
-    // PoleUpdate validation
-    function isValidPoleUpdate(data) {
-      return data.id is string && data.id.size() <= 128
-        && (!('code' in data) || (data.code is string && data.code.size() <= 64))
-        && (!('physicalCondition' in data) || (data.physicalCondition is string && data.physicalCondition.size() <= 64))
-        && (!('clearanceDistanceMeters' in data) || (data.clearanceDistanceMeters is number))
-        && (!('clearanceStatus' in data) || (data.clearanceStatus is string && data.clearanceStatus.size() <= 64))
-        && (!('clearanceObject' in data) || (data.clearanceObject is string && data.clearanceObject.size() <= 128))
-        && (!('lastInspectionDate' in data) || (data.lastInspectionDate is string && data.lastInspectionDate.size() <= 32))
-        && (!('spkStatus' in data) || (data.spkStatus is string && data.spkStatus.size() <= 64))
-        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
-        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1024))
-        && (!('source' in data) || (data.source is string && data.source.size() <= 32));
+    // Test connection doc
+    match /test/{docId} {
+      allow read: if true;
     }
 
-    // WorkOrder (SPK) validation
-    function isValidWorkOrder(data) {
-      return data.id is string && data.id.size() <= 128
-        && data.spkNumber is string && data.spkNumber.size() <= 64
-        && data.poleId is string && data.poleId.size() <= 128
-        && (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 256))
-        && (!('issueType' in data) || (data.issueType is string && data.issueType.size() <= 128))
-        && (!('priority' in data) || (data.priority is string && data.priority.size() <= 32))
-        && (!('assignedTeam' in data) || (data.assignedTeam is string && data.assignedTeam.size() <= 128))
-        && (!('scheduledDate' in data) || (data.scheduledDate is string && data.scheduledDate.size() <= 32))
-        && (!('status' in data) || (data.status is string && data.status.size() <= 64))
-        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 32));
+    // Validation for Poles
+    function isValidPole(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.code is string && data.code.size() <= 128 &&
+             data.feeder is string && data.feeder.size() <= 128 &&
+             data.lat is number && data.lat >= -90.0 && data.lat <= 90.0 &&
+             data.lng is number && data.lng >= -180.0 && data.lng <= 180.0 &&
+             (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 256)) &&
+             (!('material' in data) || (data.material is string && data.material.size() <= 32)) &&
+             (!('physicalCondition' in data) || (data.physicalCondition is string && data.physicalCondition.size() <= 64)) &&
+             (!('clearanceDistanceMeters' in data) || (data.clearanceDistanceMeters is number)) &&
+             (!('clearanceStatus' in data) || (data.clearanceStatus is string && data.clearanceStatus.size() <= 128)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 2048)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000));
     }
 
-    // SyncEvent validation
-    function isValidSyncEvent(data) {
-      return data.id is string && data.id.size() <= 128
-        && data.action is string && data.action.size() <= 64
-        && data.source is string && data.source.size() <= 32
-        && data.timestamp is number
-        && (!('summary' in data) || (data.summary is string && data.summary.size() <= 256));
-    }
-
-    // Spans collection
-    match /spans/{spanId} {
-      allow read: if isValidId(spanId);
-      allow create, update: if isValidId(spanId) && isValidCableSpan(incoming());
-      allow delete: if isValidId(spanId);
-    }
-
-    // Pole updates collection
-    match /pole_updates/{poleId} {
-      allow read: if isValidId(poleId);
-      allow create, update: if isValidId(poleId) && isValidPoleUpdate(incoming());
+    match /poles/{poleId} {
+      allow read: if true;
+      allow create: if isValidId(poleId) && isValidPole(incoming());
+      allow update: if isValidId(poleId) && isValidPole(incoming());
       allow delete: if isValidId(poleId);
     }
 
-    // SPKs collection
+    // Validation for Cable Spans
+    function isValidCableSpan(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.fromPoleId is string && data.fromPoleId.size() <= 128 &&
+             data.toPoleId is string && data.toPoleId.size() <= 128 &&
+             (!('conductorType' in data) || (data.conductorType is string && data.conductorType.size() <= 128)) &&
+             (!('lengthMeters' in data) || (data.lengthMeters is number)) &&
+             (!('clearanceMeters' in data) || (data.clearanceMeters is number)) &&
+             (!('hasViolation' in data) || (data.hasViolation is bool)) &&
+             (!('cableCondition' in data) || (data.cableCondition is string && data.cableCondition.size() <= 128)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 2048)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500000));
+    }
+
+    match /spans/{spanId} {
+      allow read: if true;
+      allow create: if isValidId(spanId) && isValidCableSpan(incoming());
+      allow update: if isValidId(spanId) && isValidCableSpan(incoming());
+      allow delete: if isValidId(spanId);
+    }
+
+    // Validation for Maintenance Work Orders (SPK)
+    function isValidSpk(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.spkNumber is string && data.spkNumber.size() <= 128 &&
+             data.poleId is string && data.poleId.size() <= 128 &&
+             data.status is string && data.status.size() <= 64 &&
+             (!('issueType' in data) || (data.issueType is string && data.issueType.size() <= 128)) &&
+             (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 256)) &&
+             (!('priority' in data) || (data.priority is string && data.priority.size() <= 64)) &&
+             (!('assignedTeam' in data) || (data.assignedTeam is string && data.assignedTeam.size() <= 128)) &&
+             (!('aiRecommendation' in data) || (data.aiRecommendation is string && data.aiRecommendation.size() <= 2048));
+    }
+
     match /spks/{spkId} {
-      allow read: if isValidId(spkId);
-      allow create, update: if isValidId(spkId) && isValidWorkOrder(incoming());
+      allow read: if true;
+      allow create: if isValidId(spkId) && isValidSpk(incoming());
+      allow update: if isValidId(spkId) && isValidSpk(incoming());
       allow delete: if isValidId(spkId);
     }
 
-    // Sync Events collection
-    match /sync_events/{eventId} {
-      allow read: if isValidId(eventId);
-      allow create, update: if isValidId(eventId) && isValidSyncEvent(incoming());
-      allow delete: if isValidId(eventId);
+    // Validation for Users
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 64 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.role is string && data.role.size() <= 64 &&
+             data.status is string && data.status.size() <= 32 &&
+             (!('unit' in data) || (data.unit is string && data.unit.size() <= 128)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
+             (!('password' in data) || (data.password is string && data.password.size() <= 128));
     }
 
-    // Connection testing
-    match /test/{testId} {
-      allow read, write: if isValidId(testId);
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isValidId(userId) && isValidUser(incoming());
+      allow update: if isValidId(userId) && isValidUser(incoming());
+      allow delete: if isValidId(userId);
+    }
+
+    // Validation for App State & Deletion Tracker
+    function isValidAppState(data) {
+      return data.id is string && data.id.size() <= 64 &&
+             data.lastUpdated is string && data.lastUpdated.size() <= 64 &&
+             (!('masterName' in data) || (data.masterName is string && data.masterName.size() <= 128)) &&
+             (!('feederColors' in data) || (data.feederColors is string && data.feederColors.size() <= 10000));
+    }
+
+    match /app_state/{stateId} {
+      allow read: if true;
+      allow create: if isValidId(stateId) && isValidAppState(incoming());
+      allow update: if isValidId(stateId) && isValidAppState(incoming());
+      allow delete: if isValidId(stateId);
     }
   }
 }

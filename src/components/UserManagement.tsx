@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { UserAccount } from '../types';
-import { getApiUrl } from '../utils/apiConfig';
 import { 
   Users, UserPlus, Shield, ShieldCheck, Key, Search, Trash2, Edit, CheckCircle, 
   XCircle, RefreshCw, AlertTriangle, UserCheck, Lock, Building, Mail, Sparkles 
 } from 'lucide-react';
+import { saveUserToCloud, deleteUserFromCloud, subscribeToUsers } from '../lib/firebase';
+import { INITIAL_USERS } from '../data/initialUsers';
 
 interface UserManagementProps {
   currentUser: UserAccount | null;
@@ -45,27 +46,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch(getApiUrl('/api/users'));
-      const data = await res.json();
-      if (data.users) {
-        setUsers(data.users);
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.users && data.users.length > 0) {
+          setUsers(data.users);
+          return;
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch users:', err);
-      // Fallback default users
-      setUsers([
-        {
-          id: 'USR-9925045ZY',
-          userId: '9925045ZY',
-          name: 'Administrator ULP Baguala',
-          role: 'Administrator',
-          unit: 'ULP Baguala',
-          email: 'fikiilham56@gmail.com',
-          status: 'Aktif',
-          createdAt: '2026-01-01',
-          lastLogin: new Date().toISOString().split('T')[0]
-        }
-      ]);
+      // Backend not running (e.g. Vercel static), fallback to initial
     } finally {
       setLoading(false);
     }
@@ -73,6 +63,27 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
   useEffect(() => {
     fetchUsers();
+
+    // Subscribe to Firestore users collection in real time
+    const unsub = subscribeToUsers((cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setUsers(cloudUsers);
+        setLoading(false);
+      } else {
+        // Seed initial users into Firestore on first setup
+        INITIAL_USERS.forEach((u) => {
+          saveUserToCloud(u).catch(() => {});
+        });
+        setUsers(INITIAL_USERS);
+        setLoading(false);
+      }
+    }, () => {
+      // If error subscribing, fallback to initial users
+      setUsers(prev => prev.length > 0 ? prev : INITIAL_USERS);
+      setLoading(false);
+    });
+
+    return () => unsub();
   }, []);
 
   const handleOpenEdit = (user: UserAccount) => {
@@ -105,26 +116,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
 
     setFormSubmitting(true);
     try {
-      const res = await fetch(getApiUrl('/api/users'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: formUserId.trim(),
-          name: formName.trim(),
-          role: formRole,
-          password: formPassword.trim(),
-          unit: formUnit.trim(),
-          email: formEmail.trim() || undefined,
-          status: formStatus
-        })
-      });
+      const cleanUserId = formUserId.trim();
+      const newUser: UserAccount = {
+        id: `USR-${cleanUserId}-${Date.now()}`,
+        userId: cleanUserId,
+        name: formName.trim(),
+        role: formRole,
+        password: formPassword.trim(),
+        unit: formUnit.trim(),
+        email: formEmail.trim() || undefined,
+        status: formStatus,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal menambahkan user baru.');
-      }
+      // Optimistic state update
+      setUsers(prev => [newUser, ...prev]);
 
-      await fetchUsers();
+      // Save to Cloud Firestore (syncs across AI Studio and Vercel)
+      await saveUserToCloud(newUser);
+
+      // Also notify local server if available
+      try {
+        await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newUser)
+        });
+      } catch (e) {}
+
       setShowAddModal(false);
       // Reset form
       setFormUserId('');
@@ -144,7 +163,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     setEditError(null);
 
     try {
-      const updatePayload: any = {
+      const updatedUser: UserAccount = {
+        ...editingUser,
         name: editName.trim(),
         role: editRole,
         status: editStatus,
@@ -152,21 +172,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         email: editEmail.trim() || undefined
       };
       if (editPassword.trim()) {
-        updatePayload.password = editPassword.trim();
+        updatedUser.password = editPassword.trim();
       }
 
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(editingUser.id)}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatePayload)
-      });
+      // Optimistic state update
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? updatedUser : u));
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal menyimpan perubahan.');
-      }
+      // Save to Cloud Firestore
+      await saveUserToCloud(updatedUser);
 
-      await fetchUsers();
+      // Also notify local server
+      try {
+        await fetch(`/api/users/${encodeURIComponent(editingUser.id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedUser)
+        });
+      } catch (e) {}
+
       setEditingUser(null);
     } catch (err: any) {
       setEditError(err.message || 'Gagal memperbarui user.');
@@ -177,14 +200,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     if (!deletingUser) return;
     setDeleteError(null);
     try {
-      const res = await fetch(getApiUrl(`/api/users/${encodeURIComponent(deletingUser.id)}`), {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal menghapus user.');
-      }
-      await fetchUsers();
+      // Optimistic state update
+      setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+
+      // Delete from Cloud Firestore
+      await deleteUserFromCloud(deletingUser.id);
+
+      // Also notify local server
+      try {
+        await fetch(`/api/users/${encodeURIComponent(deletingUser.id)}`, {
+          method: 'DELETE'
+        });
+      } catch (e) {}
+
       setDeletingUser(null);
     } catch (err: any) {
       setDeleteError(err.message || 'Gagal menghapus user.');

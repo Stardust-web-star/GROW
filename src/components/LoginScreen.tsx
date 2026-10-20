@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { UserAccount } from '../types';
 import { GisPlnLogo } from './GisPlnLogo';
 import { PlnBadge } from './PlnBadge';
-import { getApiUrl } from '../utils/apiConfig';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, Key, AlertCircle, Sparkles, CheckCircle2, Clock } from 'lucide-react';
+
+import { loginWithCloudOrLocal } from '../lib/authService';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
@@ -35,51 +36,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
     setLoading(true);
 
     try {
-      const res = await fetch(getApiUrl('/api/auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userId.trim(), password: password.trim() })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Login gagal. Periksa kembali User ID dan Password.');
-      }
+      const user = await loginWithCloudOrLocal(userId, password);
 
       // Store session in sessionStorage (auto-clears when tab/browser is closed)
-      sessionStorage.setItem('grow_pln_user', JSON.stringify(data.user));
+      sessionStorage.setItem('grow_pln_user', JSON.stringify(user));
       sessionStorage.setItem('grow_last_activity', Date.now().toString());
       localStorage.removeItem('grow_pln_user');
       setIsLoggingInSuccess(true);
       setTimeout(() => {
-        onLoginSuccess(data.user);
+        onLoginSuccess(user);
       }, 350);
     } catch (err: any) {
       console.error('Login error:', err);
-      // Fallback verification for offline / direct match
-      if (userId.trim().toUpperCase() === '9925045ZY' && password.trim() === 'admin123') {
-        const defaultUser: UserAccount = {
-          id: 'USR-9925045ZY',
-          userId: '9925045ZY',
-          name: 'Administrator ULP Baguala',
-          role: 'Administrator',
-          unit: 'ULP Baguala',
-          email: 'fikiilham56@gmail.com',
-          status: 'Aktif',
-          createdAt: '2026-01-01',
-          lastLogin: new Date().toISOString().split('T')[0]
-        };
-        sessionStorage.setItem('grow_pln_user', JSON.stringify(defaultUser));
-        sessionStorage.setItem('grow_last_activity', Date.now().toString());
-        localStorage.removeItem('grow_pln_user');
-        setIsLoggingInSuccess(true);
-        setTimeout(() => {
-          onLoginSuccess(defaultUser);
-        }, 350);
-      } else {
-        setError(err.message || 'User ID atau password tidak valid.');
-      }
+      setError(err.message || 'User ID atau password tidak valid.');
     } finally {
       setLoading(false);
     }
