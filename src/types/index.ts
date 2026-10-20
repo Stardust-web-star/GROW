@@ -39,6 +39,8 @@ export interface PoleData {
   photoUrl?: string;           // Foto kondisi fisik tiang terkini
   photos?: string[];           // Galeri foto tiang
   kmlSource?: string;          // Name of uploaded KMZ file if loaded from file
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface CableSpan {
@@ -57,6 +59,8 @@ export interface CableSpan {
   notes?: string;
   photoUrl?: string;           // Foto kondisi kabel terkini
   photos?: string[];           // Galeri foto kabel
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface MaintenanceWorkOrder {

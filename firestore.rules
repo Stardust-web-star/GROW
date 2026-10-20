@@ -1,25 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Rules for PLN ULP Baguala GROW GIS System (AI Studio <-> Vercel Two-Way Sync)
-    match /poles_custom/{poleId} {
+    // Tiang GIS PLN ULP Baguala
+    match /poles/{poleId} {
       allow read, write: if true;
     }
 
-    match /spans_custom/{spanId} {
+    // Bentangan Kabel Distribusi
+    match /spans/{spanId} {
       allow read, write: if true;
     }
 
+    // Surat Perintah Kerja (SPK) Pemeliharaan ROW
     match /spks/{spkId} {
       allow read, write: if true;
     }
 
-    match /sync/{docId} {
+    // Akun Pengguna GROW
+    match /users/{userId} {
       allow read, write: if true;
     }
 
-    match /{document=**} {
+    // Metadata Sinkronisasi Real-Time Dua Arah (Google AI Studio <-> Vercel)
+    match /system_meta/{metaId} {
       allow read, write: if true;
+    }
+
+    // Catch-all
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

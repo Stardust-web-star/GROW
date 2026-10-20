@@ -3,35 +3,37 @@ import { Map, BarChart3, AlertTriangle, FileText, Upload, Bot, Zap, Users, LogOu
 import { GisPlnLogo } from './GisPlnLogo';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
 import { UserAccount } from '../types';
+import { SyncStatusBadge } from './SyncStatusBadge';
+import { SystemMetaState } from '../lib/firebase';
 
 interface NavbarProps {
   activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
   setActiveTab: (tab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => void;
   totalPoles: number;
+  totalSpans?: number;
   rowViolations: number;
   criticalPoles: number;
   onOpenAiAssistant: () => void;
   masterName?: string;
   currentUser?: UserAccount | null;
   onLogout?: () => void;
-  syncStatus?: 'connected' | 'syncing' | 'offline';
-  lastSyncOrigin?: string;
-  lastSyncTime?: string;
+  systemMeta?: SystemMetaState | null;
+  isCloudConnected?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   totalPoles,
+  totalSpans = 0,
   rowViolations,
   criticalPoles,
   onOpenAiAssistant,
   masterName = 'TITIK TIANG BGL.kml',
   currentUser,
   onLogout,
-  syncStatus = 'connected',
-  lastSyncOrigin = 'Cloud Firestore',
-  lastSyncTime
+  systemMeta = null,
+  isCloudConnected = true
 }) => {
   return (
     <header id="app-navbar" className="relative text-white sticky top-0 z-40 shadow-xl select-none print:hidden border-b border-teal-500/30 overflow-hidden">
@@ -144,9 +146,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Quick Metrics & AI Button */}
+          {/* Quick Metrics & Cloud Sync Badge & AI Button */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="hidden xl:flex items-center gap-2.5 text-xs bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-teal-500/30 whitespace-nowrap shadow-md">
+            {/* Real-time Bidirectional Sync Badge */}
+            <SyncStatusBadge
+              systemMeta={systemMeta}
+              totalPoles={totalPoles}
+              totalSpans={totalSpans}
+              isCloudConnected={isCloudConnected}
+            />
+
+            <div className="hidden 2xl:flex items-center gap-2.5 text-xs bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-teal-500/30 whitespace-nowrap shadow-md">
               <div className="text-slate-100">
                 <span className="text-white font-black">{totalPoles.toLocaleString('id-ID')}</span> Tiang
               </div>
@@ -157,21 +167,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="text-teal-300/40">|</span>
               <div className="text-rose-400">
                 <span className="font-black">{criticalPoles.toLocaleString('id-ID')}</span> Kritis
-              </div>
-            </div>
-
-            {/* Real-time 2-Way Sync Status (Google AI Studio <-> Vercel) */}
-            <div 
-              className="hidden 2xl:flex items-center gap-2 bg-slate-950/70 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-emerald-500/30 text-xs shadow-md select-none"
-              title={`Sinkronisasi Cloud Real-Time Dua Arah (Google AI Studio ↔ Vercel). Terakhir: ${lastSyncOrigin} ${lastSyncTime ? `(${lastSyncTime})` : ''}`}
-            >
-              <div className="relative flex items-center justify-center">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span className="absolute w-3.5 h-3.5 rounded-full bg-emerald-400/40 animate-ping"></span>
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-bold text-[11px] text-emerald-300">Sync 2-Arah Aktif</span>
-                <span className="text-[9px] text-slate-300 font-mono mt-0.5">AI Studio ↔ Vercel</span>
               </div>
             </div>
 

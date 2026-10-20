@@ -2,47 +2,47 @@
   "entities": {
     "Pole": {
       "title": "Pole",
-      "description": "PLN electrical distribution pole data",
+      "description": "Distribusi tiang listrik PLN ULP Baguala beserta status ROW dan koordinat GIS",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "code": { "type": "string" },
-        "feeder": { "type": "string" },
-        "type": { "type": "string" },
-        "lat": { "type": "number" },
-        "lng": { "type": "number" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
         "locationName": { "type": "string" },
-        "material": { "type": "string" },
-        "heightMeters": { "type": "number" },
-        "physicalCondition": { "type": "string" },
-        "installationYear": { "type": "number" },
-        "lastInspectionDate": { "type": "string" },
+        "feeder": { "type": "string" },
         "clearanceDistanceMeters": { "type": "number" },
-        "clearanceStatus": { "type": "string" },
-        "clearanceObject": { "type": "string" },
-        "spkStatus": { "type": "string" }
+        "clearanceStatus": { "type": "string", "enum": ["Aman", "Waspada", "Kritis", "Bahaya Kritis"] },
+        "vegetationType": { "type": "string" },
+        "poleType": { "type": "string" },
+        "statusKondisi": { "type": "string" },
+        "lastInspected": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
       },
-      "required": ["id", "lat", "lng"]
+      "required": ["id", "code", "latitude", "longitude", "feeder", "clearanceDistanceMeters", "clearanceStatus"]
     },
     "CableSpan": {
       "title": "CableSpan",
-      "description": "Electrical cable span connection between two poles",
+      "description": "Bentangan kabel antar tiang listrik pada jaringan distribusi",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "fromPoleId": { "type": "string" },
         "toPoleId": { "type": "string" },
+        "feeder": { "type": "string" },
         "cableType": { "type": "string" },
-        "conductorType": { "type": "string" },
-        "condition": { "type": "string" },
         "lengthMeters": { "type": "number" },
-        "notes": { "type": "string" }
+        "clearanceStatus": { "type": "string" },
+        "color": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
       },
-      "required": ["id", "fromPoleId", "toPoleId"]
+      "required": ["id", "fromPoleId", "toPoleId", "feeder"]
     },
-    "WorkOrder": {
-      "title": "WorkOrder",
-      "description": "Maintenance Work Order SPK for pole repair or tree trimming",
+    "MaintenanceWorkOrder": {
+      "title": "MaintenanceWorkOrder",
+      "description": "Surat Perintah Kerja (SPK) rabas pohon dan pemeliharaan ROW",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -50,43 +50,68 @@
         "poleId": { "type": "string" },
         "locationName": { "type": "string" },
         "issueType": { "type": "string" },
-        "priority": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Rendah", "Sedang", "Tinggi", "Kritis"] },
         "assignedTeam": { "type": "string" },
         "scheduledDate": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "status": { "type": "string", "enum": ["Menunggu", "Disetujui", "Dikerjakan", "Selesai", "Dibatalkan"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
-      "required": ["id", "spkNumber", "status"]
+      "required": ["id", "spkNumber", "poleId", "issueType", "priority", "status"]
     },
-    "SyncMetadata": {
-      "title": "SyncMetadata",
-      "description": "Global sync metadata and update counter across AI Studio and Vercel",
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Akun personel dan administrator sistem GROW ULP Baguala",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "lastUpdated": { "type": "string" },
-        "updatedBy": { "type": "string" },
-        "version": { "type": "number" }
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "password": { "type": "string" },
+        "unit": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLogin": { "type": "string" }
       },
-      "required": ["id", "version"]
+      "required": ["id", "userId", "name", "role", "unit"]
+    },
+    "SystemMeta": {
+      "title": "SystemMeta",
+      "description": "Metadata sinkronisasi dua arah real-time antara AI Studio dan Vercel",
+      "type": "object",
+      "properties": {
+        "masterName": { "type": "string" },
+        "lastSyncTime": { "type": "string" },
+        "lastSource": { "type": "string" },
+        "polesCount": { "type": "number" },
+        "spansCount": { "type": "number" },
+        "feederColors": { "type": "object" }
+      },
+      "required": ["lastSyncTime"]
     }
   },
   "firestore": {
-    "/poles_custom/{poleId}": {
+    "/poles/{poleId}": {
       "schema": "Pole",
-      "description": "Custom & modified distribution poles"
+      "description": "Koleksi data tiang distribusi GIS ULP Baguala"
     },
-    "/spans_custom/{spanId}": {
+    "/spans/{spanId}": {
       "schema": "CableSpan",
-      "description": "Custom & modified cable connections between poles"
+      "description": "Koleksi data bentangan kabel distribusi"
     },
     "/spks/{spkId}": {
-      "schema": "WorkOrder",
-      "description": "Maintenance work orders"
+      "schema": "MaintenanceWorkOrder",
+      "description": "Koleksi Surat Perintah Kerja (SPK)"
     },
-    "/sync/{docId}": {
-      "schema": "SyncMetadata",
-      "description": "Real-time sync metadata across environments"
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "Koleksi akun pengguna GROW"
+    },
+    "/system_meta/{metaId}": {
+      "schema": "SystemMeta",
+      "description": "Metadata sistem sinkronisasi real-time"
     }
   }
 }
