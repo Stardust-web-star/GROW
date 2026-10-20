@@ -1,117 +1,109 @@
 {
   "entities": {
-    "Pole": {
-      "title": "Pole",
-      "description": "Distribusi tiang listrik PLN ULP Baguala beserta status ROW dan koordinat GIS",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "code": { "type": "string" },
-        "latitude": { "type": "number" },
-        "longitude": { "type": "number" },
-        "locationName": { "type": "string" },
-        "feeder": { "type": "string" },
-        "clearanceDistanceMeters": { "type": "number" },
-        "clearanceStatus": { "type": "string", "enum": ["Aman", "Waspada", "Kritis", "Bahaya Kritis"] },
-        "vegetationType": { "type": "string" },
-        "poleType": { "type": "string" },
-        "statusKondisi": { "type": "string" },
-        "lastInspected": { "type": "string" },
-        "updatedAt": { "type": "string" },
-        "updatedBy": { "type": "string" }
-      },
-      "required": ["id", "code", "latitude", "longitude", "feeder", "clearanceDistanceMeters", "clearanceStatus"]
-    },
     "CableSpan": {
       "title": "CableSpan",
-      "description": "Bentangan kabel antar tiang listrik pada jaringan distribusi",
+      "description": "Bentangan kabel distribusi listrik JTM/JTR, interaksi tarik kabel, dan kondisi kabel",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "fromPoleId": { "type": "string" },
-        "toPoleId": { "type": "string" },
-        "feeder": { "type": "string" },
-        "cableType": { "type": "string" },
-        "lengthMeters": { "type": "number" },
-        "clearanceStatus": { "type": "string" },
-        "color": { "type": "string" },
-        "updatedAt": { "type": "string" },
-        "updatedBy": { "type": "string" }
+        "id": { "type": "string", "maxLength": 128, "description": "ID unik bentangan kabel" },
+        "fromPoleId": { "type": "string", "maxLength": 128, "description": "ID tiang asal" },
+        "toPoleId": { "type": "string", "maxLength": 128, "description": "ID tiang tujuan" },
+        "conductorType": { "type": "string", "maxLength": 64, "description": "Jenis penghantar/kabel" },
+        "lengthMeters": { "type": "number", "description": "Panjang bentangan dalam meter" },
+        "clearanceMeters": { "type": "number", "description": "Jarak aman kabel ke objek" },
+        "hasViolation": { "type": "boolean", "description": "Status anomali / pelanggaran jarak aman" },
+        "violationType": { "type": "string", "maxLength": 128, "description": "Tipe pelanggaran jika ada" },
+        "feeder": { "type": "string", "maxLength": 128, "description": "Nama penyulang / feeder" },
+        "cableCondition": { "type": "string", "maxLength": 64, "description": "Kondisi fisik kabel (Baik, Kendor, Terkelupas, dll)" },
+        "treeDistanceMeters": { "type": "number", "description": "Jarak ke pohon terdekat" },
+        "buildingDistanceMeters": { "type": "number", "description": "Jarak ke bangunan terdekat" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Catatan teknis lapangan" },
+        "photoUrl": { "type": "string", "maxLength": 1024, "description": "URL foto kondisi kabel" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Timestamp ISO pembaruan terakhir" },
+        "source": { "type": "string", "maxLength": 32, "description": "Asal pembaruan (vercel / google-ai-studio)" }
       },
-      "required": ["id", "fromPoleId", "toPoleId", "feeder"]
+      "required": ["id", "fromPoleId", "toPoleId"]
     },
-    "MaintenanceWorkOrder": {
-      "title": "MaintenanceWorkOrder",
-      "description": "Surat Perintah Kerja (SPK) rabas pohon dan pemeliharaan ROW",
+    "PoleUpdate": {
+      "title": "PoleUpdate",
+      "description": "Pembaruan kondisi tiang listrik PLN, inspeksi lapangan, dan jarak clearance",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "spkNumber": { "type": "string" },
-        "poleId": { "type": "string" },
-        "locationName": { "type": "string" },
-        "issueType": { "type": "string" },
-        "priority": { "type": "string", "enum": ["Rendah", "Sedang", "Tinggi", "Kritis"] },
-        "assignedTeam": { "type": "string" },
-        "scheduledDate": { "type": "string" },
-        "status": { "type": "string", "enum": ["Menunggu", "Disetujui", "Dikerjakan", "Selesai", "Dibatalkan"] },
-        "createdAt": { "type": "string" },
-        "updatedAt": { "type": "string" }
+        "id": { "type": "string", "maxLength": 128, "description": "ID unik tiang PLN" },
+        "code": { "type": "string", "maxLength": 64, "description": "Kode tiang PLN" },
+        "physicalCondition": { "type": "string", "maxLength": 64, "description": "Kondisi fisik tiang (Baik, Perlu Perbaikan, Miring / Retak, Korosi Kritis)" },
+        "clearanceDistanceMeters": { "type": "number", "description": "Jarak aman kabel ke objek terdekat" },
+        "clearanceStatus": { "type": "string", "maxLength": 64, "description": "Status clearance (Aman / Bahaya)" },
+        "clearanceObject": { "type": "string", "maxLength": 128, "description": "Objek clearance terdekat" },
+        "lastInspectionDate": { "type": "string", "maxLength": 32, "description": "Tanggal inspeksi terakhir" },
+        "spkStatus": { "type": "string", "maxLength": 64, "description": "Status SPK pemeliharaan" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Catatan inspeksi atau anomali" },
+        "photoUrl": { "type": "string", "maxLength": 1024, "description": "URL foto tiang terkini" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Timestamp ISO pembaruan" },
+        "source": { "type": "string", "maxLength": 32, "description": "Asal pembaruan (vercel / google-ai-studio)" }
       },
-      "required": ["id", "spkNumber", "poleId", "issueType", "priority", "status"]
+      "required": ["id"]
     },
-    "UserAccount": {
-      "title": "UserAccount",
-      "description": "Akun personel dan administrator sistem GROW ULP Baguala",
+    "WorkOrder": {
+      "title": "WorkOrder",
+      "description": "Surat Perintah Kerja (SPK) Pemeliharaan Tiang dan Kabel",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "name": { "type": "string" },
-        "role": { "type": "string" },
-        "password": { "type": "string" },
-        "unit": { "type": "string" },
-        "email": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string" },
-        "lastLogin": { "type": "string" }
+        "id": { "type": "string", "maxLength": 128, "description": "ID SPK" },
+        "spkNumber": { "type": "string", "maxLength": 64, "description": "Nomor surat perintah kerja" },
+        "poleId": { "type": "string", "maxLength": 128, "description": "ID tiang terkait" },
+        "locationName": { "type": "string", "maxLength": 256, "description": "Lokasi pekerjaan" },
+        "issueType": { "type": "string", "maxLength": 128, "description": "Tipe kendala / masalah" },
+        "priority": { "type": "string", "maxLength": 32, "description": "Tingkat prioritas" },
+        "assignedTeam": { "type": "string", "maxLength": 128, "description": "Tim lapangan yang ditugaskan" },
+        "scheduledDate": { "type": "string", "maxLength": 32, "description": "Jadwal pengerjaan" },
+        "status": { "type": "string", "maxLength": 64, "description": "Status pengerjaan SPK" },
+        "createdAt": { "type": "string", "maxLength": 32, "description": "Tanggal pembuatan SPK" }
       },
-      "required": ["id", "userId", "name", "role", "unit"]
+      "required": ["id", "spkNumber", "poleId"]
     },
-    "SystemMeta": {
-      "title": "SystemMeta",
-      "description": "Metadata sinkronisasi dua arah real-time antara AI Studio dan Vercel",
+    "SyncEvent": {
+      "title": "SyncEvent",
+      "description": "Kanal siaran event sinkronisasi dua arah real-time antara Vercel dan Google AI Studio",
       "type": "object",
       "properties": {
-        "masterName": { "type": "string" },
-        "lastSyncTime": { "type": "string" },
-        "lastSource": { "type": "string" },
-        "polesCount": { "type": "number" },
-        "spansCount": { "type": "number" },
-        "feederColors": { "type": "object" }
+        "id": { "type": "string", "maxLength": 128, "description": "ID event" },
+        "action": { "type": "string", "maxLength": 64, "description": "Jenis aksi (tarik_kabel, update_tiang, update_kabel, hapus_kabel, spk)" },
+        "source": { "type": "string", "maxLength": 32, "description": "Sumber pengirim: vercel atau google-ai-studio" },
+        "timestamp": { "type": "number", "description": "Timestamp milidetik saat aksi terjadi" },
+        "summary": { "type": "string", "maxLength": 256, "description": "Keterangan singkat aksi perubahan" }
       },
-      "required": ["lastSyncTime"]
+      "required": ["id", "action", "source", "timestamp"]
+    },
+    "TestConnection": {
+      "title": "TestConnection",
+      "description": "Uji konektivitas Firestore",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "maxLength": 32, "description": "Status koneksi" }
+      }
     }
   },
   "firestore": {
-    "/poles/{poleId}": {
-      "schema": "Pole",
-      "description": "Koleksi data tiang distribusi GIS ULP Baguala"
-    },
     "/spans/{spanId}": {
       "schema": "CableSpan",
-      "description": "Koleksi data bentangan kabel distribusi"
+      "description": "Bentangan kabel PLN dan interaksi penarikan kabel"
+    },
+    "/pole_updates/{poleId}": {
+      "schema": "PoleUpdate",
+      "description": "Pembaruan kondisi fisik dan clearance tiang listrik"
     },
     "/spks/{spkId}": {
-      "schema": "MaintenanceWorkOrder",
-      "description": "Koleksi Surat Perintah Kerja (SPK)"
+      "schema": "WorkOrder",
+      "description": "Daftar SPK pemeliharaan tiang dan kabel"
     },
-    "/users/{userId}": {
-      "schema": "UserAccount",
-      "description": "Koleksi akun pengguna GROW"
+    "/sync_events/{eventId}": {
+      "schema": "SyncEvent",
+      "description": "Log event sinkronisasi real-time dua arah"
     },
-    "/system_meta/{metaId}": {
-      "schema": "SystemMeta",
-      "description": "Metadata sistem sinkronisasi real-time"
+    "/test/{testId}": {
+      "schema": "TestConnection",
+      "description": "Collection uji koneksi Firestore"
     }
   }
 }

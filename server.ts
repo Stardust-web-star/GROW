@@ -18,6 +18,17 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 app.use(express.json({ limit: '50mb' }));
 
+// Enable CORS for cross-platform access (Google AI Studio ⇄ Vercel)
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Path to Persistent Master Data (TITIK TIANG BGL.kml)
 const MASTER_DATA_PATH = path.join(__dirname, 'src/data/masterPoles.json');
 
@@ -141,18 +152,6 @@ app.get('/api/master/info', (req, res) => {
     polesCount: polesDatabase.length,
     spansCount: spansDatabase.length,
     lastUpdated: new Date().toISOString()
-  });
-});
-
-app.get('/api/sync/info', (req, res) => {
-  res.json({
-    status: 'connected',
-    cloudDatabase: 'Cloud Firestore',
-    projectId: 'gothic-flare-j6shk',
-    firestoreDatabaseId: 'ai-studio-grow-f1556d5b-af8d-48b4-80a4-0db6695697aa',
-    polesCount: polesDatabase.length,
-    spansCount: spansDatabase.length,
-    timestamp: new Date().toISOString()
   });
 });
 
