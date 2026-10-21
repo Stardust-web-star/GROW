@@ -712,18 +712,34 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const currentZoom = map.getZoom();
     const isZoomedOut = isClusterMode && currentZoom < 13 && !searchQuery;
 
-    // Fast O(1) Lookup Maps
+    // Fast O(1) Lookup Maps (case-insensitive & whitespace-safe)
     const poleMap = new Map<string, PoleData>();
     poles.forEach(p => {
-      poleMap.set(p.id, p);
-      if (p.code) poleMap.set(p.code, p);
+      if (p.id) {
+        poleMap.set(p.id, p);
+        poleMap.set(p.id.toLowerCase(), p);
+        poleMap.set(p.id.trim(), p);
+        poleMap.set(p.id.trim().toLowerCase(), p);
+      }
+      if (p.code) {
+        poleMap.set(p.code, p);
+        poleMap.set(p.code.toLowerCase(), p);
+        poleMap.set(p.code.trim(), p);
+        poleMap.set(p.code.trim().toLowerCase(), p);
+      }
     });
+
+    const findPole = (idOrCode?: string): PoleData | undefined => {
+      if (!idOrCode) return undefined;
+      const key = String(idOrCode).trim();
+      return poleMap.get(key) || poleMap.get(key.toLowerCase());
+    };
 
     // Build O(M) index for cable spans per pole so connected cable queries are instant O(1)
     const poleConnectedSpansMap = new Map<string, CableSpan[]>();
     spans.forEach(s => {
-      const fromKey = (s.fromPoleId || '').toLowerCase();
-      const toKey = (s.toPoleId || '').toLowerCase();
+      const fromKey = (s.fromPoleId || '').trim().toLowerCase();
+      const toKey = (s.toPoleId || '').trim().toLowerCase();
       if (!poleConnectedSpansMap.has(fromKey)) poleConnectedSpansMap.set(fromKey, []);
       poleConnectedSpansMap.get(fromKey)!.push(s);
       if (!poleConnectedSpansMap.has(toKey)) poleConnectedSpansMap.set(toKey, []);
@@ -856,15 +872,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // 3. Render Cable Spans (Lines between adjacent poles only within padded bounds)
     const visibleSpans = spans.filter(s => {
-      const from = poleMap.get(s.fromPoleId);
-      const to = poleMap.get(s.toPoleId);
+      const from = findPole(s.fromPoleId);
+      const to = findPole(s.toPoleId);
       if (!from || !to) return false;
       return bounds.contains([from.lat, from.lng]) || bounds.contains([to.lat, to.lng]);
     });
 
     visibleSpans.forEach(span => {
-      const fromPole = poleMap.get(span.fromPoleId);
-      const toPole = poleMap.get(span.toPoleId);
+      const fromPole = findPole(span.fromPoleId);
+      const toPole = findPole(span.toPoleId);
 
       if (fromPole && toPole) {
         const isFromVisible = (activeFeedersMap[fromPole.feeder] !== false) && (feederVisibility[fromPole.feeder] !== false);
@@ -2159,8 +2175,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {selectedSpanForEdit && (
         <EditCableModal
           span={selectedSpanForEdit}
-          fromPole={poles.find(p => p.id === selectedSpanForEdit.fromPoleId)}
-          toPole={poles.find(p => p.id === selectedSpanForEdit.toPoleId)}
+          fromPole={poles.find(p => p.id.toLowerCase() === selectedSpanForEdit.fromPoleId.toLowerCase() || (p.code && p.code.toLowerCase() === selectedSpanForEdit.fromPoleId.toLowerCase()))}
+          toPole={poles.find(p => p.id.toLowerCase() === selectedSpanForEdit.toPoleId.toLowerCase() || (p.code && p.code.toLowerCase() === selectedSpanForEdit.toPoleId.toLowerCase()))}
           allFeeders={allFeeders}
           onClose={() => setSelectedSpanForEdit(null)}
           onSave={(updated) => {

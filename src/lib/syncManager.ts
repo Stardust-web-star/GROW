@@ -62,6 +62,13 @@ export function mergePolesWithCloud(
   return Array.from(poleMap.values());
 }
 
+export function getSpanPairKey(fromId: string, toId: string): string {
+  const from = (fromId || '').trim().toLowerCase();
+  const to = (toId || '').trim().toLowerCase();
+  if (from < to) return `${from}<->${to}`;
+  return `${to}<->${from}`;
+}
+
 /**
  * Merge base spans with live cloud updates and deletions.
  */
@@ -72,30 +79,42 @@ export function mergeSpansWithCloud(
 ): CableSpan[] {
   const spanMap = new Map<string, CableSpan>();
 
-  const getSpanKey = (s: CableSpan) => {
-    const from = (s.fromPoleId || '').trim().toLowerCase();
-    const to = (s.toPoleId || '').trim().toLowerCase();
-    if (from < to) return `${from}<->${to}`;
-    return `${to}<->${from}`;
+  const isSpanDeleted = (span: CableSpan): boolean => {
+    const sId = (span.id || '').trim().toLowerCase();
+    if (deletedSpanIds.has(sId) || (span.id && deletedSpanIds.has(span.id))) {
+      return true;
+    }
+    const from = (span.fromPoleId || '').trim().toLowerCase();
+    const to = (span.toPoleId || '').trim().toLowerCase();
+    if (from && to) {
+      const pairKey = from < to ? `${from}<->${to}` : `${to}<->${from}`;
+      if (deletedSpanIds.has(pairKey)) {
+        return true;
+      }
+    }
+    return false;
   };
 
-  // Add base spans
+  const getSpanKey = (s: CableSpan) => {
+    return getSpanPairKey(s.fromPoleId || '', s.toPoleId || '');
+  };
+
+  // Add base spans (filter out explicitly deleted spans or deleted pairs)
   for (const span of baseSpans) {
-    const sId = (span.id || '').trim().toLowerCase();
-    const pairKey = getSpanKey(span);
-    if (!deletedSpanIds.has(sId) && !deletedSpanIds.has(span.id) && !deletedSpanIds.has(pairKey)) {
+    if (!isSpanDeleted(span)) {
+      const pairKey = getSpanKey(span);
       spanMap.set(pairKey, span);
     }
   }
 
-  // Override or add cloud spans
+  // Override or add active cloud spans (filter out deleted spans/pairs)
   for (const span of cloudSpans) {
-    const sId = (span.id || '').trim().toLowerCase();
-    const pairKey = getSpanKey(span);
-    if (!deletedSpanIds.has(sId) && !deletedSpanIds.has(span.id) && !deletedSpanIds.has(pairKey)) {
+    if (!isSpanDeleted(span)) {
+      const pairKey = getSpanKey(span);
       spanMap.set(pairKey, { ...spanMap.get(pairKey), ...span });
     }
   }
 
   return Array.from(spanMap.values());
 }
+

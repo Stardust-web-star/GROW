@@ -396,23 +396,83 @@ export default function App() {
   };
 
   const handleCreateSpan = async (newSpan: CableSpan) => {
-    // 1. Optimistic state update
-    setSpans(prev => {
-      const filtered = prev.filter(s =>
-        !(s.fromPoleId === newSpan.fromPoleId && s.toPoleId === newSpan.toPoleId) &&
-        !(s.fromPoleId === newSpan.toPoleId && s.toPoleId === newSpan.fromPoleId)
+    // 1. Resolve pole aliases (both ID and code) for both endpoints
+    const findPoleObj = (idOrCode?: string) => {
+      if (!idOrCode) return undefined;
+      const key = String(idOrCode).trim().toLowerCase();
+      return poles.find(p => 
+        (p.id && p.id.trim().toLowerCase() === key) ||
+        (p.code && p.code.trim().toLowerCase() === key)
       );
-      return [...filtered, newSpan];
-    });
+    };
 
-    // 2. Persist to Cloud Firestore (syncs across AI Studio and Vercel in real time)
+    const fromObj = findPoleObj(newSpan.fromPoleId);
+    const toObj = findPoleObj(newSpan.toPoleId);
+
+    const fromAliases = Array.from(new Set([
+      newSpan.fromPoleId,
+      fromObj?.id,
+      fromObj?.code
+    ].filter(Boolean).map(x => String(x).trim().toLowerCase())));
+
+    const toAliases = Array.from(new Set([
+      newSpan.toPoleId,
+      toObj?.id,
+      toObj?.code
+    ].filter(Boolean).map(x => String(x).trim().toLowerCase())));
+
+    // Helper to check if a span connects these two poles
+    const isSpanBetweenThesePoles = (s: CableSpan) => {
+      const sFrom = (s.fromPoleId || '').trim().toLowerCase();
+      const sTo = (s.toPoleId || '').trim().toLowerCase();
+      return (fromAliases.includes(sFrom) && toAliases.includes(sTo)) ||
+             (fromAliases.includes(sTo) && toAliases.includes(sFrom));
+    };
+
+    // 2. Explicitly UNBLOCK all alias pair combinations from deletion ledger
+    for (const f of fromAliases) {
+      for (const t of toAliases) {
+        const pair = f < t ? `${f}<->${t}` : `${t}<->${f}`;
+        deletedSpanIdsRef.current.delete(pair);
+        deletedSpanIdsRef.current.delete(pair.toLowerCase());
+      }
+    }
+    deletedSpanIdsRef.current.delete(newSpan.id);
+    deletedSpanIdsRef.current.delete(newSpan.id.toLowerCase());
+
+    // Also unblock any previously recorded span IDs for this connection
+    const oldSpansForPair = [...baseSpansRef.current, ...cloudSpansRef.current].filter(isSpanBetweenThesePoles);
+    for (const oldS of oldSpansForPair) {
+      if (oldS.id) {
+        deletedSpanIdsRef.current.delete(oldS.id);
+        deletedSpanIdsRef.current.delete(oldS.id.toLowerCase());
+      }
+    }
+
+    // 3. Synchronize in-memory refs immediately (replace previous spans for this connection with newSpan)
+    baseSpansRef.current = [newSpan, ...baseSpansRef.current.filter(s => !isSpanBetweenThesePoles(s))];
+    cloudSpansRef.current = [newSpan, ...cloudSpansRef.current.filter(s => !isSpanBetweenThesePoles(s))];
+
+    // 4. Optimistic state update via merge
+    setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
+
+    // 5. Persist to Cloud Firestore (syncs across AI Studio and Vercel in real time)
     try {
       await saveSpanToCloud(newSpan);
+      await saveAppStateToCloud({
+        deletedSpanIds: Array.from(deletedSpanIdsRef.current)
+      });
+      // Clean up any stale duplicate span docs in Firestore between these two poles
+      for (const oldS of oldSpansForPair) {
+        if (oldS.id && oldS.id !== newSpan.id) {
+          deleteSpanFromCloud(oldS.id).catch(() => {});
+        }
+      }
     } catch (err) {
       console.error('Error saving span to Cloud Firestore:', err);
     }
 
-    // 3. Notify local backend if running
+    // 6. Notify local backend if running
     try {
       await fetch('/api/spans', {
         method: 'POST',
@@ -423,17 +483,21 @@ export default function App() {
   };
 
   const handleUpdateSpan = async (updatedSpan: CableSpan) => {
-    // 1. Optimistic state update
-    setSpans(prev => prev.map(s => s.id === updatedSpan.id ? updatedSpan : s));
+    // 1. Synchronize in-memory refs immediately
+    baseSpansRef.current = baseSpansRef.current.map(s => s.id === updatedSpan.id ? updatedSpan : s);
+    cloudSpansRef.current = cloudSpansRef.current.map(s => s.id === updatedSpan.id ? updatedSpan : s);
 
-    // 2. Persist to Cloud Firestore
+    // 2. Optimistic state update
+    setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
+
+    // 3. Persist to Cloud Firestore
     try {
       await saveSpanToCloud(updatedSpan);
     } catch (err) {
       console.error('Error updating span in Cloud Firestore:', err);
     }
 
-    // 3. Notify local backend if running
+    // 4. Notify local backend if running
     try {
       await fetch(`/api/spans/${encodeURIComponent(updatedSpan.id)}`, {
         method: 'PUT',
@@ -445,34 +509,93 @@ export default function App() {
 
   const handleDeleteSpan = async (spanId: string, fromPoleId?: string, toPoleId?: string) => {
     const targetId = (spanId || '').trim().toLowerCase();
-    const pFrom = (fromPoleId || '').trim().toLowerCase();
-    const pTo = (toPoleId || '').trim().toLowerCase();
 
-    // 1. Optimistic state update
-    setSpans(prev => prev.filter(s => {
-      const sId = (s.id || '').trim().toLowerCase();
-      if (sId === targetId) return false;
-      if (pFrom && pTo) {
-        const sFrom = (s.fromPoleId || '').trim().toLowerCase();
-        const sTo = (s.toPoleId || '').trim().toLowerCase();
-        if ((sFrom === pFrom && sTo === pTo) || (sFrom === pTo && sTo === pFrom)) {
-          return false;
-        }
+    // 1. Resolve pole aliases (both ID and code) for both endpoints
+    const findPoleObj = (idOrCode?: string) => {
+      if (!idOrCode) return undefined;
+      const key = String(idOrCode).trim().toLowerCase();
+      return poles.find(p => 
+        (p.id && p.id.trim().toLowerCase() === key) ||
+        (p.code && p.code.trim().toLowerCase() === key)
+      );
+    };
+
+    // If fromPoleId or toPoleId wasn't passed, look up from known spans
+    let effectiveFrom = fromPoleId;
+    let effectiveTo = toPoleId;
+    if (!effectiveFrom || !effectiveTo) {
+      const knownSpan = [...cloudSpansRef.current, ...baseSpansRef.current, ...spans].find(s => 
+        s.id === spanId || (s.id || '').toLowerCase() === targetId
+      );
+      if (knownSpan) {
+        effectiveFrom = effectiveFrom || knownSpan.fromPoleId;
+        effectiveTo = effectiveTo || knownSpan.toPoleId;
       }
-      return true;
-    }));
-
-    // 2. Add to deletion ledger
-    deletedSpanIdsRef.current.add(targetId);
-    if (spanId) deletedSpanIdsRef.current.add(spanId);
-    if (pFrom && pTo) {
-      const pair = pFrom < pTo ? `${pFrom}<->${pTo}` : `${pTo}<->${pFrom}`;
-      deletedSpanIdsRef.current.add(pair);
     }
 
-    // 3. Persist deletion to Cloud Firestore
+    const fromObj = findPoleObj(effectiveFrom);
+    const toObj = findPoleObj(effectiveTo);
+
+    const fromAliases = Array.from(new Set([
+      effectiveFrom,
+      fromObj?.id,
+      fromObj?.code
+    ].filter(Boolean).map(x => String(x).trim().toLowerCase())));
+
+    const toAliases = Array.from(new Set([
+      effectiveTo,
+      toObj?.id,
+      toObj?.code
+    ].filter(Boolean).map(x => String(x).trim().toLowerCase())));
+
+    const isSpanBetweenThesePoles = (s: CableSpan) => {
+      const sId = (s.id || '').trim().toLowerCase();
+      if (sId === targetId || (spanId && s.id === spanId)) return true;
+      if (fromAliases.length > 0 && toAliases.length > 0) {
+        const sFrom = (s.fromPoleId || '').trim().toLowerCase();
+        const sTo = (s.toPoleId || '').trim().toLowerCase();
+        return (fromAliases.includes(sFrom) && toAliases.includes(sTo)) ||
+               (fromAliases.includes(sTo) && toAliases.includes(sFrom));
+      }
+      return false;
+    };
+
+    // 2. Add to deletion ledger: all aliases, pairs, and IDs
+    deletedSpanIdsRef.current.add(targetId);
+    if (spanId) deletedSpanIdsRef.current.add(spanId);
+
+    for (const f of fromAliases) {
+      for (const t of toAliases) {
+        const pair = f < t ? `${f}<->${t}` : `${t}<->${f}`;
+        deletedSpanIdsRef.current.add(pair);
+        deletedSpanIdsRef.current.add(pair.toLowerCase());
+      }
+    }
+
+    // Collect all matching spans across base & cloud
+    const matchingSpans = [...baseSpansRef.current, ...cloudSpansRef.current].filter(isSpanBetweenThesePoles);
+    for (const s of matchingSpans) {
+      if (s.id) {
+        deletedSpanIdsRef.current.add(s.id);
+        deletedSpanIdsRef.current.add(s.id.toLowerCase());
+      }
+    }
+
+    // 3. Remove immediately from in-memory refs
+    baseSpansRef.current = baseSpansRef.current.filter(s => !isSpanBetweenThesePoles(s));
+    cloudSpansRef.current = cloudSpansRef.current.filter(s => !isSpanBetweenThesePoles(s));
+
+    // 4. Optimistic state update via merge
+    setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
+
+    // 5. Persist deletion to Cloud Firestore (delete all matching docs in cloud)
     try {
       await deleteSpanFromCloud(spanId);
+      for (const s of matchingSpans) {
+        if (s.id && s.id !== spanId) {
+          deleteSpanFromCloud(s.id).catch(() => {});
+        }
+      }
       await saveAppStateToCloud({
         deletedSpanIds: Array.from(deletedSpanIdsRef.current)
       });
@@ -480,10 +603,10 @@ export default function App() {
       console.error('Error deleting span in Cloud Firestore:', err);
     }
 
-    // 4. Notify local backend
+    // 6. Notify local backend
     try {
-      const url = fromPoleId && toPoleId
-        ? `/api/spans/${encodeURIComponent(spanId)}?from=${encodeURIComponent(fromPoleId)}&to=${encodeURIComponent(toPoleId)}`
+      const url = effectiveFrom && effectiveTo
+        ? `/api/spans/${encodeURIComponent(spanId)}?from=${encodeURIComponent(effectiveFrom)}&to=${encodeURIComponent(effectiveTo)}`
         : `/api/spans/${encodeURIComponent(spanId)}`;
       await fetch(url, { method: 'DELETE' });
     } catch (err) {}
