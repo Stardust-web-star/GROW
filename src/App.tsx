@@ -842,7 +842,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-950 font-sans text-slate-100 flex flex-col ${isLoggingOut ? 'animate-dashboard-exit pointer-events-none' : 'animate-dashboard-enter'}`}>
+    <div className={`fixed inset-0 w-full h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-950 font-sans text-slate-100 flex flex-col ${isLoggingOut ? 'animate-dashboard-exit pointer-events-none' : 'animate-dashboard-enter'}`}>
       
       {/* Navbar Header */}
       <Navbar
@@ -858,12 +858,14 @@ export default function App() {
         onLogout={handleLogout}
         isCloudConnected={isCloudSyncing}
         systemMeta={systemMeta}
+        onOpenFeederDrawer={() => setShowFeederDrawer(true)}
+        onAddCustomPole={() => setShowAddPoleModal(true)}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full overflow-y-auto relative">
+      <main className={`flex-1 w-full h-full relative ${activeTab === 'map' ? 'overflow-hidden' : 'overflow-y-auto pb-16 md:pb-0'}`}>
         {/* Map Tab - Kept mounted to preserve Leaflet instance & prevent reinitialization freeze */}
-        <div className={`w-full h-full flex flex-col ${activeTab === 'map' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+        <div className={`w-full h-full relative ${activeTab === 'map' ? 'block' : 'hidden'}`}>
           <MapViewer
             poles={poles}
             spans={spans}

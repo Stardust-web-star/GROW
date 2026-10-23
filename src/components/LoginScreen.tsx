@@ -56,10 +56,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden select-none bg-slate-950 font-sans">
+    <div className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] overflow-hidden flex items-center justify-center p-3 sm:p-6 bg-slate-950 font-sans select-none">
       
       {/* 1. Background Foto Petugas PLN Melakukan Inspeksi Right of Way (ROW) */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <img
           src={plnRowInspectionBg}
           alt="Petugas PLN ULP Baguala melakukan inspeksi Right of Way (ROW)"
@@ -90,11 +90,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* 2. Main Login Card (Split 2-Panel Exactly Like Reference Image) */}
-      <div className={`relative z-10 w-full max-w-4xl bg-slate-900/95 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col md:flex-row transition-all duration-350 ease-out ${isLoggingInSuccess ? 'animate-login-exit pointer-events-none' : 'animate-login-enter'}`}>
+      {/* 2. Main Login Card: Perfectly fits 100dvh on mobile, expands to 2-column on desktop */}
+      <div className={`relative z-10 w-full max-w-sm sm:max-w-md md:max-w-4xl max-h-[96dvh] bg-slate-900/95 border border-slate-700/80 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col md:flex-row transition-all duration-350 ease-out ${isLoggingInSuccess ? 'animate-login-exit pointer-events-none' : 'animate-login-enter'}`}>
         
-        {/* --- LEFT PANEL: PLN Brand & GROW Identity (Teal/Emerald to Deep Cyan Gradient) --- */}
-        <div className="md:w-5/12 bg-gradient-to-br from-[#064e43] via-[#0a3847] to-[#041c30] p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden border-b md:border-b-0 md:border-r border-teal-500/20 text-white">
+        {/* --- LEFT PANEL: PLN Brand & GROW Identity (Desktop Only - hidden on mobile to avoid scrolling) --- */}
+        <div className="hidden md:flex md:w-5/12 bg-gradient-to-br from-[#064e43] via-[#0a3847] to-[#041c30] p-8 sm:p-10 flex-col justify-between relative overflow-hidden border-r border-teal-500/20 text-white">
           
           {/* Subtle electric pattern overlay */}
           <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]" />
@@ -133,12 +133,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
           </div>
         </div>
 
-        {/* --- RIGHT PANEL: Login Form (Dark Navy Glass Card) --- */}
-        <div className="md:w-7/12 p-8 sm:p-10 flex flex-col justify-between bg-slate-900/90 text-slate-100">
+        {/* --- RIGHT PANEL: Login Form (Compact on Mobile, Full on Desktop) --- */}
+        <div className="w-full md:w-7/12 p-4 sm:p-7 md:p-10 flex flex-col justify-between bg-slate-900/90 text-slate-100 overflow-y-auto no-scrollbar">
           
           <div>
-            {/* Header with Title & Secure Portal Badge */}
-            <div className="flex items-start justify-between gap-4 mb-6">
+            {/* Mobile-Only Compact Branding Header (Eliminates multi-paragraph hero on mobile) */}
+            <div className="md:hidden flex items-center justify-between pb-2.5 mb-2.5 border-b border-teal-500/20">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-teal-400/80 shadow-md shrink-0">
+                  <GisPlnLogo size={28} withBadge={false} />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-base text-white tracking-tight leading-none">GROW</span>
+                    <span className="text-[9px] font-black bg-teal-500/20 text-teal-300 border border-teal-400/30 px-1.5 py-0.5 rounded leading-none">ULP BAGUALA</span>
+                  </div>
+                  <span className="text-[8.5px] font-bold text-teal-300 tracking-wider uppercase mt-0.5 leading-none">GREAT RIGHT OF WAY</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 bg-emerald-950/60 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <span>Secure</span>
+              </div>
+            </div>
+
+            {/* Desktop-Only Header with Title & Secure Portal Badge */}
+            <div className="hidden md:flex items-start justify-between gap-4 mb-6">
               <div>
                 <h2 className="font-black text-2xl text-white tracking-tight">
                   Login Sistem GROW
@@ -155,9 +175,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               </div>
             </div>
 
+            {/* Mobile Header Title */}
+            <div className="md:hidden mb-2.5">
+              <h2 className="font-black text-base text-white tracking-tight leading-none">
+                Masuk ke Akun
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Masukkan User ID & Password terdaftar
+              </p>
+            </div>
+
             {/* Error Notification */}
             {error && (
-              <div className="mb-5 bg-rose-500/15 border border-rose-500/50 text-rose-300 text-xs p-3.5 rounded-xl flex items-start gap-2.5 animate-shake">
+              <div className="mb-2.5 sm:mb-4 bg-rose-500/15 border border-rose-500/50 text-rose-300 text-xs p-2.5 sm:p-3 rounded-xl flex items-start gap-2 animate-shake">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                 <span>{error}</span>
               </div>
@@ -165,61 +195,61 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
 
             {/* Session Expired / Timeout Notification */}
             {sessionExpiredMessage && !error && (
-              <div className="mb-5 bg-amber-500/15 border border-amber-500/50 text-amber-300 text-xs p-3.5 rounded-xl flex items-start gap-2.5">
+              <div className="mb-2.5 sm:mb-4 bg-amber-500/15 border border-amber-500/50 text-amber-300 text-xs p-2.5 sm:p-3 rounded-xl flex items-start gap-2">
                 <Clock className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
                 <span>{sessionExpiredMessage}</span>
               </div>
             )}
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Login Form: Tight Spacing for Zero-Scroll Mobile Experience */}
+            <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-4">
               
               {/* Field 1: User ID / Email */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-300">
+              <div className="space-y-1">
+                <label className="block text-[11px] sm:text-xs font-bold text-slate-300">
                   Email / User ID <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={userId}
                     onChange={(e) => setUserId(e.target.value)}
                     placeholder="Contoh: 9925045ZY atau email"
                     required
-                    className="w-full bg-slate-950/70 border border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 transition-all outline-none"
+                    className="w-full bg-slate-950/70 border border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl pl-9 pr-3 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 transition-all outline-none"
                   />
                 </div>
               </div>
 
               {/* Field 2: Password */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-slate-300">
+                  <label className="block text-[11px] sm:text-xs font-bold text-slate-300">
                     Password <span className="text-rose-400">*</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(true)}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer transition-colors"
+                    className="text-[11px] sm:text-xs text-cyan-400 hover:text-cyan-300 font-semibold cursor-pointer transition-colors"
                   >
                     Lupa Password?
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan password Anda"
                     required
-                    className="w-full bg-slate-950/70 border border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl pl-10 pr-11 py-2.5 text-sm text-white placeholder-slate-500 transition-all outline-none"
+                    className="w-full bg-slate-950/70 border border-slate-700 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 rounded-xl pl-9 pr-10 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 transition-all outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
                     title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -231,7 +261,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               <button
                 type="submit"
                 disabled={loading || isLoggingInSuccess}
-                className={`w-full mt-2 font-black py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all duration-300 cursor-pointer btn-tactile disabled:opacity-90 ${
+                className={`w-full mt-1 sm:mt-2 font-black py-2.5 sm:py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer btn-tactile disabled:opacity-90 ${
                   isLoggingInSuccess
                     ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/40 scale-[1.02]'
                     : 'bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white shadow-cyan-900/40'
@@ -239,8 +269,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               >
                 {isLoggingInSuccess ? (
                   <>
-                    <CheckCircle2 className="w-5 h-5 text-slate-950 animate-bounce" />
-                    <span>Autentikasi Berhasil! Membuka Dashboard...</span>
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950 animate-bounce" />
+                    <span>Autentikasi Berhasil!</span>
                   </>
                 ) : loading ? (
                   <>
@@ -259,12 +289,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
           </div>
 
           {/* Footer Info */}
-          <div className="mt-8 pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+          <div className="mt-3 sm:mt-6 pt-2.5 sm:pt-4 border-t border-slate-800 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5 text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Info Enkripsi Terproteksi</span>
+              <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+              <span>Enkripsi Terproteksi</span>
             </div>
-            <div>v3.0.2 • 2026</div>
+            <div>PLN ULP Baguala • 2026</div>
           </div>
 
         </div>

@@ -6,6 +6,7 @@ import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequire
 import { EditCableModal } from './EditCableModal';
 import { NewCableModal } from './NewCableModal';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
+import { GisPlnLogo } from './GisPlnLogo';
 
 // Helper to compress and convert photo to Base64 (max 1200px width/height, ~150-250KB)
 const compressImageFile = (file: File, maxDim = 1200, quality = 0.82): Promise<string> => {
@@ -291,15 +292,41 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     };
   }, []);
 
-  // When tab becomes active, invalidate map size to adjust to container instantly
+  // When tab becomes active or container resizes, invalidate map size to adjust to container instantly
   useEffect(() => {
-    if (isActive && mapInstanceRef.current) {
-      mapInstanceRef.current.invalidateSize();
-      const timer = setTimeout(() => {
-        mapInstanceRef.current?.invalidateSize();
-      }, 50);
-      return () => clearTimeout(timer);
+    if (!mapInstanceRef.current) return;
+
+    const triggerInvalidate = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+
+    triggerInvalidate();
+    const t1 = setTimeout(triggerInvalidate, 80);
+    const t2 = setTimeout(triggerInvalidate, 250);
+    const t3 = setTimeout(triggerInvalidate, 600);
+
+    // ResizeObserver on map container ensures immediate redraw if container dimensions change
+    let ro: ResizeObserver | null = null;
+    if (mapContainerRef.current) {
+      ro = new ResizeObserver(() => {
+        triggerInvalidate();
+      });
+      ro.observe(mapContainerRef.current);
     }
+
+    window.addEventListener('resize', triggerInvalidate);
+    window.addEventListener('orientationchange', triggerInvalidate);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', triggerInvalidate);
+      window.removeEventListener('orientationchange', triggerInvalidate);
+    };
   }, [isActive]);
 
   // Sync measurement handler with window
@@ -1695,12 +1722,34 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     setIsMeasuring(false);
   };
 
+  const handleMyLocation = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
+        },
+        () => {
+          if (filteredPoles.length > 0) {
+            focusOnCluster(filteredPoles);
+          } else {
+            map.setView([-3.6285, 128.2321], 15, { animate: true });
+          }
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else if (filteredPoles.length > 0) {
+      focusOnCluster(filteredPoles);
+    }
+  };
+
   return (
-    <div className="relative w-full h-[calc(100vh-4rem)] flex flex-col bg-slate-950">
+    <div className="relative w-full h-full flex flex-col bg-slate-950 select-none overflow-hidden">
       
-      {/* Pop Out Floating Button (shown when toolbar is hidden / popped in) */}
+      {/* Pop Out Floating Button (shown when toolbar is hidden / popped in) - Desktop Only */}
       {!isToolbarOpen && (
-        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-30 transition-all duration-300">
+        <div className="hidden md:block absolute top-2.5 left-1/2 -translate-x-1/2 z-30 transition-all duration-300">
           <button
             onClick={() => setIsToolbarOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-teal-900 via-emerald-800 to-teal-950 hover:from-teal-800 hover:to-emerald-700 text-amber-300 hover:text-white px-4 py-1.5 rounded-full border border-teal-400/40 shadow-2xl backdrop-blur-md text-xs font-black transition-all cursor-pointer group active:scale-95"
@@ -1713,9 +1762,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Top Single-Row Filter & Operations Toolbar with Pop In / Pop Out support */}
+      {/* Top Single-Row Filter & Operations Toolbar with Pop In / Pop Out support - Desktop Only */}
       <div
-        className={`relative z-20 shadow-md select-none transition-all duration-300 ease-in-out border-b border-teal-500/30 overflow-hidden ${
+        className={`hidden md:block relative z-20 shadow-md select-none transition-all duration-300 ease-in-out border-b border-teal-500/30 overflow-hidden ${
           isToolbarOpen
             ? 'max-h-16 opacity-100 py-1.5 px-3'
             : 'max-h-0 opacity-0 py-0 px-3 border-b-0 pointer-events-none'
@@ -1997,11 +2046,225 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {/* Main Map & Cluster Panel Container */}
       <div className="flex-1 w-full h-full relative overflow-hidden">
         
-        {/* Leaflet Map */}
-        <div ref={mapContainerRef} className="w-full h-full z-0" />
+        {/* Leaflet Map - Forced absolute inset-0 ensures full dimensions on mobile WebKit and Chrome */}
+        <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
+
+        {/* ========================================================
+            GOOGLE MAPS MOBILE FLOATING CONTROLS
+            1. Top Floating Search Bar + Horizontal Category Filter Chips
+            2. Floating Action Buttons (FABs) on the bottom right
+            ======================================================== */}
+        <div className="md:hidden absolute top-2.5 inset-x-2.5 z-30 pointer-events-auto flex flex-col gap-1.5 select-none">
+          {/* Floating Search Pill */}
+          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-2.5 text-white">
+            <div className="w-8 h-8 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-teal-400/60 shadow-md shrink-0">
+              <GisPlnLogo size={24} withBadge={false} />
+            </div>
+
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Telusuri No Tiang / Jalan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-950/80 border border-slate-700/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 font-medium"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs w-4 h-4 flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="px-2 py-1 rounded-lg bg-teal-500/20 border border-teal-500/40 text-[10px] font-black text-teal-300 whitespace-nowrap shrink-0">
+              {filteredPoles.length} Tiang
+            </div>
+          </div>
+
+          {/* Horizontal Category Filter Chips (Google Maps Mobile UI) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+            {/* Chip 1: Semua Tiang */}
+            <button
+              onClick={() => {
+                setSelectedFeeder('ALL');
+                setShowRowOnly(false);
+                setSearchQuery('');
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                selectedFeeder === 'ALL' && !showRowOnly && !searchQuery
+                  ? 'bg-blue-600 text-white border-blue-400 shadow-blue-500/20'
+                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+              }`}
+            >
+              <span>Semua Tiang</span>
+              <span className="text-[10px] bg-slate-950/60 px-1.5 py-0.2 rounded-full font-extrabold">{poles.length}</span>
+            </button>
+
+            {/* Chip 2: ROW Kritis (< 3m) */}
+            <button
+              onClick={() => setShowRowOnly(!showRowOnly)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                showRowOnly
+                  ? 'bg-rose-600 text-white border-rose-400 shadow-rose-500/20'
+                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+              <span>ROW Kritis</span>
+              <span className="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.2 rounded-full font-black">
+                {poles.filter(p => p.clearanceDistanceMeters < 3.0).length}
+              </span>
+            </button>
+
+            {/* Chip 3: Selector Penyulang */}
+            <div className="relative shrink-0">
+              <select
+                value={selectedFeeder}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedFeeder(val);
+                  if (val !== 'ALL') {
+                    const targetPoles = poles.filter(p => p.feeder === val);
+                    focusOnCluster(targetPoles);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all appearance-none pr-6 cursor-pointer focus:outline-none ${
+                  selectedFeeder !== 'ALL'
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 font-black'
+                    : 'bg-slate-900/90 text-slate-200 border-slate-700/80'
+                }`}
+              >
+                <option value="ALL" className="bg-slate-900 text-white font-bold">📍 Semua Penyulang</option>
+                {allFeeders.map(f => (
+                  <option key={f} value={f} className="bg-slate-900 text-slate-200">
+                    📍 {f} ({poles.filter(p => p.feeder === f).length})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${selectedFeeder !== 'ALL' ? 'text-slate-950' : 'text-slate-400'}`} />
+            </div>
+
+            {/* Chip 4: Tarik Kabel */}
+            <button
+              onClick={() => {
+                if (isPullingCable) cancelCablePulling();
+                else {
+                  setIsPullingCable(true);
+                  isPullingCableRef.current = true;
+                  setCableSourcePole(null);
+                  cableSourcePoleRef.current = null;
+                  if (mapInstanceRef.current) {
+                    mapInstanceRef.current.getContainer().classList.add('cable-pulling-mode');
+                  }
+                }
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                isPullingCable
+                  ? 'bg-teal-500 text-slate-950 border-teal-300 font-black'
+                  : 'bg-slate-900/90 text-teal-300 border-teal-500/40 hover:bg-slate-800'
+              }`}
+            >
+              <Cable className="w-3.5 h-3.5" />
+              <span>Tarik Kabel</span>
+            </button>
+
+            {/* Chip 5: Mode ROW vs Feeder */}
+            <button
+              onClick={() => setCableColorMode(cableColorMode === 'byClearance' ? 'byFeeder' : 'byClearance')}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                cableColorMode === 'byClearance'
+                  ? 'bg-emerald-600 text-white border-emerald-400'
+                  : 'bg-cyan-600 text-white border-cyan-400'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{cableColorMode === 'byClearance' ? 'Mode ROW' : 'Mode Feeder'}</span>
+            </button>
+
+            {/* Chip 6: Satelit vs Vektor */}
+            <button
+              onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
+              className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border border-slate-700/80 bg-slate-900/90 text-slate-200 flex items-center gap-1.5 shrink-0 cursor-pointer hover:bg-slate-800"
+            >
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{mapType === 'satellite' ? 'Satelit' : 'Vektor'}</span>
+            </button>
+
+            {/* Chip 7: Ukur Jarak */}
+            <button
+              onClick={() => {
+                if (isMeasuring) clearMeasurement();
+                else {
+                  setIsMeasuring(true);
+                  setMeasurePoints([]);
+                  setMeasuredDistance(null);
+                }
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                isMeasuring
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black'
+                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+              }`}
+            >
+              <Ruler className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isMeasuring ? 'Batal Ukur' : 'Ukur ROW'}</span>
+            </button>
+
+            {/* Chip 8: Heatmap */}
+            <button
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                showHeatmap
+                  ? 'bg-rose-600 text-white border-rose-400'
+                  : 'bg-slate-900/90 text-rose-300 border-rose-500/40 hover:bg-slate-800'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5" />
+              <span>Heatmap</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================
+            GOOGLE MAPS FLOATING ACTION BUTTONS (FAB) on Bottom-Right
+            Positioned at bottom-20 to clear bottom navigation bar
+            ======================================================== */}
+        <div className="md:hidden absolute bottom-20 right-3.5 z-30 flex flex-col items-end gap-2.5 pointer-events-auto select-none">
+          {/* FAB 1: Layer Switcher */}
+          <button
+            onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
+            className="w-11 h-11 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+            title="Ganti Lapisan Peta (Satelit / Vektor)"
+          >
+            <Layers className="w-5 h-5" />
+          </button>
+
+          {/* FAB 2: My Location / Focus Cluster (Google Maps GPS Crosshair) */}
+          <button
+            onClick={handleMyLocation}
+            className="w-11 h-11 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-blue-400 rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+            title="Pusatkan Peta ke Lokasi Saya / Tiang"
+          >
+            <Navigation className="w-5 h-5 rotate-45" />
+          </button>
+
+          {/* FAB 3: Primary Action (+ Tiang Lapangan) */}
+          <button
+            onClick={onAddCustomPole}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black px-3.5 h-11 rounded-full shadow-2xl border border-amber-300 active:scale-95 transition-transform cursor-pointer"
+            title="Tambah Titik Tiang Baru"
+          >
+            <Plus className="w-5 h-5 stroke-[2.5]" />
+            <span className="text-xs">Tiang</span>
+          </button>
+        </div>
 
         {/* Floating Legend - Dynamically adapts to Menu "ROW" vs Menu "Feeder" with toggle minimize */}
-        <div className="absolute bottom-6 right-6 z-10 max-w-xs select-none">
+        <div className="absolute bottom-20 left-3 md:bottom-6 md:right-6 md:left-auto z-20 max-w-[260px] sm:max-w-xs select-none">
           {isLegendOpen ? (
             cableColorMode === 'byClearance' ? (
               // LEGENDA MODE ROW (Fisik Tiang/Kabel & Jarak Lingkungan Sekitar Pohon/Bangunan)
