@@ -5,6 +5,7 @@ import { PlnBadge } from './PlnBadge';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, Key, AlertCircle, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 
 import { loginWithCloudOrLocal } from '../lib/authService';
+import plnRowInspectionBg from '../assets/images/pln_row_inspection_1792108668671.jpg';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
@@ -60,10 +61,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
       {/* 1. Background Foto Petugas PLN Melakukan Inspeksi Right of Way (ROW) */}
       <div className="absolute inset-0 overflow-hidden">
         <img
-          src="/src/assets/images/pln_row_inspection_1792108668671.jpg"
+          src={plnRowInspectionBg}
           alt="Petugas PLN ULP Baguala melakukan inspeksi Right of Way (ROW)"
           className="w-full h-full object-cover object-center filter brightness-[0.72] contrast-[1.08] scale-100 transition-transform duration-1000"
-          referrerPolicy="no-referrer"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (!img.src.endsWith('/assets/images/pln_row_inspection_1792108668671.jpg')) {
+              img.src = '/assets/images/pln_row_inspection_1792108668671.jpg';
+            }
+          }}
         />
         {/* Cinematic Vignette Overlay to maintain contrast & high readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/40" />
