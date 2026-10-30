@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MaintenanceWorkOrder, PoleData } from '../types';
 import { FileText, Plus, Printer, CheckCircle, Clock, Zap, Calendar, UserCheck, Edit3, RotateCcw } from 'lucide-react';
-import { GisPlnLogo } from './GisPlnLogo';
+import plnOfficialLogo from '../assets/images/Logo_PLN.png';
 
 interface SpkManagerProps {
   spks: MaintenanceWorkOrder[];
@@ -231,36 +231,52 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                   <div className="space-y-4">
                     
                     {/* 1. Official PLN Header (Kop Surat Resmi) */}
-                    <div className="border-b-2 border-slate-900 pb-2.5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                          <GisPlnLogo size={52} withBadge={false} className="shrink-0" />
-                          <div>
-                            <h1 className="font-black text-base sm:text-lg text-slate-950 tracking-tight leading-tight">
-                              PT PLN (PERSERO) UIW MMU
+                    <div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 shrink-0">
+                          <img
+                            src={plnOfficialLogo}
+                            alt="Logo Resmi PT PLN (Persero)"
+                            className="h-16 w-auto object-contain shrink-0 select-none"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (!img.src.includes('Logo_PLN_67ac91e8.png')) {
+                                img.src = '/assets/aistudio/Logo_PLN_67ac91e8.png';
+                              }
+                            }}
+                          />
+                          <div className="flex flex-col justify-center">
+                            <h1 className="font-black text-sm sm:text-[15px] text-slate-950 tracking-tight leading-tight uppercase whitespace-nowrap">
+                              PT PLN (PERSERO) UID MALUKU &amp; MALUKU UTARA
                             </h1>
-                            <h2 className="font-extrabold text-[11px] sm:text-xs text-slate-800 leading-tight">
-                              UP3 AMBON - UNIT LAYANAN PELANGGAN (ULP) BAGUALA
+                            <h2 className="font-bold text-xs text-slate-900 tracking-wide uppercase leading-tight mt-0.5">
+                              UP3 AMBON — ULP BAGUALA
                             </h2>
-                            <p className="text-[10px] text-slate-600 mt-0.5 leading-snug">
-                              Jl. Waitatiri Raya, Suli, Kec. Salahutu, Kota Ambon, Maluku | Call Center : 123
+                            <p className="text-[10.5px] text-slate-600 leading-tight mt-1 whitespace-nowrap">
+                              Jalan Waitatiri Raya, Suli, Kec. Salahutu, Kota Ambon, Maluku
+                            </p>
+                            <p className="text-[10.5px] text-slate-500 leading-tight mt-0.5">
+                              pln123@pln.co.id
                             </p>
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
-                          <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded font-mono font-bold text-xs border border-amber-300 inline-block">
+                        <div className="text-right shrink-0 flex flex-col items-end justify-center">
+                          <div className="bg-amber-50 text-amber-900 px-3 py-1 rounded font-mono font-bold text-xs border border-amber-300 inline-block shadow-xs">
                             {selectedSpk.spkNumber}
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-1">Tanggal: <b>{selectedSpk.createdAt}</b></div>
-                          <div className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider mt-0.5">
+                          <div className="text-[10px] text-slate-500 mt-1">Tanggal: <b className="text-slate-800">{selectedSpk.createdAt}</b></div>
+                          <div className="text-[9px] text-emerald-700 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1 justify-end">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                             Status: Disetujui
                           </div>
                         </div>
                       </div>
                       
-                      {/* Secondary thin rule for official BUMN header look */}
-                      <div className="border-b border-slate-800 mt-1.5" />
+                      {/* Authentic BUMN Kop Surat Double Rule Divider */}
+                      <div className="mt-2.5 border-b-2 border-slate-950">
+                        <div className="border-b border-slate-700 mt-[2px]" />
+                      </div>
                     </div>
 
                     {/* 2. Document Title */}

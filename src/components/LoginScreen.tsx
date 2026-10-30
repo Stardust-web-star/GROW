@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserAccount } from '../types';
-import { GisPlnLogo } from './GisPlnLogo';
 import { PlnBadge } from './PlnBadge';
+import growEmblemImg from '../assets/images/GROW_Emblem.png';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, Key, AlertCircle, Sparkles, CheckCircle2, Clock } from 'lucide-react';
 
 import { loginWithCloudOrLocal } from '../lib/authService';
@@ -104,11 +104,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
 
           {/* Center: GROW Emblem & Brand Typography */}
           <div className="relative z-10 my-8 sm:my-10 flex flex-col items-start">
-            {/* Glowing Emblem Circle */}
+            {/* Glowing GROW Official Circular Emblem */}
             <div className="relative mb-5 group">
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full blur-md opacity-60 group-hover:opacity-100 transition duration-500" />
-              <div className="relative w-20 h-20 rounded-full bg-slate-950 p-1 flex items-center justify-center border-2 border-teal-400/80 shadow-2xl">
-                <GisPlnLogo size={58} withBadge={false} />
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full blur-md opacity-70 group-hover:opacity-100 transition duration-500" />
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-1.5 flex items-center justify-center border-2 border-teal-400/80 shadow-2xl overflow-hidden">
+                <img
+                  src={growEmblemImg}
+                  alt="Logo Resmi GROW (Great Right of Way)"
+                  className="w-full h-full object-contain select-none"
+                  draggable={false}
+                />
               </div>
             </div>
 
@@ -119,9 +124,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
             <p className="font-extrabold text-xs text-teal-300 tracking-widest uppercase mt-1">
               GREAT RIGHT OF WAY
             </p>
+            <p className="text-[11px] font-semibold text-cyan-200/90 mt-1 tracking-wide">
+              Pemetaan Lokasi dan Maintenance ROW PLN
+            </p>
 
             {/* Description */}
-            <p className="text-xs text-slate-300 mt-4 leading-relaxed font-normal">
+            <p className="text-xs text-slate-300 mt-3 leading-relaxed font-normal">
               Sistem Terpadu Pemantauan Right of Way (ROW) & Manajemen Aset Jaringan Tiang Listrik ULP Baguala PT PLN (Persero).
             </p>
           </div>
@@ -140,8 +148,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
             {/* Mobile-Only Compact Branding Header (Eliminates multi-paragraph hero on mobile) */}
             <div className="md:hidden flex items-center justify-between pb-2.5 mb-2.5 border-b border-teal-500/20">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-teal-400/80 shadow-md shrink-0">
-                  <GisPlnLogo size={28} withBadge={false} />
+                <div className="w-9 h-9 rounded-full bg-white p-0.5 flex items-center justify-center border border-teal-400/80 shadow-md shrink-0 overflow-hidden">
+                  <img src={growEmblemImg} alt="Logo GROW" className="w-full h-full object-contain select-none" />
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">

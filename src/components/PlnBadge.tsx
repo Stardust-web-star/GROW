@@ -1,4 +1,5 @@
 import React from 'react';
+import plnEmblemImg from '../assets/images/PLN_Emblem.png';
 
 interface PlnBadgeProps {
   className?: string;
@@ -7,12 +8,11 @@ interface PlnBadgeProps {
 
 /**
  * Official PLN ULP Baguala Pill Badge
- * Matches the official identity with:
- * - Golden yellow rounded emblem (#FFCC00)
- * - 3 Blue horizontal energy waves (#0088FF)
- * - Red electric lightning bolt (#DC2626)
- * - Electric Cyan "PLN" text (#00E5FF)
- * - Mint/Teal "ULP BAGUALA" text (#A7F3D0)
+ * Exactly matches image_4e638016.png & official PLN Brand guidelines:
+ * - Rounded pill container with dark teal-cyan background (#022123) and glowing teal border
+ * - Authentic PLN Golden Yellow square emblem with official 3 cyan waves & sharp red lightning bolt
+ * - Bold Electric Cyan "PLN" wordmark (#00E5FF)
+ * - Mint Pale-Green "ULP BAGUALA" subtitle (#A7F3D0)
  */
 export const PlnBadge: React.FC<PlnBadgeProps> = ({
   className = '',
@@ -20,8 +20,8 @@ export const PlnBadge: React.FC<PlnBadgeProps> = ({
 }) => {
   const iconSizes = {
     sm: 'w-6 h-6',
-    md: 'w-7 h-7 sm:w-8 sm:h-8',
-    lg: 'w-9 h-9'
+    md: 'w-8 h-8',
+    lg: 'w-10 h-10'
   };
 
   const plnTextSizes = {
@@ -32,58 +32,43 @@ export const PlnBadge: React.FC<PlnBadgeProps> = ({
 
   const ulpTextSizes = {
     sm: 'text-[8px]',
-    md: 'text-[9px] sm:text-[10px]',
+    md: 'text-[9.5px] sm:text-[10.5px]',
     lg: 'text-xs'
+  };
+
+  const paddings = {
+    sm: 'px-2.5 py-1',
+    md: 'px-3 py-1.5',
+    lg: 'px-3.5 py-2'
   };
 
   return (
     <div
-      className={`inline-flex items-center gap-2 bg-[#022123]/95 hover:bg-[#032a2c] backdrop-blur-md px-2.5 sm:px-3 py-1.5 rounded-xl border border-teal-500/50 shadow-md transition-all duration-200 select-none w-fit max-w-fit shrink-0 self-start ${className}`}
+      className={`inline-flex items-center gap-2.5 bg-[#022123]/95 hover:bg-[#032a2c] backdrop-blur-md ${paddings[size]} rounded-2xl border border-teal-500/50 shadow-lg shadow-teal-950/40 transition-all duration-200 select-none w-fit max-w-fit shrink-0 self-start ${className}`}
+      aria-label="PT PLN (Persero) ULP Baguala"
     >
-      {/* Yellow Emblem with 3 Blue Waves and Red Lightning Bolt */}
+      {/* Official Golden Yellow Emblem with 3 Waves & Red Lightning Bolt */}
       <div
-        className={`${iconSizes[size]} rounded-lg bg-[#FFCC00] flex items-center justify-center p-0.5 shadow-sm shrink-0 overflow-hidden relative`}
+        className={`${iconSizes[size]} rounded-xl bg-[#FFE600] flex items-center justify-center p-0.5 shadow-sm shrink-0 overflow-hidden relative`}
       >
-        <svg
-          viewBox="0 0 100 100"
-          className="w-full h-full"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Three Blue Wavy Lines (Hydro / Electricity Flow) */}
-          <g
-            stroke="#0080FF"
-            strokeWidth="7.5"
-            strokeLinecap="round"
-            fill="none"
-          >
-            {/* Top Wave */}
-            <path d="M 12 32 C 22 23, 31 41, 41 32 C 51 23, 60 41, 70 32 C 79 23, 86 36, 88 32" />
-            {/* Middle Wave */}
-            <path d="M 12 52 C 22 43, 31 61, 41 52 C 51 43, 60 61, 70 52 C 79 43, 86 56, 88 52" />
-            {/* Bottom Wave */}
-            <path d="M 12 72 C 22 63, 31 81, 41 72 C 51 63, 60 81, 70 72 C 79 63, 86 76, 88 72" />
-          </g>
-
-          {/* Central Red Lightning Bolt (Petir Kilat Merah PLN) */}
-          <polygon
-            points="58,10 36,46 52,46 40,90 68,41 53,41"
-            fill="#DC2626"
-            stroke="#FFCC00"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <img
+          src={plnEmblemImg}
+          alt="Logo Resmi PLN"
+          className="w-full h-full object-contain select-none"
+          draggable={false}
+          loading="eager"
+        />
       </div>
 
-      {/* Official Typography: PLN (Cyan) & ULP BAGUALA (Mint/Teal) */}
+      {/* Official Corporate Typography: PLN (Cyan) & ULP BAGUALA (Mint Green) */}
       <div className="text-left flex flex-col justify-center leading-none">
         <span
-          className={`font-black ${plnTextSizes[size]} text-[#00E5FF] tracking-wide leading-tight drop-shadow-xs`}
+          className={`font-black ${plnTextSizes[size]} text-[#00E5FF] tracking-wide leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]`}
         >
           PLN
         </span>
         <span
-          className={`font-bold ${ulpTextSizes[size]} text-[#A7F3D0] tracking-wider uppercase leading-tight mt-0.5 drop-shadow-xs`}
+          className={`font-bold ${ulpTextSizes[size]} text-[#A7F3D0] tracking-wider uppercase leading-tight mt-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]`}
         >
           ULP BAGUALA
         </span>
@@ -93,3 +78,4 @@ export const PlnBadge: React.FC<PlnBadgeProps> = ({
 };
 
 export default PlnBadge;
+
