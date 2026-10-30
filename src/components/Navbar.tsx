@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { 
   Map, BarChart3, AlertTriangle, FileText, Upload, Bot, Zap, Users, LogOut, 
-  ChevronLeft, Grid, X, ShieldCheck, Plus
+  ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone
 } from 'lucide-react';
 import { GisPlnLogo } from './GisPlnLogo';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
 import { UserAccount } from '../types';
-import { SyncStatusBadge } from './SyncStatusBadge';
 import { SystemMetaState } from '../lib/firebase';
+import { PwaInstallModal } from './PwaInstallModal';
 
 interface NavbarProps {
   activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
@@ -43,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onAddCustomPole
 }) => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
 
   return (
     <>
@@ -175,13 +176,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
-              {/* Interactive Real-Time 2-Way Sync Badge (AI Studio ⇄ Vercel) */}
-              <SyncStatusBadge
-                systemMeta={systemMeta || null}
-                totalPoles={totalPoles}
-                totalSpans={totalSpans || 0}
-                isCloudConnected={isCloudConnected}
-              />
+
+              {/* Mobile App PWA Install Button */}
+              <button
+                onClick={() => setShowPwaModal(true)}
+                className="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white border border-emerald-500/40 px-3 h-9 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs whitespace-nowrap btn-tactile"
+                title="Pasang aplikasi GROW di HP Android & iPhone petugas"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="hidden xl:inline">App Mobile</span>
+              </button>
 
               <button
                 onClick={onOpenAiAssistant}
@@ -387,19 +391,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            {/* Sync Status Badge on Mobile */}
-            <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs font-bold text-slate-200">Status Database Cloud</span>
-              </div>
-              <SyncStatusBadge
-                systemMeta={systemMeta || null}
-                totalPoles={totalPoles}
-                totalSpans={totalSpans || 0}
-                isCloudConnected={isCloudConnected}
-              />
-            </div>
 
             {/* Quick Metrics */}
             <div className="grid grid-cols-3 gap-2">
@@ -416,6 +407,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="text-[10px] text-slate-400 font-medium">Kritis</div>
               </div>
             </div>
+
+            {/* Install PWA Mobile App Card */}
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setShowPwaModal(true);
+              }}
+              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/80 to-slate-900 border border-emerald-500/40 text-left transition-all cursor-pointer shadow-lg active:scale-98"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shrink-0">
+                  <Smartphone className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-white flex items-center gap-1.5">
+                    <span>Install Aplikasi GROW ke HP</span>
+                    <span className="text-[9px] bg-emerald-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full">PWA</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-300/80 mt-0.5">
+                    Akses cepat offline &amp; layar penuh untuk Android / iPhone
+                  </div>
+                </div>
+              </div>
+              <span className="text-sm text-emerald-400 font-bold">›</span>
+            </button>
 
             {/* Feature Actions Grid */}
             <div className="space-y-1.5 pt-1">
@@ -522,6 +538,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
       )}
+
+      {/* PWA Mobile Installation Modal */}
+      <PwaInstallModal
+        isOpen={showPwaModal}
+        onClose={() => setShowPwaModal(false)}
+      />
     </>
   );
 };

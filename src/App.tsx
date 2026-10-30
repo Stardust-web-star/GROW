@@ -12,6 +12,7 @@ import { AiAssistantDrawer } from './components/AiAssistantDrawer';
 import { FeederManagerDrawer } from './components/FeederManagerDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { Plus, X } from 'lucide-react';
 import {
   savePoleToCloud,
@@ -1110,6 +1111,9 @@ export default function App() {
           setActiveTab('kmz');
         }}
       />
+
+      {/* Network Offline / Online Connectivity Toast */}
+      <OfflineIndicator />
 
     </div>
   );
