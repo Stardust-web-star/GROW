@@ -141,6 +141,11 @@ html, body, input, button, select, textarea {
   text-rendering: optimizeLegibility !important;
 }
 
+/* Hide default zoom control (+/-) */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
 /* Ensure map cursor defaults to an arrow (panah), interactive pins/cables to pointer, and only active pan is grabbing */
 .leaflet-container,
 .leaflet-container.leaflet-grab,
@@ -168,33 +173,121 @@ html, body, input, button, select, textarea {
   cursor: crosshair !important;
 }
 
-.leaflet-popup {
+/* ELIMINATE BLUR & HAZINESS: Leaflet Popups & Tooltips crystal clear rendering */
+.leaflet-popup,
+.leaflet-tooltip {
   filter: none !important;
+  -webkit-filter: none !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
-  text-rendering: optimizeLegibility !important;
+  text-rendering: geometricPrecision !important;
+  transform-style: flat !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
+  will-change: auto !important;
+}
+
+.leaflet-popup-pane,
+.leaflet-tooltip-pane {
+  will-change: auto !important;
+  transform: translateZ(0);
 }
 
 .leaflet-popup-content-wrapper {
   background: #ffffff !important;
-  color: #0f172a !important;
-  border-radius: 12px !important;
-  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid #cbd5e1 !important;
+  color: #090d16 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 8px 18px -4px rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid #0284c7 !important;
   padding: 0 !important;
+  overflow: hidden !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: geometricPrecision !important;
+  transform: translateZ(0);
 }
 
 .leaflet-popup-content {
-  margin: 12px 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
   line-height: 1.4 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: geometricPrecision !important;
 }
 
 .leaflet-popup-tip {
   background: #ffffff !important;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Modern, high-visibility popup close button */
+.leaflet-popup-close-button {
+  top: 10px !important;
+  right: 10px !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 9999px !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  background: #fee2e2 !important;
+  color: #ef4444 !important;
+  border-color: #fca5a5 !important;
+}
+
+/* High-contrast, 100% solid, razor-sharp LANDSCAPE Tooltip */
+.custom-map-tooltip,
+.leaflet-tooltip {
+  background: #ffffff !important;
+  opacity: 1 !important;
+  color: #090d16 !important;
+  border: 2px solid #0284c7 !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), 0 6px 14px rgba(0, 0, 0, 0.25) !important;
+  white-space: normal !important;
+  min-width: 340px !important;
+  max-width: 480px !important;
+  width: max-content !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: geometricPrecision !important;
+  transform: translateZ(0);
+}
+
+.custom-map-tooltip:before,
+.leaflet-tooltip-top:before {
+  border-top-color: #0284c7 !important;
+}
+
+.leaflet-tooltip-bottom:before {
+  border-bottom-color: #0284c7 !important;
+}
+
+.leaflet-tooltip-left:before {
+  border-left-color: #0284c7 !important;
+}
+
+.leaflet-tooltip-right:before {
+  border-right-color: #0284c7 !important;
 }
 
 /* Custom sleek dark scrollbar */

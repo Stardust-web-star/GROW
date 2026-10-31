@@ -242,7 +242,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       const map = L.map(mapContainerRef.current, {
         center: [-3.6285, 128.2321],
         zoom: 14,
-        zoomControl: true,
+        zoomControl: false,
         preferCanvas: true,
         wheelDebounceTime: 50,
         wheelPxPerZoomLevel: 100,
@@ -890,8 +890,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         });
 
         coreCircle.bindTooltip(
-          `<b>🔥 ZONA BAHAYA KRITIS</b><br/>ID: ${p.id} (${p.code})<br/>Lokasi: ${p.locationName}<br/>Kondisi: ${p.physicalCondition}<br/>ROW: ${p.clearanceDistanceMeters}m`,
-          { sticky: true }
+          `<div style="min-width:320px; max-width:420px; font-family:inherit;">` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1.5px solid #fecaca; padding-bottom:3px; margin-bottom:4px;">` +
+              `<span style="font-size:13px; font-weight:900; color:#b91c1c;">🔥 ZONA BAHAYA KRITIS</span>` +
+              `<span style="font-size:12px; font-weight:800; color:#090d16;">${p.id} (${p.code})</span>` +
+            `</div>` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:11.5px; color:#1e293b; font-weight:700; margin-bottom:3px;">` +
+              `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:210px;">📍 ${p.locationName}</span>` +
+              `<span style="color:#b91c1c; font-weight:900; white-space:nowrap;">ROW: ${p.clearanceDistanceMeters}m</span>` +
+            `</div>` +
+            `<div style="font-size:11px; color:#64748b; font-weight:600;">` +
+              `Kondisi Fisik: <b style="color:#0f172a;">${p.physicalCondition}</b>` +
+            `</div>` +
+          `</div>`,
+          { sticky: true, direction: 'top', opacity: 1.0, className: 'custom-map-tooltip' }
         );
         coreCircle.addTo(heatmapGroup);
       });
@@ -964,81 +976,107 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           }
         );
 
-        const tooltipStatus = cableColorMode === 'byFeeder'
-          ? `Penyulang: <b style="color:${lineColor}; font-weight:bold;">${effectiveFeeder}</b>`
-          : `Mode ROW: <b style="color:${lineColor}; font-weight:bold;">${lineModeDesc}</b><br/>Jarak Pohon: <b>${treeDist < 90 ? treeDist + 'm' : '-'}</b> | Bangunan: <b>${bldgDist < 90 ? bldgDist + 'm' : '-'}</b> | Fisik: <b>${span.cableCondition || 'Baik'}</b>`;
+        const treeInfo = treeDist < 90 ? `${treeDist}m` : '-';
+        const bldgInfo = bldgDist < 90 ? `${bldgDist}m` : '-';
+        const modeBadgeLabel = cableColorMode === 'byFeeder' 
+          ? `⚡ Feeder ${effectiveFeeder}` 
+          : lineModeDesc;
 
         line.bindTooltip(
-          `<b>${fromPole.code} ↔ ${toPole.code}</b><br/>${span.conductorType} (Spat: ${span.lengthMeters}m)<br/>${tooltipStatus}<br/><span style="color:#f59e0b; font-size:10px; font-weight:bold;">👉 Klik kabel untuk opsi edit / hapus</span>`,
-          { sticky: true }
+          `<div style="min-width:330px; max-width:460px; font-family:inherit;">` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
+              `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em;">` +
+                `${fromPole.code} <span style="color:#0284c7; font-weight:800;">↔</span> ${toPole.code}` +
+              `</div>` +
+              `<div style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; white-space:nowrap;">` +
+                `${span.conductorType} (${span.lengthMeters}m)` +
+              `</div>` +
+            `</div>` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; margin-bottom:5px;">` +
+              `<div style="font-weight:800; color:${lineColor}; white-space:nowrap;">` +
+                `${modeBadgeLabel}` +
+              `</div>` +
+              `<div style="font-size:11.5px; font-weight:700; color:#334155; white-space:nowrap;">` +
+                `Pohon: <b>${treeInfo}</b> · Bangunan: <b>${bldgInfo}</b>` +
+              `</div>` +
+            `</div>` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:800; color:#d97706; background:#fef3c7; border:1px solid #fcd34d; padding:3px 8px; border-radius:6px;">` +
+              `<span>👉 Klik kabel untuk opsi edit / hapus</span>` +
+              `<span style="color:#78350f; font-weight:700;">Fisik: ${span.cableCondition || 'Baik'}</span>` +
+            `</div>` +
+          `</div>`,
+          { sticky: true, direction: 'top', opacity: 1.0, className: 'custom-map-tooltip' }
         );
 
         // Lazy popup creator: executed on-demand only when polyline is clicked
         line.bindPopup(() => {
           const cablePopupContent = document.createElement('div');
-          cablePopupContent.className = 'p-3.5 max-w-xs text-slate-900 font-sans';
+          cablePopupContent.className = 'p-4 text-slate-900 font-sans';
+          cablePopupContent.style.minWidth = '300px';
+          cablePopupContent.style.maxWidth = '340px';
           cablePopupContent.innerHTML = `
-            <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#b45309; margin-bottom:2px;">
+            <div style="display:inline-flex; align-items:center; gap:5px; background:#fef3c7; border:1px solid #fcd34d; color:#92400e; font-size:11.5px; font-weight:800; padding:2.5px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
               ⚡ Kabel Distribusi · ${effectiveFeeder}
             </div>
-            <div style="font-weight:900; font-size:16px; color:#0f172a; margin-bottom:2px;">
+            <div style="font-weight:900; font-size:17px; color:#090d16; line-height:1.2; margin-bottom:3px; letter-spacing:-0.01em;">
               ${fromPole.code} ↔ ${toPole.code}
             </div>
-            <div style="font-size:12px; font-weight:600; color:#475569; margin-bottom:8px;">
-              Panjang Bentangan (Spat): <b>${span.lengthMeters} meter</b>
+            <div style="font-size:12.5px; font-weight:700; color:#1e293b; margin-bottom:10px;">
+              Panjang Bentangan (Spat): <b style="color:#0284c7; font-weight:800;">${span.lengthMeters} meter</b>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:10px; font-size:11.5px;">
-              <div style="background:#f8fafc; padding:5px 8px; border-radius:6px; border:1px solid #cbd5e1; font-weight:600;">
-                Konduktor: <b style="color:#0f172a;">${span.conductorType}</b>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px; font-size:12px;">
+              <div style="background:#f1f5f9; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#475569; font-weight:700;">Konduktor:</span>
+                <b style="color:#090d16; font-weight:800;">${span.conductorType}</b>
               </div>
-              <div style="background:#f8fafc; padding:5px 8px; border-radius:6px; border:1px solid #cbd5e1; display:flex; justify-content:space-between; font-weight:600;">
-                <span>Kondisi Kabel:</span>
-                <b style="color:#0f172a;">${span.cableCondition || 'Baik'}</b>
+              <div style="background:#f1f5f9; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; display:flex; justify-content:space-between; align-items:center; font-weight:600;">
+                <span style="color:#475569; font-weight:700;">Kondisi Kabel:</span>
+                <b style="color:#090d16; font-weight:800;">${span.cableCondition || 'Baik'}</b>
               </div>
-              <div style="background:${isCableCritical ? '#fef2f2' : isCableViolation ? '#fffbeb' : '#f0fdf4'}; color:${isCableCritical ? '#991b1b' : isCableViolation ? '#92400e' : '#166534'}; padding:6px 8px; border-radius:6px; border:1px solid ${isCableCritical ? '#fecaca' : isCableViolation ? '#fde68a' : '#bbf7d0'};">
-                <div style="font-weight:600;">Jarak Pohon: <b>${span.treeDistanceMeters ?? 3.5}m</b> | Bangunan: <b>${span.buildingDistanceMeters ?? 4.0}m</b></div>
-                <div style="font-size:11px; font-weight:800; margin-top:2px;">
+              <div style="background:${isCableCritical ? '#fee2e2' : isCableViolation ? '#fef3c7' : '#f0fdf4'}; color:${isCableCritical ? '#991b1b' : isCableViolation ? '#78350f' : '#166534'}; padding:8px 10px; border-radius:8px; border:1.5px solid ${isCableCritical ? '#f87171' : isCableViolation ? '#fcd34d' : '#86efac'};">
+                <div style="font-weight:700; font-size:12px;">Jarak Pohon: <b>${span.treeDistanceMeters ?? 3.5}m</b> | Bangunan: <b>${span.buildingDistanceMeters ?? 4.0}m</b></div>
+                <div style="font-size:11.5px; font-weight:900; margin-top:3px;">
                   ${isCableCritical ? '🔴 Bahaya Kritis (<1.5m / Kabel Rusak)' : isCableViolation ? '🟡 Pelanggaran ROW (<3.0m / Kabel Kendor)' : '✅ Sesuai Standar ROW (≥3.0m)'}
                 </div>
               </div>
             </div>
 
             <!-- Foto Kondisi Kabel Section -->
-            <div class="cable-photo-box" style="margin-bottom:8px;">
+            <div class="cable-photo-box" style="margin-bottom:10px;">
               ${span.photoUrl ? `
-                <div style="border-radius:8px; overflow:hidden; border:1px solid #cbd5e1; background:#f8fafc;">
-                  <div class="btn-zoom-cable-img" style="position:relative; width:100%; height:120px; cursor:pointer; background:#0f172a;" title="Klik untuk perbesar foto">
+                <div style="border-radius:8px; overflow:hidden; border:1.5px solid #cbd5e1; background:#f8fafc;">
+                  <div class="btn-zoom-cable-img" style="position:relative; width:100%; height:130px; cursor:pointer; background:#0f172a;" title="Klik untuk perbesar foto">
                     <img src="${span.photoUrl}" alt="Kondisi Kabel" style="width:100%; height:100%; object-fit:cover;" />
-                    <div style="position:absolute; bottom:0; inset-x:0; background:linear-gradient(to top, rgba(0,0,0,0.75), transparent); padding:3px 8px; color:white; font-size:10px; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="position:absolute; bottom:0; inset-x:0; background:linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding:4px 8px; color:white; font-size:11px; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
                       <span>📸 Foto Kondisi Kabel</span>
-                      <span style="font-size:9px; background:rgba(255,255,255,0.25); padding:1px 5px; border-radius:3px;">🔍 Perbesar</span>
+                      <span style="font-size:10px; background:rgba(255,255,255,0.3); padding:2px 6px; border-radius:4px; font-weight:800;">🔍 Perbesar</span>
                     </div>
                   </div>
-                  <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; font-size:11px; background:#f1f5f9;">
-                    <label style="color:#0284c7; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; font-size:11.5px; background:#f1f5f9; border-top:1px solid #cbd5e1;">
+                    <label style="color:#0284c7; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:4px;">
                       🔄 Ganti Foto
                       <input type="file" accept="image/*" class="input-cable-photo" style="display:none;" />
                     </label>
-                    <button class="btn-del-cable-photo" style="color:#ef4444; font-weight:700; background:none; border:none; cursor:pointer; font-size:11px;">
+                    <button class="btn-del-cable-photo" style="color:#dc2626; font-weight:800; background:none; border:none; cursor:pointer; font-size:11.5px;">
                       🗑️ Hapus
                     </button>
                   </div>
                 </div>
               ` : `
-                <label style="display:flex; align-items:center; justify-content:center; gap:6px; background:#f0f9ff; border:1.5px dashed #0284c7; border-radius:7px; padding:7px 10px; cursor:pointer; color:#0369a1; font-size:11.5px; font-weight:800; transition:all 0.2s;" class="dropzone-cable-photo">
+                <label style="display:flex; align-items:center; justify-content:center; gap:6px; background:#f0f9ff; border:2px dashed #0284c7; border-radius:8px; padding:9px 12px; cursor:pointer; color:#0284c7; font-size:12px; font-weight:800; transition:all 0.15s;" class="dropzone-cable-photo">
                   <span>📷 Unggah Foto Kondisi Kabel</span>
                   <input type="file" accept="image/*" class="input-cable-photo" style="display:none;" />
                 </label>
               `}
             </div>
 
-            <div class="cable-popup-actions" style="margin-top:6px;">
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-                <button class="btn-edit-cable-act" style="background:#f59e0b; color:#0f172a; font-size:12px; padding:8px; border-radius:7px; border:1px solid #d97706; font-weight:800; cursor:pointer;">
+            <div class="cable-popup-actions">
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:7px;">
+                <button class="btn-edit-cable-act" style="background:#f59e0b; color:#0f172a; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #d97706; font-weight:900; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
                   ✏️ Ubah Info
                 </button>
-                <button class="btn-delete-cable-act" style="background:#ef4444; color:#ffffff; font-size:12px; padding:8px; border-radius:7px; border:1px solid #dc2626; font-weight:800; cursor:pointer;">
+                <button class="btn-delete-cable-act" style="background:#ef4444; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #dc2626; font-weight:800; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
                   🗑️ Hapus Kabel
                 </button>
               </div>
@@ -1184,7 +1222,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           }
 
           return cablePopupContent;
-        }, { autoPan: false });
+        }, { autoPan: false, maxWidth: 360, minWidth: 300 });
 
         line.on('click', (e) => {
           if (isPullingCableRef.current) return;
@@ -1288,13 +1326,34 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         marker = L.marker([pole.lat, pole.lng], { icon: customIcon });
       }
 
-      const tooltipModeInfo = cableColorMode === 'byFeeder'
-        ? `Penyulang: <b style="color:${poleColor}; font-weight:bold;">${pole.feeder}</b>`
-        : `Mode ROW: <b style="color:${poleColor}; font-weight:bold;">${statusLabel}</b>`;
+      const feederOrRowBadge = cableColorMode === 'byFeeder'
+        ? `⚡ ${pole.feeder}`
+        : statusLabel;
 
       marker.bindTooltip(
-        `<b>${pole.code}</b> (${pole.type})<br/>${tooltipModeInfo}<br/>📍 ${pole.locationName}<br/>ROW Lingkungan: <b>${pole.clearanceDistanceMeters}m</b> (${pole.clearanceObject}) | Fisik: <b>${pole.physicalCondition}</b>`,
-        { sticky: true, direction: 'top' }
+        `<div style="min-width:330px; max-width:460px; font-family:inherit;">` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
+            `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em;">` +
+              `${pole.code} <span style="font-size:12px; font-weight:800; color:#0284c7;">(${pole.type})</span>` +
+            `</div>` +
+            `<div style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; background:#f1f5f9; border:1px solid #cbd5e1; color:${poleColor}; white-space:nowrap;">` +
+              `${feederOrRowBadge}` +
+            `</div>` +
+          `</div>` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; margin-bottom:5px;">` +
+            `<div style="font-weight:700; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px;" title="${pole.locationName}">` +
+              `📍 ${pole.locationName}` +
+            `</div>` +
+            `<div style="font-size:11px; font-weight:800; color:${pole.physicalCondition === 'Baik' ? '#14532d' : '#991b1b'}; background:${pole.physicalCondition === 'Baik' ? '#dcfce7' : '#fee2e2'}; border:1px solid ${pole.physicalCondition === 'Baik' ? '#86efac' : '#fca5a5'}; padding:1.5px 7px; border-radius:5px; white-space:nowrap;">` +
+              `Fisik: ${pole.physicalCondition}` +
+            `</div>` +
+          `</div>` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:4px 8px; border-radius:6px;">` +
+            `<span>Jarak ROW: <b style="color:#090d16; font-size:12px;">${pole.clearanceDistanceMeters}m</b></span>` +
+            `<span style="color:#64748b; font-weight:600;">Objek: <b style="color:#1e293b;">${pole.clearanceObject}</b></span>` +
+          `</div>` +
+        `</div>`,
+        { sticky: true, direction: 'top', opacity: 1.0, className: 'custom-map-tooltip' }
       );
 
       const createPolePopup = () => {
@@ -1309,104 +1368,113 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         let connectedCablesHtml = '';
         if (connectedSpansToPole.length > 0) {
           connectedCablesHtml = `
-            <div style="font-size:11px; font-weight:800; color:#0f172a; margin-top:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-              <span>⚡ Kabel Terhubung (${connectedSpansToPole.length}):</span>
-            </div>
-            <div style="max-height:90px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; padding:3px; margin-bottom:8px;">
-              ${connectedSpansToPole.map(s => {
-                const otherId = (s.fromPoleId.toLowerCase() === pole.id.toLowerCase() || s.fromPoleId.toLowerCase() === pole.code.toLowerCase())
-                  ? s.toPoleId
-                  : s.fromPoleId;
-                const otherPole = poleMap.get(otherId);
-                const otherCode = otherPole?.code || otherId;
-                return `
-                  <div style="display:flex; align-items:center; justify-content:space-between; padding:4px 6px; font-size:11px; border-bottom:1px solid #e2e8f0;">
-                    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; font-weight:600; color:#1e293b;">
-                      <b>↔ ${otherCode}</b> (${s.lengthMeters}m)
+            <div style="margin-bottom:10px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:9px; overflow:hidden;">
+              <div style="background:#e2e8f0; padding:5px 8px; font-size:11.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:5px;">
+                ⚡ Kabel Terhubung (${connectedSpansToPole.length}):
+              </div>
+              <div style="max-height:100px; overflow-y:auto; padding:2px;">
+                ${connectedSpansToPole.map(s => {
+                  const otherId = (s.fromPoleId.toLowerCase() === pole.id.toLowerCase() || s.fromPoleId.toLowerCase() === pole.code.toLowerCase())
+                    ? s.toPoleId
+                    : s.fromPoleId;
+                  const otherPole = poleMap.get(otherId);
+                  const otherCode = otherPole?.code || otherId;
+                  return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:5px 8px; font-size:12px; border-bottom:1px solid #e2e8f0; background:#ffffff;">
+                      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px; font-weight:700; color:#0f172a;">
+                        <b>↔ ${otherCode}</b> (${s.lengthMeters}m)
+                      </div>
+                      <div style="display:flex; gap:5px;">
+                        <button data-id="${s.id}" class="btn-pole-edit-span" style="background:#f59e0b; color:#0f172a; padding:4px 9px; border-radius:5px; border:1px solid #d97706; font-size:11px; font-weight:800; cursor:pointer;">Ubah</button>
+                        <button data-id="${s.id}" class="btn-pole-del-span" style="background:#ef4444; color:#ffffff; padding:4px 9px; border-radius:5px; border:1px solid #dc2626; font-size:11px; font-weight:800; cursor:pointer;">Hapus</button>
+                      </div>
                     </div>
-                    <div style="display:flex; gap:4px;">
-                      <button data-id="${s.id}" class="btn-pole-edit-span" style="background:#f59e0b; color:#0f172a; padding:3px 7px; border-radius:4px; border:1px solid #d97706; font-size:10px; font-weight:800; cursor:pointer;">Ubah</button>
-                      <button data-id="${s.id}" class="btn-pole-del-span" style="background:#ef4444; color:#ffffff; padding:3px 7px; border-radius:4px; border:1px solid #dc2626; font-size:10px; font-weight:800; cursor:pointer;">Hapus</button>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
+                  `;
+                }).join('')}
+              </div>
             </div>
           `;
         }
 
         const popupContent = document.createElement('div');
-        popupContent.className = 'p-3.5 max-w-xs text-slate-900 font-sans';
+        popupContent.className = 'p-4 text-slate-900 font-sans';
+        popupContent.style.minWidth = '300px';
+        popupContent.style.maxWidth = '340px';
         popupContent.innerHTML = `
-          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#b45309; margin-bottom:2px;">
+          <div style="display:inline-flex; align-items:center; gap:5px; background:#fef3c7; border:1px solid #fcd34d; color:#92400e; font-size:11.5px; font-weight:800; padding:2.5px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
             ⚡ ${pole.feeder} · ${pole.type}
           </div>
-          <div style="font-weight:900; font-size:16px; color:#0f172a; line-height:1.2; margin-bottom:3px;">
-            ${pole.id} <span style="font-size:13px; font-weight:700; color:#475569;">(${pole.code})</span>
+          <div style="font-weight:900; font-size:17px; color:#090d16; line-height:1.2; margin-bottom:3px; letter-spacing:-0.01em;">
+            ${pole.id} <span style="font-size:14px; font-weight:800; color:#0284c7;">(${pole.code})</span>
           </div>
-          <div style="font-size:12px; font-weight:600; color:#334155; margin-bottom:8px;">
-            📍 ${pole.locationName}
+          <div style="font-size:12.5px; font-weight:700; color:#1e293b; margin-bottom:10px; display:flex; align-items:flex-start; gap:4px; line-height:1.35;">
+            <span>📍</span> <span>${pole.locationName}</span>
           </div>
 
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-            <span style="background:${pole.physicalCondition === 'Baik' ? '#ecfdf5' : '#fef2f2'}; color:${pole.physicalCondition === 'Baik' ? '#065f46' : '#991b1b'}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; border:1px solid ${pole.physicalCondition === 'Baik' ? '#a7f3d0' : '#fecaca'};">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:8px;">
+            <div style="background:${pole.physicalCondition === 'Baik' ? '#dcfce7' : '#fee2e2'}; color:${pole.physicalCondition === 'Baik' ? '#14532d' : '#991b1b'}; font-size:11.5px; font-weight:800; padding:5px 8px; border-radius:8px; border:1.5px solid ${pole.physicalCondition === 'Baik' ? '#86efac' : '#f87171'}; text-align:center;">
               Kondisi: ${pole.physicalCondition}
-            </span>
-            <span style="background:${pole.clearanceDistanceMeters >= 3.0 ? '#eff6ff' : '#fffbeb'}; color:${pole.clearanceDistanceMeters >= 3.0 ? '#1e40af' : '#92400e'}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; border:1px solid ${pole.clearanceDistanceMeters >= 3.0 ? '#bfdbfe' : '#fde68a'};">
-              ROW: ${pole.clearanceDistanceMeters}m (${pole.clearanceStatus})
-            </span>
+            </div>
+            <div style="background:${pole.clearanceDistanceMeters >= 3.0 ? '#dbeafe' : '#fef3c7'}; color:${pole.clearanceDistanceMeters >= 3.0 ? '#1e40af' : '#78350f'}; font-size:11.5px; font-weight:800; padding:5px 8px; border-radius:8px; border:1.5px solid ${pole.clearanceDistanceMeters >= 3.0 ? '#93c5fd' : '#fcd34d'}; text-align:center;">
+              ROW: ${pole.clearanceDistanceMeters}m
+            </div>
           </div>
 
-          <div style="font-size:11px; font-weight:600; color:#64748b; margin-bottom:10px; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
-            Tahun Pasang: <b>${pole.installationYear}</b> | Inspeksi: <b>${pole.lastInspectionDate}</b>
+          <div style="background:${pole.clearanceDistanceMeters < 1.5 ? '#fee2e2' : pole.clearanceDistanceMeters < 3.0 ? '#fef3c7' : '#f0fdf4'}; color:${pole.clearanceDistanceMeters < 1.5 ? '#991b1b' : pole.clearanceDistanceMeters < 3.0 ? '#78350f' : '#166534'}; border:1px solid ${pole.clearanceDistanceMeters < 1.5 ? '#fca5a5' : pole.clearanceDistanceMeters < 3.0 ? '#fde68a' : '#bbf7d0'}; border-radius:7px; padding:5px 9px; font-size:11.5px; font-weight:800; margin-bottom:10px;">
+            Status: ${pole.clearanceStatus}
+          </div>
+
+          <div style="font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:10px; background:#f1f5f9; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; display:flex; justify-content:space-between;">
+            <span>Tahun Pasang: <b style="color:#090d16;">${pole.installationYear}</b></span>
+            <span>Inspeksi: <b style="color:#090d16;">${pole.lastInspectionDate}</b></span>
           </div>
 
           ${connectedCablesHtml}
 
           <!-- Foto Kondisi Tiang Section -->
-          <div class="pole-photo-box" style="margin-bottom:8px;">
+          <div class="pole-photo-box" style="margin-bottom:10px;">
             ${pole.photoUrl ? `
-              <div style="border-radius:8px; overflow:hidden; border:1px solid #cbd5e1; background:#f8fafc;">
+              <div style="border-radius:8px; overflow:hidden; border:1.5px solid #cbd5e1; background:#f8fafc;">
                 <div class="btn-zoom-pole-img" style="position:relative; width:100%; height:130px; cursor:pointer; background:#0f172a;" title="Klik untuk perbesar foto">
                   <img src="${pole.photoUrl}" alt="Kondisi Tiang ${pole.code}" style="width:100%; height:100%; object-fit:cover;" />
-                  <div style="position:absolute; bottom:0; inset-x:0; background:linear-gradient(to top, rgba(0,0,0,0.75), transparent); padding:3px 8px; color:white; font-size:10px; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                  <div style="position:absolute; bottom:0; inset-x:0; background:linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding:4px 8px; color:white; font-size:11px; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
                     <span>📸 Foto Kondisi Tiang</span>
-                    <span style="font-size:9px; background:rgba(255,255,255,0.25); padding:1px 5px; border-radius:3px;">🔍 Perbesar</span>
+                    <span style="font-size:10px; background:rgba(255,255,255,0.3); padding:2px 6px; border-radius:4px; font-weight:800;">🔍 Perbesar</span>
                   </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; font-size:11px; background:#f1f5f9;">
-                  <label style="color:#0284c7; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; font-size:11.5px; background:#f1f5f9; border-top:1px solid #cbd5e1;">
+                  <label style="color:#0284c7; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:4px;">
                     🔄 Ganti Foto
                     <input type="file" accept="image/*" class="input-pole-photo" style="display:none;" />
                   </label>
-                  <button class="btn-del-pole-photo" style="color:#ef4444; font-weight:700; background:none; border:none; cursor:pointer; font-size:11px;">
+                  <button class="btn-del-pole-photo" style="color:#dc2626; font-weight:800; background:none; border:none; cursor:pointer; font-size:11.5px;">
                     🗑️ Hapus
                   </button>
                 </div>
               </div>
             ` : `
-              <label style="display:flex; align-items:center; justify-content:center; gap:6px; background:#f0f9ff; border:1.5px dashed #0284c7; border-radius:7px; padding:7px 10px; cursor:pointer; color:#0369a1; font-size:11.5px; font-weight:800; transition:all 0.2s;" class="dropzone-pole-photo">
+              <label style="display:flex; align-items:center; justify-content:center; gap:6px; background:#f0f9ff; border:2px dashed #0284c7; border-radius:8px; padding:9px 12px; cursor:pointer; color:#0284c7; font-size:12px; font-weight:800; transition:all 0.15s;" class="dropzone-pole-photo">
                 <span>📷 Unggah Foto Kondisi Tiang</span>
                 <input type="file" accept="image/*" class="input-pole-photo" style="display:none;" />
               </label>
             `}
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:6px;">
-            <button class="btn-inspect-act" style="background:#0f172a; color:#ffffff; font-size:12px; padding:7px; border-radius:7px; border:1px solid #1e293b; font-weight:800; cursor:pointer;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:7px; margin-bottom:7px;">
+            <button class="btn-inspect-act" style="background:#0f172a; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #0f172a; font-weight:800; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
               + Inspeksi
             </button>
-            <button class="btn-spk-act" style="background:#f59e0b; color:#0f172a; font-size:12px; padding:7px; border-radius:7px; border:1px solid #d97706; font-weight:800; cursor:pointer;">
+            <button class="btn-spk-act" style="background:#f59e0b; color:#0f172a; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #d97706; font-weight:900; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
               + SPK Rabas
             </button>
           </div>
-          <button class="btn-cable-pull-act" style="width:100%; background:#0284c7; color:#ffffff; font-size:12px; padding:8px; border-radius:7px; border:1px solid #0369a1; font-weight:800; cursor:pointer; margin-bottom:6px; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <button class="btn-cable-pull-act" style="width:100%; background:#0284c7; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #0369a1; font-weight:800; cursor:pointer; margin-bottom:7px; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
             ⚡ Tarik Kabel dari Tiang Ini
           </button>
-          <button class="btn-delete-act" style="width:100%; background:#ef4444; color:#ffffff; font-size:12px; padding:8px; border-radius:7px; border:1px solid #dc2626; font-weight:800; cursor:pointer; margin-bottom:6px;">
+          <button class="btn-delete-act" style="width:100%; background:#ef4444; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #dc2626; font-weight:800; cursor:pointer; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
             🗑️ Hapus Titik Tiang Ini
           </button>
-          <a href="https://maps.google.com/?q=${pole.lat},${pole.lng}" target="_blank" rel="noreferrer" style="display:block; text-align:center; font-size:12px; font-weight:700; margin-top:4px; color:#0284c7; text-decoration:none;">
+          <a href="https://maps.google.com/?q=${pole.lat},${pole.lng}" target="_blank" rel="noreferrer" style="display:block; text-align:center; font-size:12px; font-weight:800; padding:7px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; color:#15803d; text-decoration:none;">
             📍 Buka Navigasi GPS Field
           </a>
         `;
@@ -1576,7 +1644,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         return popupContent;
       };
 
-      marker.bindPopup(createPolePopup, { autoPan: false });
+      marker.bindPopup(createPolePopup, { autoPan: false, maxWidth: 360, minWidth: 300 });
 
       // Suppress popup if opened while cable pulling mode is active
       marker.on('popupopen', () => {

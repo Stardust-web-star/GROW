@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CableSpan, PoleData } from '../types';
 import { X, Zap, ShieldCheck, AlertTriangle, Ruler, Trees, Building2, Cable } from 'lucide-react';
 import { calculateHaversineDistanceMeters } from '../utils/kmzParser';
+import { FeederCombobox } from './FeederCombobox';
 
 interface NewCableModalProps {
   fromPole: PoleData;
@@ -119,18 +120,12 @@ export const NewCableModal: React.FC<NewCableModalProps> = ({
                 <Zap className="w-3.5 h-3.5 text-amber-400" />
                 Penyulang (Feeder)
               </label>
-              <select
+              <FeederCombobox
                 value={feeder}
-                onChange={(e) => setFeeder(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
-              >
-                {allFeeders.map(f => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-                {!allFeeders.includes(feeder) && (
-                  <option value={feeder}>{feeder}</option>
-                )}
-              </select>
+                onChange={setFeeder}
+                options={allFeeders}
+                placeholder="Ketik nama penyulang atau pilih..."
+              />
             </div>
 
             <div className="space-y-1.5">

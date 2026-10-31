@@ -13,6 +13,7 @@ interface FeederManagerDrawerProps {
   onToggleAllFeeders: (visible: boolean) => void;
   onFocusFeederOnMap: (feederName: string) => void;
   onDeleteFeeder: (feederName: string) => void;
+  onRenameFeeder?: (oldName: string, newName: string) => void;
   onOpenKmzUploader: () => void;
 }
 
@@ -27,10 +28,12 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
   onToggleAllFeeders,
   onFocusFeederOnMap,
   onDeleteFeeder,
+  onRenameFeeder,
   onOpenKmzUploader
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingFeeder, setEditingFeeder] = useState<string | null>(null);
+  const [newFeederName, setNewFeederName] = useState('');
   const [tempColor, setTempColor] = useState('#22C55E');
   const [feederToDelete, setFeederToDelete] = useState<string | null>(null);
 
@@ -75,9 +78,6 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
               <h2 className="font-extrabold text-sm uppercase tracking-wide text-white">
                 PETA POHON & FEEDER PLN ULP BAGUALA
               </h2>
-              <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
-                {allFeeders.length} Feeder
-              </span>
             </div>
             <p className="text-[11px] text-slate-400">Manajemen Pengelompokan Penyulang & Warna Kabel</p>
           </div>
@@ -205,18 +205,71 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
                       />
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-extrabold text-xs text-white truncate uppercase tracking-wide">
-                        {feederName}
-                      </h3>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        {feederPoles.length} titik tiang · {feederPoles.filter(p => p.clearanceDistanceMeters < 3.0).length} ROW &lt; 3m
-                      </p>
-                    </div>
+                    {editingFeeder === feederName ? (
+                      <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                        <input
+                          type="text"
+                          value={newFeederName}
+                          onChange={(e) => setNewFeederName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              if (newFeederName.trim() && onRenameFeeder) {
+                                onRenameFeeder(feederName, newFeederName.trim());
+                                setEditingFeeder(null);
+                              }
+                            } else if (e.key === 'Escape') {
+                              setEditingFeeder(null);
+                            }
+                          }}
+                          className="flex-1 bg-slate-800 border border-amber-400 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                          autoFocus
+                          placeholder="Ketik nama penyulang..."
+                        />
+                        <button
+                          onClick={() => {
+                            if (newFeederName.trim() && onRenameFeeder) {
+                              onRenameFeeder(feederName, newFeederName.trim());
+                              setEditingFeeder(null);
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold cursor-pointer"
+                          title="Simpan Nama"
+                        >
+                          Simpan
+                        </button>
+                        <button
+                          onClick={() => setEditingFeeder(null)}
+                          className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-[11px] cursor-pointer"
+                          title="Batal"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-xs text-white truncate uppercase tracking-wide">
+                          {feederName}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 truncate">
+                          {feederPoles.length} titik tiang · {feederPoles.filter(p => p.clearanceDistanceMeters < 3.0).length} ROW &lt; 3m
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right Actions: Focus / Edit / Delete */}
+                  {/* Right Actions: Focus / Edit Name / Delete */}
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEditingFeeder(feederName);
+                        setNewFeederName(feederName);
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-all cursor-pointer"
+                      title="Ganti / Ketik Nama Penyulang Ini"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+
                     <button
                       onClick={() => onFocusFeederOnMap(feederName)}
                       className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-amber-400 hover:bg-slate-700 transition-all cursor-pointer"

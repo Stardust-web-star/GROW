@@ -13,6 +13,7 @@ import { FeederManagerDrawer } from './components/FeederManagerDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { FeederCombobox } from './components/FeederCombobox';
 import { Plus, X } from 'lucide-react';
 import {
   savePoleToCloud,
@@ -236,6 +237,55 @@ export default function App() {
     const targetPoles = poles.filter(p => p.feeder === feederName);
     for (const pole of targetPoles) {
       await handleDeletePole(pole.id);
+    }
+  };
+
+  const handleRenameFeeder = async (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) return;
+
+    // 1. Update all poles belonging to this feeder
+    const updatedPoles = poles.map(p => p.feeder === oldName ? { ...p, feeder: trimmed } : p);
+    setPoles(updatedPoles);
+
+    // 2. Update all spans belonging to this feeder
+    const updatedSpans = spans.map(s => s.feeder === oldName ? { ...s, feeder: trimmed } : s);
+    setSpans(updatedSpans);
+    baseSpansRef.current = baseSpansRef.current.map(s => s.feeder === oldName ? { ...s, feeder: trimmed } : s);
+    cloudSpansRef.current = cloudSpansRef.current.map(s => s.feeder === oldName ? { ...s, feeder: trimmed } : s);
+
+    // 3. Migrate colors & visibility
+    setFeederColors(prev => {
+      const copy = { ...prev };
+      if (copy[oldName]) {
+        copy[trimmed] = copy[oldName];
+      }
+      return copy;
+    });
+
+    setFeederVisibility(prev => {
+      const copy = { ...prev };
+      if (copy[oldName] !== undefined) {
+        copy[trimmed] = copy[oldName];
+      }
+      return copy;
+    });
+
+    // 4. Persist changed poles & spans to Cloud Firestore
+    try {
+      const changedPoles = updatedPoles.filter(p => p.feeder === trimmed);
+      for (const p of changedPoles) {
+        savePoleToCloud(p).catch(() => {});
+      }
+      const changedSpans = updatedSpans.filter(s => s.feeder === trimmed);
+      for (const s of changedSpans) {
+        saveSpanToCloud(s).catch(() => {});
+      }
+      await saveAppStateToCloud({
+        feederColors: JSON.stringify({ ...feederColors, [trimmed]: feederColors[oldName] || '#22C55E' })
+      });
+    } catch (err) {
+      console.error('Error persisting renamed feeder:', err);
     }
   };
 
@@ -1003,17 +1053,12 @@ export default function App() {
 
               <div>
                 <label className="block text-slate-400 mb-1 font-semibold">Penyulang</label>
-                <select
+                <FeederCombobox
                   value={newPoleFeeder}
-                  onChange={(e) => setNewPoleFeeder(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl"
-                >
-                  <option value="Penyulang Passo">Penyulang Passo</option>
-                  <option value="Penyulang Lateri">Penyulang Lateri</option>
-                  <option value="Penyulang Waiheru">Penyulang Waiheru</option>
-                  <option value="Penyulang Tulehu">Penyulang Tulehu</option>
-                  <option value="Penyulang Suli">Penyulang Suli</option>
-                </select>
+                  onChange={setNewPoleFeeder}
+                  options={Array.from(new Set(poles.map(p => p.feeder)))}
+                  placeholder="Ketik nama penyulang atau pilih..."
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1106,6 +1151,7 @@ export default function App() {
           setShowFeederDrawer(false);
         }}
         onDeleteFeeder={handleDeleteFeeder}
+        onRenameFeeder={handleRenameFeeder}
         onOpenKmzUploader={() => {
           setShowFeederDrawer(false);
           setActiveTab('kmz');
