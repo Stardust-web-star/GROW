@@ -83,26 +83,26 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl text-slate-100 my-8">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl text-slate-800 dark:text-slate-100 my-8 transition-colors">
         
         {/* Header */}
-        <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-              <h3 className="font-black text-lg text-white tracking-tight">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <h3 className="font-black text-lg text-slate-900 dark:text-white tracking-tight">
                 Informasi & Edit Kabel Distribusi
               </h3>
             </div>
-            <p className="text-xs text-slate-400">
-              Menghubungkan <span className="text-amber-400 font-mono font-bold">{fromPole?.code || span.fromPoleId}</span> ↔{' '}
-              <span className="text-amber-400 font-mono font-bold">{toPole?.code || span.toPoleId}</span>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Menghubungkan <span className="text-amber-600 dark:text-amber-400 font-mono font-bold">{fromPole?.code || span.fromPoleId}</span> ↔{' '}
+              <span className="text-amber-600 dark:text-amber-400 font-mono font-bold">{toPole?.code || span.toPoleId}</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -111,18 +111,18 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
         {/* Live Safety Status Banner */}
         <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 text-xs ${
           isCritical
-            ? 'bg-rose-950/50 border-rose-500/50 text-rose-200'
+            ? 'bg-rose-500/10 border-rose-500/40 text-rose-800 dark:text-rose-200'
             : isViolation
-            ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
-            : 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
+            ? 'bg-amber-500/10 border-amber-500/40 text-amber-800 dark:text-amber-200'
+            : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
         }`}>
           <div className="flex items-center gap-3">
             {isCritical ? (
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
             ) : isViolation ? (
-              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
             ) : (
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             )}
             <div>
               <div className="font-bold">
@@ -138,7 +138,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
             </div>
           </div>
 
-          <div className="font-mono text-sm font-black px-2.5 py-1 rounded bg-slate-900/80 border border-slate-700/60">
+          <div className="font-mono text-sm font-black px-2.5 py-1 rounded bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700/60 shadow-xs">
             Spat: {lengthMeters}m
           </div>
         </div>
@@ -148,8 +148,8 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
           {/* Penyulang & Jenis Kabel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <label className="text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 Penyulang (Feeder)
               </label>
               <FeederCombobox
@@ -161,11 +161,11 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-slate-300 font-semibold">Jenis Kabel / Konduktor</label>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold">Jenis Kabel / Konduktor</label>
               <select
                 value={conductorType}
                 onChange={(e) => setConductorType(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400 transition-colors"
               >
                 <option value="Kabel AACS 150 mm²">Kabel AACS 150 mm² (Kabel Berisolasi TM)</option>
                 <option value="Kabel AACS 70 mm²">Kabel AACS 70 mm²</option>
@@ -182,15 +182,15 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-                  <Ruler className="w-3.5 h-3.5 text-blue-400" />
+                <label className="text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Ruler className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
                   Panjang Kabel (Spat)
                 </label>
                 {fromPole && toPole && (
                   <button
                     type="button"
                     onClick={handleRecalculateGpsDistance}
-                    className="text-[10px] text-amber-400 hover:underline flex items-center gap-1"
+                    className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
                   >
                     Hitung GPS
                   </button>
@@ -203,7 +203,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
                   max="1000"
                   value={lengthMeters}
                   onChange={(e) => setLengthMeters(Number(e.target.value))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white pr-12 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white pr-12 focus:outline-none focus:border-amber-400 transition-colors"
                   required
                 />
                 <span className="absolute right-3 top-2.5 text-slate-400 text-xs">meter</span>
@@ -211,11 +211,11 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-slate-300 font-semibold">Kondisi Fisik Kabel</label>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold">Kondisi Fisik Kabel</label>
               <select
                 value={cableCondition}
                 onChange={(e) => setCableCondition(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-amber-400 transition-colors"
               >
                 <option value="Baik">🟢 Baik (Tegangan & Andongan Ideal)</option>
                 <option value="Kendor / Andongan Rendah">🟡 Kendor / Andongan Terlalu Rendah</option>
@@ -228,16 +228,16 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
 
           {/* Jarak Pohon & Jarak Bangunan */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <label className="text-slate-300 font-semibold flex items-center justify-between">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
+              <label className="text-slate-700 dark:text-slate-300 font-semibold flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Trees className="w-3.5 h-3.5 text-emerald-400" />
+                  <Trees className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   Jarak ke Pohon (ROW)
                 </span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  treeDistance < 1.5 ? 'bg-rose-500/20 text-rose-400' :
-                  treeDistance < 3.0 ? 'bg-amber-500/20 text-amber-400' :
-                  'bg-emerald-500/20 text-emerald-400'
+                  treeDistance < 1.5 ? 'bg-rose-500/20 text-rose-700 dark:text-rose-400' :
+                  treeDistance < 3.0 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400' :
+                  'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                 }`}>
                   {treeDistance < 3.0 ? 'Rabas Pohon' : 'Aman'}
                 </span>
@@ -250,7 +250,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
                   max="50"
                   value={treeDistance}
                   onChange={(e) => setTreeDistance(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white pr-12 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white pr-12 focus:outline-none focus:border-amber-400 transition-colors"
                   required
                 />
                 <span className="absolute right-3 top-2 text-slate-400 text-xs">meter</span>
@@ -258,16 +258,16 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
               <p className="text-[10px] text-slate-500">Standar aman pohon terhadap fasa: ≥ 3.0m</p>
             </div>
 
-            <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <label className="text-slate-300 font-semibold flex items-center justify-between">
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors">
+              <label className="text-slate-700 dark:text-slate-300 font-semibold flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                  <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   Jarak ke Bangunan
                 </span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                  buildingDistance < 1.5 ? 'bg-rose-500/20 text-rose-400' :
-                  buildingDistance < 3.0 ? 'bg-amber-500/20 text-amber-400' :
-                  'bg-emerald-500/20 text-emerald-400'
+                  buildingDistance < 1.5 ? 'bg-rose-500/20 text-rose-700 dark:text-rose-400' :
+                  buildingDistance < 3.0 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400' :
+                  'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
                 }`}>
                   {buildingDistance < 3.0 ? 'Dekat Bangunan' : 'Aman'}
                 </span>
@@ -280,7 +280,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
                   max="50"
                   value={buildingDistance}
                   onChange={(e) => setBuildingDistance(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white pr-12 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-slate-900 dark:text-white pr-12 focus:outline-none focus:border-amber-400 transition-colors"
                   required
                 />
                 <span className="absolute right-3 top-2 text-slate-400 text-xs">meter</span>
@@ -291,22 +291,22 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
 
           {/* Catatan Teknis */}
           <div className="space-y-1.5">
-            <label className="text-slate-300 font-semibold">Catatan Lapangan & Rekomendasi</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold">Catatan Lapangan & Rekomendasi</label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Contoh: Dahan pohon mangga condong ke kabel fasa R. Perlu pemangkasan rabas."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
             {isConfirmingDelete ? (
-              <div className="flex flex-wrap items-center gap-2 p-2 bg-rose-950/90 border border-rose-500 rounded-xl animate-in fade-in duration-200">
-                <span className="text-xs text-rose-200 font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <div className="flex flex-wrap items-center gap-2 p-2 bg-rose-500/10 border border-rose-500 rounded-xl animate-in fade-in duration-200">
+                <span className="text-xs text-rose-700 dark:text-rose-200 font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
                   Hapus bentangan kabel ini?
                 </span>
                 <div className="flex items-center gap-1.5">
@@ -321,7 +321,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsConfirmingDelete(false)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
+                    className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
                   >
                     Batal
                   </button>
@@ -342,13 +342,13 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl font-semibold transition-all text-xs cursor-pointer"
+                className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-semibold border border-slate-200 dark:border-transparent transition-all text-xs cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-5 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg transition-all text-xs cursor-pointer"
+                className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-5 py-2.5 rounded-xl font-black flex items-center gap-2 shadow-lg transition-all text-xs cursor-pointer"
               >
                 <Save className="w-4 h-4 fill-current" />
                 <span>Simpan Perubahan</span>

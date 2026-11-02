@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { 
   Map, BarChart3, AlertTriangle, FileText, Upload, Bot, Zap, Users, LogOut, 
-  ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone
+  ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone, Sun, Moon
 } from 'lucide-react';
 import { GisPlnLogo } from './GisPlnLogo';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
 import { UserAccount } from '../types';
 import { SystemMetaState } from '../lib/firebase';
 import { PwaInstallModal } from './PwaInstallModal';
+import { useTheme } from '../context/ThemeContext';
 
 interface NavbarProps {
   activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
@@ -42,6 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenFeederDrawer,
   onAddCustomPole
 }) => {
+  const { theme, toggleTheme, setTheme, isDark } = useTheme();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showPwaModal, setShowPwaModal] = useState(false);
 
@@ -177,6 +179,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
 
+              {/* Theme Toggle Button (Dark / Light Mode) */}
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-1.5 bg-slate-950/70 hover:bg-slate-900 text-teal-200 hover:text-white border border-teal-500/40 px-3 h-9 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs whitespace-nowrap btn-tactile group"
+                title={isDark ? "Beralih ke Mode Terang (Light Mode)" : "Beralih ke Mode Gelap (Dark Mode)"}
+                aria-label="Toggle theme"
+              >
+                {isDark ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-amber-300 shrink-0 transition-transform duration-300 group-hover:rotate-45" />
+                    <span className="hidden xl:inline">Mode Terang</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-cyan-300 shrink-0 transition-transform duration-300 group-hover:-rotate-12" />
+                    <span className="hidden xl:inline">Mode Gelap</span>
+                  </>
+                )}
+              </button>
 
               {/* Mobile App PWA Install Button */}
               <button
@@ -226,30 +247,39 @@ export const Navbar: React.FC<NavbarProps> = ({
           When on 'map', MapViewer renders the Google Maps floating search bar!
           ======================================================== */}
       {activeTab !== 'map' && (
-        <div className="md:hidden sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3.5 py-2.5 flex items-center justify-between text-white shadow-lg select-none">
+        <div className="md:hidden sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3.5 py-2.5 flex items-center justify-between text-slate-900 dark:text-white shadow-md select-none transition-colors duration-200">
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setActiveTab('map')}
-              className="p-1.5 -ml-1 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition-colors"
+              className="p-1.5 -ml-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors"
               title="Kembali ke Peta"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="flex flex-col">
-              <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight">
+              <h1 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight leading-tight">
                 {activeTab === 'clearance' && 'Jarak ROW & Kabel'}
                 {activeTab === 'ai' && 'GROW AI Predictive'}
                 {activeTab === 'spk' && 'Surat Perintah Kerja (SPK)'}
                 {activeTab === 'kmz' && 'Unggah Master File KMZ'}
                 {activeTab === 'users' && 'Manajemen Pengguna'}
               </h1>
-              <span className="text-[10px] text-teal-300 font-semibold leading-none mt-0.5">
+              <span className="text-[10px] text-teal-600 dark:text-teal-300 font-semibold leading-none mt-0.5">
                 PLN ULP Baguala
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Quick Mobile Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 flex items-center justify-center cursor-pointer transition-colors shadow-xs"
+              title={isDark ? "Beralih ke Mode Terang" : "Beralih ke Mode Gelap"}
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-cyan-600" />}
+            </button>
+
             <button
               onClick={() => setShowMobileMenu(true)}
               className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-teal-500 text-white font-black text-xs flex items-center justify-center border border-teal-300 shadow-md cursor-pointer"
@@ -265,19 +295,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           MOBILE BOTTOM NAVIGATION BAR (Google Maps Mobile UI Style)
           Tabs: Peta (Jelajahi), ROW & Kabel (Disimpan/Inspeksi), GROW AI (Asisten), SPK, Menu
           ======================================================== */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800/90 shadow-[0_-4px_20px_rgba(0,0,0,0.5)] px-2 py-1 flex items-center justify-around select-none">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.5)] px-2 py-1 flex items-center justify-around select-none transition-colors duration-200">
         
-        {/* Tab 1: Peta (Google Maps "Jelajahi") */}
+        {/* Tab 1: Peta */}
         <button
           onClick={() => setActiveTab('map')}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'map'
-              ? 'text-cyan-400 font-extrabold'
-              : 'text-slate-400 hover:text-slate-200 font-medium'
+              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <div className={`px-4 py-1 rounded-full transition-all ${
-            activeTab === 'map' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm' : ''
+            activeTab === 'map' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
             <Map className="w-5 h-5" />
           </div>
@@ -289,16 +319,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => setActiveTab('clearance')}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative transition-all cursor-pointer ${
             activeTab === 'clearance'
-              ? 'text-amber-400 font-extrabold'
-              : 'text-slate-400 hover:text-slate-200 font-medium'
+              ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <div className={`px-4 py-1 rounded-full transition-all relative ${
-            activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-300 shadow-sm' : ''
+            activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
           }`}>
             <AlertTriangle className="w-5 h-5" />
             {rowViolations > 0 && (
-              <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black ring-2 ring-slate-900 animate-pulse">
+              <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black ring-2 ring-white dark:ring-slate-900 animate-pulse">
                 {rowViolations}
               </span>
             )}
@@ -309,12 +339,12 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Tab 3: GROW AI */}
         <button
           onClick={onOpenAiAssistant}
-          className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-slate-400 hover:text-amber-300 font-medium"
+          className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
         >
-          <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-400 border border-amber-400/40 shadow-xs">
+          <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs">
             <Bot className="w-5 h-5" />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight text-amber-300 font-extrabold">GROW AI</span>
+          <span className="text-[10px] mt-0.5 tracking-tight text-amber-600 dark:text-amber-300 font-extrabold">GROW AI</span>
         </button>
 
         {/* Tab 4: SPK */}
@@ -322,12 +352,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => setActiveTab('spk')}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
             activeTab === 'spk'
-              ? 'text-cyan-400 font-extrabold'
-              : 'text-slate-400 hover:text-slate-200 font-medium'
+              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <div className={`px-4 py-1 rounded-full transition-all ${
-            activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-300 shadow-sm' : ''
+            activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
             <FileText className="w-5 h-5" />
           </div>
@@ -339,12 +369,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => setShowMobileMenu(true)}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
             ['kmz', 'users'].includes(activeTab) || showMobileMenu
-              ? 'text-cyan-400 font-extrabold'
-              : 'text-slate-400 hover:text-slate-200 font-medium'
+              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <div className={`px-4 py-1 rounded-full transition-all ${
-            ['kmz', 'users'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-300 shadow-sm' : ''
+            ['kmz', 'users'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
             <Grid className="w-5 h-5" />
           </div>
@@ -360,52 +390,87 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Backdrop Click */}
           <div className="flex-1" onClick={() => setShowMobileMenu(false)} />
           
-          <div className="bg-slate-900 border-t border-slate-700 rounded-t-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 rounded-t-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto text-slate-900 dark:text-white transition-colors duration-200">
             {/* Sheet Handle */}
-            <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto" />
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto" />
 
             {/* User Profile Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-teal-600 to-emerald-500 text-white font-black text-lg flex items-center justify-center border-2 border-teal-300 shadow-lg">
                   {currentUser ? (currentUser.name?.charAt(0) || currentUser.userId?.charAt(0) || 'U') : 'P'}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-sm text-white">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                       {currentUser?.name || currentUser?.userId || 'Petugas PLN'}
                     </h3>
-                    <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full">
                       {currentUser?.role || 'User'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
                     {currentUser?.userId} • {currentUser?.unit || 'ULP Baguala'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowMobileMenu(false)}
-                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-
             {/* Quick Metrics */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-center">
-                <div className="text-sm font-black text-white">{totalPoles}</div>
-                <div className="text-[10px] text-slate-400 font-medium">Total Tiang</div>
+              <div className="bg-slate-100 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <div className="text-sm font-black text-slate-900 dark:text-white">{totalPoles}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Total Tiang</div>
               </div>
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-center">
-                <div className="text-sm font-black text-amber-400">{rowViolations}</div>
-                <div className="text-[10px] text-slate-400 font-medium">Bahaya ROW</div>
+              <div className="bg-slate-100 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <div className="text-sm font-black text-amber-600 dark:text-amber-400">{rowViolations}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Bahaya ROW</div>
               </div>
-              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-center">
-                <div className="text-sm font-black text-rose-400">{criticalPoles}</div>
-                <div className="text-[10px] text-slate-400 font-medium">Kritis</div>
+              <div className="bg-slate-100 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                <div className="text-sm font-black text-rose-600 dark:text-rose-400">{criticalPoles}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Kritis</div>
+              </div>
+            </div>
+
+            {/* Dedicated Theme Selector Card */}
+            <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  Pilihan Tema Tampilan
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
+                  {isDark ? 'Mode Gelap Aktif' : 'Mode Terang Aktif'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isDark
+                      ? 'bg-slate-900 text-cyan-300 border border-cyan-400/50 shadow-md font-black'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Moon className="w-4 h-4 text-cyan-400" />
+                  <span>Mode Gelap</span>
+                </button>
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    !isDark
+                      ? 'bg-amber-400 text-slate-950 border border-amber-300 shadow-md font-black'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Sun className="w-4 h-4 text-amber-600" />
+                  <span>Mode Terang</span>
+                </button>
               </div>
             </div>
 
@@ -445,18 +510,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setActiveTab('kmz');
                   setShowMobileMenu(false);
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-300 flex items-center justify-center">
                     <Upload className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Unggah & Kelola Master KMZ</div>
-                    <div className="text-[10px] text-slate-400">Import KML/KMZ atau restore data bawaan</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Unggah & Kelola Master KMZ</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Import KML/KMZ atau restore data bawaan</div>
                   </div>
                 </div>
-                <span className="text-xs text-slate-500 font-bold">›</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
               </button>
 
               <button
@@ -464,18 +529,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setActiveTab('users');
                   setShowMobileMenu(false);
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-300 flex items-center justify-center">
                     <Users className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white">Management User & Hak Akses</div>
-                    <div className="text-[10px] text-slate-400">Kelola akun administrator & tim lapangan</div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">Management User & Hak Akses</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Kelola akun administrator & tim lapangan</div>
                   </div>
                 </div>
-                <span className="text-xs text-slate-500 font-bold">›</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
               </button>
 
               {onOpenFeederDrawer && (
@@ -484,18 +549,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setShowMobileMenu(false);
                     onOpenFeederDrawer();
                   }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
                       <Zap className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white">Kelola Penyulang & Jalur</div>
-                      <div className="text-[10px] text-slate-400">Atur visibilitas dan warna kabel feeder</div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Kelola Penyulang & Jalur</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">Atur visibilitas dan warna kabel feeder</div>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-500 font-bold">›</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
                 </button>
               )}
 
@@ -505,18 +570,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setShowMobileMenu(false);
                     onAddCustomPole();
                   }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 text-left transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
                       <Plus className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white">Tambah Titik Tiang Lapangan</div>
-                      <div className="text-[10px] text-slate-400">Input tiang baru dengan koordinat GPS</div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">Tambah Titik Tiang Lapangan</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">Input tiang baru dengan koordinat GPS</div>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-500 font-bold">›</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
                 </button>
               )}
             </div>

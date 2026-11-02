@@ -6,6 +6,100 @@
     <title>GROW - Great Right of Way | PLN ULP Baguala GIS</title>
     <meta name="description" content="GROW (Great Right of Way) - Sistem GIS Pemetaan Tiang & Kabel Distribusi PLN ULP Baguala dengan KMZ Google Earth, Jarak Bebas ROW, dan AI Predictive Maintenance." />
     
+    <!-- Suppress non-fatal dev server WebSocket errors in iframe environment -->
+    <script>
+      (function() {
+        // 1. Suppress console.error for Vite WebSocket closed message
+        var origConsoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) { return String((a && a.message) || a); }).join(' ');
+          if (str.indexOf('WebSocket closed without opened') !== -1 || (str.indexOf('[vite]') !== -1 && str.indexOf('WebSocket') !== -1)) {
+            return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+
+        // 2. Mock WebSocket for Vite HMR protocol so it never closes unexpectedly
+        var RealWebSocket = window.WebSocket;
+        if (RealWebSocket) {
+          window.WebSocket = function(url, protocols) {
+            var isViteHmr = protocols === 'vite-hmr' || 
+              (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1) ||
+              (typeof url === 'string' && (url.indexOf('/@vite') !== -1 || url.indexOf('ais-dev') !== -1));
+            
+            if (isViteHmr) {
+              var listeners = {};
+              var fake = {
+                url: url,
+                readyState: 1, // WebSocket.OPEN
+                protocol: 'vite-hmr',
+                bufferedAmount: 0,
+                extensions: '',
+                binaryType: 'blob',
+                send: function() {},
+                close: function() {
+                  fake.readyState = 3;
+                },
+                addEventListener: function(type, fn) {
+                  listeners[type] = listeners[type] || [];
+                  listeners[type].push(fn);
+                },
+                removeEventListener: function(type, fn) {
+                  if (!listeners[type]) return;
+                  listeners[type] = listeners[type].filter(function(f) { return f !== fn; });
+                },
+                dispatchEvent: function(event) {
+                  var list = listeners[event.type] || [];
+                  for (var i = 0; i < list.length; i++) {
+                    try { list[i].call(fake, event); } catch(err) {}
+                  }
+                  return true;
+                },
+                onopen: null,
+                onclose: null,
+                onerror: null,
+                onmessage: null
+              };
+              
+              // Simulate immediate clean connection
+              setTimeout(function() {
+                fake.readyState = 1;
+                var openEvt = new Event('open');
+                if (typeof fake.onopen === 'function') fake.onopen(openEvt);
+                fake.dispatchEvent(openEvt);
+              }, 0);
+              
+              return fake;
+            }
+            return new RealWebSocket(url, protocols);
+          };
+          window.WebSocket.prototype = RealWebSocket.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
+        }
+
+        // 3. Global error listeners
+        window.addEventListener('error', function(e) {
+          var msg = (e && (e.message || (e.error && e.error.message))) || '';
+          if (typeof msg === 'string' && (msg.indexOf('WebSocket') !== -1 || msg.indexOf('vite') !== -1)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = (e && (e.reason && e.reason.message ? e.reason.message : e.reason)) || '';
+          if (typeof reason === 'string' && (reason.indexOf('WebSocket') !== -1 || reason.indexOf('vite') !== -1)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
+    
     <!-- PWA & Mobile Web App Meta -->
     <meta name="theme-color" content="#031b26" />
     <meta name="mobile-web-app-capable" content="yes" />

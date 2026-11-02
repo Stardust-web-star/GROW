@@ -893,7 +893,7 @@ export default function App() {
   }
 
   return (
-    <div className={`fixed inset-0 w-full h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-950 font-sans text-slate-100 flex flex-col ${isLoggingOut ? 'animate-dashboard-exit pointer-events-none' : 'animate-dashboard-enter'}`}>
+    <div className={`fixed inset-0 w-full h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200 ${isLoggingOut ? 'animate-dashboard-exit pointer-events-none' : 'animate-dashboard-enter'}`}>
       
       {/* Navbar Header */}
       <Navbar
@@ -1029,30 +1029,30 @@ export default function App() {
 
       {/* Manual Add Pole Modal */}
       {showAddPoleModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-base text-white">Tambah Titik Tiang Listrik Baru</h3>
-              <button onClick={() => setShowAddPoleModal(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-slate-100 transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">Tambah Titik Tiang Listrik Baru</h3>
+              <button onClick={() => setShowAddPoleModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveNewPole} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">ID Tiang Unik</label>
+                <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">ID Tiang Unik</label>
                 <input
                   type="text"
                   value={newPoleId}
                   onChange={(e) => setNewPoleId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white p-2.5 rounded-xl focus:outline-none focus:border-cyan-500"
                   placeholder="Contoh: BGL-PSS-099"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Penyulang</label>
+                <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Penyulang</label>
                 <FeederCombobox
                   value={newPoleFeeder}
                   onChange={setNewPoleFeeder}
@@ -1063,49 +1063,49 @@ export default function App() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-semibold">Latitude GPS</label>
+                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Latitude GPS</label>
                   <input
                     type="number"
                     step="0.0001"
                     value={newPoleLat}
                     onChange={(e) => setNewPoleLat(parseFloat(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white p-2.5 rounded-xl focus:outline-none focus:border-cyan-500"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-400 mb-1 font-semibold">Longitude GPS</label>
+                  <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Longitude GPS</label>
                   <input
                     type="number"
                     step="0.0001"
                     value={newPoleLng}
                     onChange={(e) => setNewPoleLng(parseFloat(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white p-2.5 rounded-xl focus:outline-none focus:border-cyan-500"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Nama Lokasi / Jalan</label>
+                <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Nama Lokasi / Jalan</label>
                 <input
                   type="text"
                   value={newPoleLocation}
                   onChange={(e) => setNewPoleLocation(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white p-2.5 rounded-xl focus:outline-none focus:border-cyan-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-semibold">Jarak Kabel ke Objek Terdekat (m)</label>
+                <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">Jarak Kabel ke Objek Terdekat (m)</label>
                 <input
                   type="number"
                   step="0.1"
                   value={newPoleClearance}
                   onChange={(e) => setNewPoleClearance(parseFloat(e.target.value))}
-                  className="w-full bg-slate-800 border border-slate-700 text-white p-2.5 rounded-xl font-bold"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white p-2.5 rounded-xl font-bold focus:outline-none focus:border-cyan-500"
                   required
                 />
               </div>

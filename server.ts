@@ -497,7 +497,10 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'custom',
     });
     app.use(vite.middlewares);
@@ -507,6 +510,48 @@ async function startServer() {
       try {
         let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
         template = await vite.transformIndexHtml(url, template);
+        // Guarantee WebSocket shim runs before @vite/client
+        const wsShim = `<script>
+(function() {
+  var origConsoleError = console.error;
+  console.error = function() {
+    var s = Array.prototype.slice.call(arguments).map(function(a){ return String((a && a.message) || a); }).join(' ');
+    if (s.indexOf('WebSocket') !== -1 || (s.indexOf('[vite]') !== -1 && s.indexOf('closed') !== -1)) return;
+    return origConsoleError.apply(console, arguments);
+  };
+  if (window.WebSocket) {
+    var RealWS = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+      var isVite = protocols === 'vite-hmr' || 
+        (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1) ||
+        (typeof url === 'string' && (url.indexOf('/@vite') !== -1 || url.indexOf('ais-dev') !== -1));
+      if (isVite) {
+        var listeners = {};
+        var fake = {
+          readyState: 1, protocol: 'vite-hmr', url: url, bufferedAmount: 0, extensions: '', binaryType: 'blob',
+          send: function() {},
+          close: function() { fake.readyState = 3; },
+          addEventListener: function(t, fn) { (listeners[t] = listeners[t] || []).push(fn); },
+          removeEventListener: function(t, fn) { if (listeners[t]) listeners[t] = listeners[t].filter(function(f){ return f !== fn; }); },
+          dispatchEvent: function(e) { (listeners[e.type] || []).forEach(function(f){ try { f.call(fake, e); } catch(x){} }); return true; },
+          onopen: null, onclose: null, onerror: null, onmessage: null
+        };
+        setTimeout(function() {
+          fake.readyState = 1;
+          var ev = new Event('open');
+          if (typeof fake.onopen === 'function') fake.onopen(ev);
+          fake.dispatchEvent(ev);
+        }, 0);
+        return fake;
+      }
+      return new RealWS(url, protocols);
+    };
+    window.WebSocket.prototype = RealWS.prototype;
+    window.WebSocket.CONNECTING = 0; window.WebSocket.OPEN = 1; window.WebSocket.CLOSING = 2; window.WebSocket.CLOSED = 3;
+  }
+})();
+</script>`;
+        template = template.replace('<head>', '<head>' + wsShim);
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e: any) {
         vite.ssrFixStacktrace(e);

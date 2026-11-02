@@ -2136,7 +2136,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             ======================================================== */}
         <div className="md:hidden absolute top-2.5 inset-x-2.5 z-30 pointer-events-auto flex flex-col gap-1.5 select-none">
           {/* Floating Search Pill */}
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-2.5 text-white">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700/80 shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-2.5 text-slate-900 dark:text-white transition-colors">
             <div className="w-8 h-8 rounded-full bg-white p-0.5 flex items-center justify-center border border-teal-400/80 shadow-md shrink-0 overflow-hidden">
               <GisPlnLogo size={24} withBadge={false} />
             </div>
@@ -2148,19 +2148,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 placeholder="Telusuri No Tiang / Jalan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-700/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 font-medium"
+                className="w-full bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-700/60 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 font-medium"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs w-4 h-4 flex items-center justify-center cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs w-4 h-4 flex items-center justify-center cursor-pointer"
                 >
                   ✕
                 </button>
               )}
             </div>
 
-            <div className="px-2 py-1 rounded-lg bg-teal-500/20 border border-teal-500/40 text-[10px] font-black text-teal-300 whitespace-nowrap shrink-0">
+            <div className="px-2 py-1 rounded-lg bg-teal-500/20 border border-teal-500/40 text-[10px] font-black text-teal-700 dark:text-teal-300 whitespace-nowrap shrink-0">
               {filteredPoles.length} Tiang
             </div>
           </div>
@@ -2177,11 +2177,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 selectedFeeder === 'ALL' && !showRowOnly && !searchQuery
                   ? 'bg-blue-600 text-white border-blue-400 shadow-blue-500/20'
-                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+                  : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
               <span>Semua Tiang</span>
-              <span className="text-[10px] bg-slate-950/60 px-1.5 py-0.2 rounded-full font-extrabold">{poles.length}</span>
+              <span className="text-[10px] bg-slate-200 dark:bg-slate-950/60 px-1.5 py-0.2 rounded-full font-extrabold">{poles.length}</span>
             </button>
 
             {/* Chip 2: ROW Kritis (< 3m) */}
@@ -2190,12 +2190,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 showRowOnly
                   ? 'bg-rose-600 text-white border-rose-400 shadow-rose-500/20'
-                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+                  : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
               <span>ROW Kritis</span>
-              <span className="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.2 rounded-full font-black">
+              <span className="text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 px-1.5 py-0.2 rounded-full font-black">
                 {poles.filter(p => p.clearanceDistanceMeters < 3.0).length}
               </span>
             </button>
@@ -2215,12 +2215,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all appearance-none pr-6 cursor-pointer focus:outline-none ${
                   selectedFeeder !== 'ALL'
                     ? 'bg-amber-500 text-slate-950 border-amber-300 font-black'
-                    : 'bg-slate-900/90 text-slate-200 border-slate-700/80'
+                    : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80'
                 }`}
               >
-                <option value="ALL" className="bg-slate-900 text-white font-bold">📍 Semua Penyulang</option>
+                <option value="ALL" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">📍 Semua Penyulang</option>
                 {allFeeders.map(f => (
-                  <option key={f} value={f} className="bg-slate-900 text-slate-200">
+                  <option key={f} value={f} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
                     📍 {f} ({poles.filter(p => p.feeder === f).length})
                   </option>
                 ))}
