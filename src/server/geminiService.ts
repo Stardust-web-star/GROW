@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { PoleData, AiAnalysisResult } from "../types";
+import { PoleData, AiAnalysisResult } from "../types/index.js";
+import { calculatePlnEnsAnalysis } from "../utils/ensCalculator.js";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
 
@@ -13,6 +14,8 @@ const ai = new GoogleGenAI({
 });
 
 export async function analyzePoleDataWithGemini(poles: PoleData[]): Promise<AiAnalysisResult> {
+  const ensCalculation = calculatePlnEnsAnalysis(poles);
+
   const polesSummary = poles.map(p => ({
     id: p.id,
     code: p.code,
@@ -33,12 +36,19 @@ ACUAN RESMI TABEL BATAS JARAK AMAN MINIMUM (ROW) PERMEN ESDM:
 2. Jaringan Tegangan Menengah (JTM / SUTM - 20kV): Minimal 3.0 Meter (Berlaku untuk jarak horizontal maupun vertikal terhadap bangunan, pepohonan, baliho, antene, dan aktivitas konstruksi).
 3. Saluran Udara Tegangan Tinggi (SUTT / SUTET - 150kV s.d 500kV): Minimal 5.0 s.d 9+ Meter.
 
+STANDAR RESMI PERHITUNGAN ENS (ENERGY NOT SERVED / ENERGI TIDAK TERSALURKAN) PLN:
+- Acuan: SPLN No. 68-1B : 1986 & Keputusan Direksi PT PLN (Persero) No. 0687.K/DIR/2019
+- Rumus: ENS (kWh) = P (kW) × t (jam padam), dengan P = √3 × V (20 kV) × I_beban × cos φ (0.85)
+- Tarif Dasar Permen ESDM: Rp 1.444,70 / kWh
+- Total Potensi ENS Terhitung: ${ensCalculation.totalPotentialEnsKwh} kWh (${ensCalculation.totalPotentialEnsMwh} MWh), Estimasi Kerugian Penjualan: Rp ${ensCalculation.totalPotentialLossRp.toLocaleString('id-ID')}
+- ENS Yang Diselamatkan Melalui Program Rabas Pohon GROW AI: ${ensCalculation.totalSavedEnsKwh} kWh (Penyelamatan: Rp ${ensCalculation.totalSavedRevenueRp.toLocaleString('id-ID')})
+
 Data Tiang Lapangan ULP Baguala: ${JSON.stringify(polesSummary, null, 2)}
 
-Harap lakukan analisis prediktif berbasis acuan Permen ESDM di atas:
+Harap lakukan analisis prediktif berbasis acuan Permen ESDM dan standar ENS PLN di atas:
 1. Hitung skor kesehatan jaringan ULP Baguala (0-100%).
 2. Identifikasi tiang mana saja yang memiliki risiko TINGGI/KRITIS akibat kondisi fisik ATAU pelanggaran jarak aman kabel sesuai tingkatan tegangannya (JTR < 1.0m, JTM < 3.0m, SUTT < 5.0m).
-3. Berikan rekomendasi teknis tindakan rabas pohon (ROW) atau perbaikan struktur tiang.
+3. Sertakan dampak ENS pada ringkasan eksekutif dan rekomendasi teknis tindakan rabas pohon (ROW) atau perbaikan struktur tiang.
 4. Buat draf usulan SPK (Surat Perintah Kerja) otomatis untuk tim teknik ULP Baguala.`;
 
   try {
@@ -123,7 +133,9 @@ Harap lakukan analisis prediktif berbasis acuan Permen ESDM di atas:
 
     const text = response.text;
     if (text) {
-      return JSON.parse(text) as AiAnalysisResult;
+      const parsed = JSON.parse(text) as AiAnalysisResult;
+      parsed.ensAnalysis = ensCalculation;
+      return parsed;
     }
   } catch (err) {
     console.error("Gemini AI Pole Analysis Error:", err);
@@ -137,9 +149,10 @@ Harap lakukan analisis prediktif berbasis acuan Permen ESDM di atas:
 
   return {
     gridHealthScore: health,
-    summary: `Analisis sistematis jaringan PLN ULP Baguala berbasis ${poles.length} titik tiang terdata. Ditemukan ${rowCount} pelanggaran jarak aman kabel (ROW < 3m) dan ${criticalCount} tiang berkondisi kritis/miring.`,
+    summary: `Analisis sistematis jaringan PLN ULP Baguala berbasis ${poles.length} titik tiang terdata. Ditemukan ${rowCount} pelanggaran jarak aman kabel (ROW < 3m) dan ${criticalCount} tiang berkondisi kritis/miring. Estimasi potensi ENS akibat gangguan vegetasi mencapai ${ensCalculation.totalPotentialEnsKwh.toLocaleString('id-ID')} kWh (${ensCalculation.totalPotentialEnsMwh} MWh) dengan potensi kerugian penjualan Rp ${ensCalculation.totalPotentialLossRp.toLocaleString('id-ID')}.`,
     criticalPolesCount: criticalCount,
     rowViolationsCount: rowCount,
+    ensAnalysis: ensCalculation,
     riskAssessment: {
       highRiskPoles: poles.filter(p => p.clearanceDistanceMeters < 3.0 || p.physicalCondition !== 'Baik').map(p => ({
         poleId: p.id,

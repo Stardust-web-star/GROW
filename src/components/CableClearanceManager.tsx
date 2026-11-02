@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { PoleData, CableSpan } from '../types';
-import { AlertTriangle, ShieldAlert, CheckCircle2, Ruler, Send, FileText, ExternalLink, Search, Filter, Trash2, Zap, BookOpen, Cable, Edit3, MapPin, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle2, Ruler, Send, FileText, ExternalLink, Search, Filter, Trash2, Zap, BookOpen, Cable, Edit3, MapPin, Layers, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
 
@@ -34,6 +34,7 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
   const [selectedSpanForEdit, setSelectedSpanForEdit] = useState<CableSpan | null>(null);
   const [spanToDelete, setSpanToDelete] = useState<CableSpan | null>(null);
   const [poleToDelete, setPoleToDelete] = useState<PoleData | null>(null);
+  const [isEsdmExpanded, setIsEsdmExpanded] = useState<boolean>(true);
 
   // Pagination for ultra-smooth 60fps rendering without DOM thrashing
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -145,26 +146,103 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6 text-slate-100">
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6 text-slate-100 pb-24 md:pb-8">
       
-      {/* Permen ESDM Standard Reference Table Card */}
-      <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-              <BookOpen className="w-6 h-6" />
+      {/* Permen ESDM Standard Reference Card - Mobile & Desktop Responsive */}
+      <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0 mt-0.5 sm:mt-0">
+              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Tabel Acuan Batas Jarak Aman Minimum (ROW) Permen ESDM / PLN</h3>
-              <p className="text-xs text-slate-400">Data acuan standar keselamatan ruang bebas jaringan ketenagalistrikan</p>
+              <h3 className="font-bold text-white text-sm sm:text-base leading-snug">Standar Batas Jarak Aman Minimum (ROW)</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Permen ESDM No. 27/2018 & SPLN Ketenagalistrikan</p>
             </div>
           </div>
-          <span className="bg-amber-500/20 text-amber-300 text-xs font-bold px-3 py-1 rounded-full border border-amber-500/30">
-            Acuan Standar Resmi
-          </span>
+          
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="bg-amber-500/20 text-amber-300 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-amber-500/30 whitespace-nowrap">
+              Acuan Standar Resmi
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsEsdmExpanded(prev => !prev)}
+              className="md:hidden flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg text-[11px] font-bold border border-slate-700 cursor-pointer"
+            >
+              <span>{isEsdmExpanded ? 'Tutup' : 'Lihat'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isEsdmExpanded ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto border border-slate-800 rounded-xl">
+        {/* Mobile View: High-Readability Cards (md:hidden) */}
+        {isEsdmExpanded && (
+          <div className="md:hidden space-y-2.5">
+            {/* JTR */}
+            <div className="bg-slate-950/70 border border-emerald-500/30 rounded-xl p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold text-[10px]">
+                    JTR
+                  </span>
+                  <span className="font-bold text-white text-xs">Tegangan Rendah</span>
+                </div>
+                <span className="font-mono text-amber-300 text-[11px] font-bold">220 V – 380 V</span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                <span className="text-slate-400 text-[11px]">Batas Jarak Bebas (ROW):</span>
+                <span className="font-black text-emerald-400 text-xs">Minimal 1.0 Meter</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Jarak aman kabel udara dari atap/dinding bangunan atau dahan pohon. Lintasan jalan raya 5-6 meter.
+              </p>
+            </div>
+
+            {/* JTM */}
+            <div className="bg-slate-950/70 border border-amber-500/40 rounded-xl p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-mono font-bold text-[10px]">
+                    JTM
+                  </span>
+                  <span className="font-bold text-white text-xs">Tegangan Menengah (SUTM)</span>
+                </div>
+                <span className="font-mono text-amber-300 text-[11px] font-bold">20 kV (20.000 V)</span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                <span className="text-slate-400 text-[11px]">Batas Jarak Bebas (ROW):</span>
+                <span className="font-black text-amber-400 text-xs">Minimal 3.0 Meter</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Berlaku vertikal & horizontal terhadap bangunan, pepohonan, baliho, antene, dan aktivitas fisik.
+              </p>
+            </div>
+
+            {/* SUTT */}
+            <div className="bg-slate-950/70 border border-rose-500/30 rounded-xl p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded font-mono font-bold text-[10px]">
+                    SUTT
+                  </span>
+                  <span className="font-bold text-white text-xs">Tegangan Tinggi (SUTET)</span>
+                </div>
+                <span className="font-mono text-amber-300 text-[11px] font-bold">150 kV – 500 kV</span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                <span className="text-slate-400 text-[11px]">Batas Jarak Bebas (ROW):</span>
+                <span className="font-black text-rose-400 text-xs">Minimal 5 s.d 9+ Meter</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                Tergantung jenis tower/menara dan level tegangan transmisi sesuai regulasi lampiran Permen ESDM.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop View: Full Standard Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto border border-slate-800 rounded-xl">
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider text-[11px]">
               <tr>
@@ -217,114 +295,114 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
 
       {/* Automatic Alert Banner if ROW Violations detected */}
       {violationsCount > 0 && (
-        <div className="bg-rose-500/15 border-2 border-rose-500/60 p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl text-rose-200">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-rose-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg animate-pulse">
-              <ShieldAlert className="w-7 h-7" />
+        <div className="bg-rose-500/15 border-2 border-rose-500/60 p-3.5 sm:p-5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4 shadow-xl text-rose-200">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-rose-500 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-lg animate-pulse">
+              <ShieldAlert className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div>
-              <div className="font-black text-base text-white flex items-center gap-2">
-                <span>NOTIFIKASI OTOMATIS: PERINGATAN KESELAMATAN RUANG BEBAS (ROW)</span>
-                <span className="bg-rose-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold">
-                  {violationsCount} Titik Terdeteksi
+              <div className="font-black text-xs sm:text-base text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span>PERINGATAN KESELAMATAN RUANG BEBAS (ROW)</span>
+                <span className="bg-rose-600 text-white text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold">
+                  {violationsCount} Titik
                 </span>
               </div>
-              <p className="text-xs text-rose-300 mt-1">
-                Berdasarkan Acuan Permen ESDM: TR (220V-380V) min 1m, TM (20kV) min 3m, SUTT min 5m. Terdapat {criticalCount} lokasi dalam kondisi KRITIS.
+              <p className="text-[11px] sm:text-xs text-rose-300 mt-0.5 sm:mt-1">
+                TR min 1m, TM min 3m, SUTT min 5m. Terdapat <b className="text-white underline">{criticalCount} lokasi KRITIS</b> (&lt;1.5m).
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-1">
-          <span className="text-slate-400 font-medium">Acuan Standar ROW</span>
-          <div className="text-xl font-black text-amber-400">TR 1m · TM 3m · SUTT 5m</div>
-          <span className="text-[11px] text-slate-500">Permen ESDM / SPLN</span>
+      {/* Overview Cards - Mobile 2x2 Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-xs">
+        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-1">
+          <span className="text-slate-400 font-semibold text-[11px]">Standar ROW</span>
+          <div className="text-base sm:text-xl font-black text-amber-400">TR 1m · TM 3m</div>
+          <span className="text-[10px] text-slate-500 block">Permen ESDM Resmi</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-1">
-          <span className="text-slate-400 font-medium">Total Pelanggaran ROW</span>
-          <div className="text-2xl font-black text-rose-400">{violationsCount} Lokasi</div>
-          <span className="text-[11px] text-rose-400 font-semibold">Memerlukan Rabas Pohon</span>
+        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-1">
+          <span className="text-slate-400 font-semibold text-[11px]">Pelanggaran ROW</span>
+          <div className="text-lg sm:text-2xl font-black text-rose-400">{violationsCount} Lokasi</div>
+          <span className="text-[10px] text-rose-400 font-bold block">Perlu Rabas</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-1">
-          <span className="text-slate-400 font-medium">Bahaya Kritis</span>
-          <div className="text-2xl font-black text-rose-500">{criticalCount} Lokasi</div>
-          <span className="text-[11px] text-rose-300 font-semibold">Prioritas Darurat 24 Jam</span>
+        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-1">
+          <span className="text-slate-400 font-semibold text-[11px]">Bahaya Kritis</span>
+          <div className="text-lg sm:text-2xl font-black text-rose-500">{criticalCount} Lokasi</div>
+          <span className="text-[10px] text-rose-300 font-bold block">Darurat &lt;1.5m</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-1">
-          <span className="text-slate-400 font-medium">Jarak Kabel Aman</span>
-          <div className="text-2xl font-black text-emerald-400">
+        <div className="bg-slate-900 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-1">
+          <span className="text-slate-400 font-semibold text-[11px]">Jarak Bebas Aman</span>
+          <div className="text-lg sm:text-2xl font-black text-emerald-400">
             {poles.length - violationsCount} Lokasi
           </div>
-          <span className="text-[11px] text-emerald-400 font-semibold">Sesuai Standar</span>
+          <span className="text-[10px] text-emerald-400 font-bold block">Sesuai Standar</span>
         </div>
       </div>
 
-      {/* Sub-navigation Switcher: Titik Tiang vs Bentangan Kabel - Crisp High Contrast */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 p-2.5 rounded-2xl border border-slate-700 shadow-md">
-        <div className="flex items-center gap-2">
+      {/* Sub-navigation Switcher: Titik Tiang vs Bentangan Kabel - Segmented Pill */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-900 p-2 sm:p-2.5 rounded-2xl border border-slate-700 shadow-md">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <button
             onClick={() => setActiveSubTab('poles')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2 rounded-xl text-xs transition-colors cursor-pointer ${
               activeSubTab === 'poles'
                 ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                : 'text-slate-200 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
             }`}
           >
-            <MapPin className={`w-4 h-4 shrink-0 ${activeSubTab === 'poles' ? 'text-slate-950' : 'text-amber-400'}`} />
-            <span>1. Data Titik Tiang & ROW ({poles.length})</span>
+            <MapPin className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSubTab === 'poles' ? 'text-slate-950' : 'text-amber-400'}`} />
+            <span className="truncate">Tiang & ROW ({poles.length})</span>
             {violationsCount > 0 && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-                activeSubTab === 'poles' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                activeSubTab === 'poles' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white'
               }`}>
-                {violationsCount} ROW
+                {violationsCount}
               </span>
             )}
           </button>
 
           <button
             onClick={() => setActiveSubTab('cables')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2 rounded-xl text-xs transition-colors cursor-pointer ${
               activeSubTab === 'cables'
                 ? 'bg-amber-400 text-slate-950 font-black shadow-sm border border-amber-300'
-                : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
+                : 'text-slate-200 hover:text-white font-semibold hover:bg-slate-800 border border-transparent'
             }`}
           >
-            <Cable className={`w-4 h-4 shrink-0 ${activeSubTab === 'cables' ? 'text-slate-950' : 'text-amber-400'}`} />
-            <span>2. Data Bentangan Kabel JTM/JTR ({spans.length})</span>
+            <Cable className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeSubTab === 'cables' ? 'text-slate-950' : 'text-amber-400'}`} />
+            <span className="truncate">Kabel ({spans.length})</span>
             {cableViolationsCount > 0 && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-                activeSubTab === 'cables' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                activeSubTab === 'cables' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white'
               }`}>
-                {cableViolationsCount} ROW
+                {cableViolationsCount}
               </span>
             )}
           </button>
         </div>
 
-        <div className="text-xs font-semibold text-slate-300 px-3">
+        <div className="text-[11px] sm:text-xs font-semibold text-slate-400 px-1 text-center sm:text-right">
           {activeSubTab === 'poles'
-            ? `Menampilkan ${filteredPoles.length} tiang listrik PLN Baguala`
-            : `Menampilkan ${filteredSpans.length} bentangan kabel distribusi`}
+            ? `${filteredPoles.length} tiang PLN Baguala`
+            : `${filteredSpans.length} bentangan kabel`}
         </div>
       </div>
 
-      {/* Filter & Search Toolbar */}
-      <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-700/90 flex flex-wrap items-center justify-between gap-4 text-xs shadow-md">
+      {/* Filter & Search Toolbar - Responsive Mobile Stack */}
+      <div className="bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-700/90 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs shadow-md">
         
-        <div className="flex flex-wrap items-center gap-3 flex-1">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 flex-1">
           {/* Search */}
-          <div className="relative min-w-[240px] flex-1 max-w-sm">
+          <div className="relative w-full sm:min-w-[240px] sm:max-w-sm">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder={activeSubTab === 'poles' ? "Cari ID tiang, penyulang, lokasi..." : "Cari ID kabel, tiang, konduktor, penyulang..."}
+              placeholder={activeSubTab === 'poles' ? "Cari ID tiang, lokasi, penyulang..." : "Cari kabel, tiang, penyulang..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-600 text-xs font-medium placeholder-slate-400 focus:outline-none focus:border-amber-400 shadow-xs"
@@ -333,11 +411,11 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
 
           {activeSubTab === 'cables' && (
             <div className="flex items-center gap-1.5 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-600 shadow-xs">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <select
                 value={cableFeederFilter}
                 onChange={(e) => setCableFeederFilter(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer"
+                className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer w-full"
               >
                 <option value="ALL" className="bg-slate-900 text-white font-bold">Semua Penyulang ({allFeeders.length})</option>
                 {allFeeders.map(f => (
@@ -347,36 +425,36 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
             </div>
           )}
 
-          {/* Severity Tabs - Sharp & High Contrast */}
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-700 gap-1">
+          {/* Severity Tabs - Responsive 4-Column on Mobile */}
+          <div className="grid grid-cols-4 sm:flex bg-slate-950 p-1 rounded-xl border border-slate-700 gap-1 w-full sm:w-auto">
             <button
               onClick={() => setFilterSeverity('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                filterSeverity === 'ALL' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-slate-200 hover:text-white'
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
+                filterSeverity === 'ALL' ? 'bg-amber-400 text-slate-950 shadow-xs font-black' : 'text-slate-300 hover:text-white'
               }`}
             >
-              Semua ({activeSubTab === 'poles' ? poles.length : spans.length})
+              Semua
             </button>
             <button
               onClick={() => setFilterSeverity('CRITICAL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                filterSeverity === 'CRITICAL' ? 'bg-rose-600 text-white shadow-xs font-black' : 'text-slate-200 hover:text-white'
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
+                filterSeverity === 'CRITICAL' ? 'bg-rose-600 text-white shadow-xs font-black' : 'text-slate-300 hover:text-white'
               }`}
             >
               Kritis
             </button>
             <button
               onClick={() => setFilterSeverity('VIOLATION')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                filterSeverity === 'VIOLATION' ? 'bg-amber-400 text-slate-950 shadow-xs font-black' : 'text-slate-200 hover:text-white'
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
+                filterSeverity === 'VIOLATION' ? 'bg-amber-400 text-slate-950 shadow-xs font-black' : 'text-slate-300 hover:text-white'
               }`}
             >
-              Melanggar ROW
+              ROW
             </button>
             <button
               onClick={() => setFilterSeverity('SAFE')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                filterSeverity === 'SAFE' ? 'bg-emerald-500 text-slate-950 shadow-xs font-black' : 'text-slate-200 hover:text-white'
+              className={`px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
+                filterSeverity === 'SAFE' ? 'bg-emerald-500 text-slate-950 shadow-xs font-black' : 'text-slate-300 hover:text-white'
               }`}
             >
               Aman
@@ -386,313 +464,578 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
 
       </div>
 
-      {/* Main Table */}
+      {/* Main Content: Mobile Card View (md:hidden) & Desktop Table View (hidden md:block) */}
       <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
         {activeSubTab === 'poles' ? (
-          <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="p-4">ID & Kode Tiang</th>
-                <th className="p-4">Jenis & Tegangan</th>
-                <th className="p-4">Lokasi / Penyulang</th>
-                <th className="p-4">Jarak Saat Ini / Min ROW</th>
-                <th className="p-4">Objek Terdekat</th>
-                <th className="p-4">Status ROW Permen ESDM</th>
-                <th className="p-4 text-center">Tindakan Lapangan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80">
+          <>
+            {/* 1. MOBILE CARD VIEW FOR POLES (md:hidden) */}
+            <div className="md:hidden divide-y divide-slate-800/90">
               {displayedPoles.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
-                    Tidak ada data tiang listrik yang sesuai filter.
-                  </td>
-                </tr>
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Tidak ada data tiang listrik yang sesuai filter pencarian.
+                </div>
               ) : (
                 displayedPoles.map((pole) => {
-                const isViolation = checkIsRowViolation(pole.clearanceDistanceMeters, pole.type);
-                const minReq = getMinRowRequirement(pole.type);
-                const isCritical = pole.clearanceDistanceMeters < (minReq / 2);
+                  const isViolation = checkIsRowViolation(pole.clearanceDistanceMeters, pole.type);
+                  const minReq = getMinRowRequirement(pole.type);
+                  const isCritical = pole.clearanceDistanceMeters < (minReq / 2);
 
-                return (
-                  <tr key={pole.id} className="hover:bg-slate-800/40 transition-colors">
-                    
-                    {/* ID & Code */}
-                    <td className="p-4 font-bold">
-                      <div className="text-white text-sm font-mono">{pole.id}</div>
-                      <div className="text-amber-400 font-mono text-[11px]">{pole.code}</div>
-                    </td>
-
-                    {/* Voltage & Type */}
-                    <td className="p-4 font-bold">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
-                        pole.type === 'TR'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : pole.type === 'TT'
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                      }`}>
-                        {pole.type === 'TR' ? 'JTR (220-380V)' : pole.type === 'TT' ? 'SUTT (150kV+)' : 'JTM (20kV)'}
-                      </span>
-                    </td>
-
-                    {/* Location */}
-                    <td className="p-4">
-                      <div className="font-semibold text-slate-200">{pole.locationName}</div>
-                      <div className="text-[11px] text-slate-400">{pole.feeder}</div>
-                    </td>
-
-                    {/* Distance & Editor */}
-                    <td className="p-4">
-                      {editingPoleId === pole.id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={editDistanceValue}
-                            onChange={(e) => setEditDistanceValue(parseFloat(e.target.value) || 0)}
-                            className="w-20 bg-slate-950 border border-amber-500 text-white px-2 py-1 rounded text-xs"
-                          />
-                          <button
-                            onClick={() => handleSaveEdit(pole.id)}
-                            className="bg-amber-500 text-slate-950 font-bold px-2 py-1 rounded text-[10px]"
-                          >
-                            Simpan
-                          </button>
+                  return (
+                    <div key={pole.id} className="p-3.5 space-y-3 bg-slate-900/90 hover:bg-slate-850 transition-colors">
+                      {/* Top Row: Code, Type, Feeder, Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-mono font-black text-sm tracking-tight">{pole.code}</span>
+                            <span className="text-slate-400 font-mono text-[11px]">({pole.id})</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              pole.type === 'TR'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : pole.type === 'TT'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            }`}>
+                              {pole.type === 'TR' ? 'JTR 220-380V' : pole.type === 'TT' ? 'SUTT 150kV+' : 'JTM 20kV'}
+                            </span>
+                            <span className="text-[10px] text-amber-400 font-bold truncate max-w-[130px]">
+                              ⚡ {pole.feeder}
+                            </span>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-base font-black ${
-                            isCritical ? 'text-rose-400' : isViolation ? 'text-amber-400' : 'text-emerald-400'
-                          }`}>
-                            {pole.clearanceDistanceMeters}m
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            (Min {minReq}m)
-                          </span>
-                          <button
-                            onClick={() => {
-                              setEditingPoleId(pole.id);
-                              setEditDistanceValue(pole.clearanceDistanceMeters);
-                            }}
-                            className="text-[10px] text-slate-500 hover:text-slate-300 underline"
-                          >
-                            Edit
-                          </button>
+
+                        {/* Status Badge */}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border shrink-0 ${
+                          isCritical
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                            : isViolation
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        }`}>
+                          {isViolation ? <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" /> : <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
+                          <span>{isCritical ? 'Kritis' : isViolation ? 'Pelanggaran ROW' : 'Aman'}</span>
+                        </span>
+                      </div>
+
+                      {/* Location Name */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                        <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="font-medium truncate">{pole.locationName}</span>
+                      </div>
+
+                      {/* Metrics Box */}
+                      <div className="bg-slate-950/80 rounded-xl p-2.5 border border-slate-800 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Jarak Bebas ROW:</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <span className={`text-base font-black ${
+                              isCritical ? 'text-rose-400' : isViolation ? 'text-amber-400' : 'text-emerald-400'
+                            }`}>
+                              {pole.clearanceDistanceMeters}m
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">(Min {minReq}m)</span>
+                          </div>
                         </div>
-                      )}
-                    </td>
 
-                    {/* Object */}
-                    <td className="p-4 font-medium text-slate-300">
-                      {pole.clearanceObject}
-                    </td>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Objek Penghalang:</span>
+                          <span className="text-white font-bold text-xs truncate block mt-0.5" title={pole.clearanceObject}>
+                            {pole.clearanceObject || '-'}
+                          </span>
+                        </div>
 
-                    {/* Status Badge */}
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
-                        isCritical
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                          : isViolation
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}>
-                        {isViolation ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                        <span>{pole.clearanceStatus}</span>
-                      </span>
-                    </td>
+                        <div className="col-span-2 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">Kondisi Fisik Tiang:</span>
+                          <span className="font-bold text-slate-200">{pole.physicalCondition || 'Baik'}</span>
+                        </div>
+                      </div>
 
-                    {/* Actions */}
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                      {/* Touch-Friendly Action Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-0.5">
                         <button
+                          type="button"
                           onClick={() => onOpenMapAtPole(pole)}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl border border-slate-700 transition-all"
-                          title="Lihat di Peta GIS"
+                          className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
                         >
-                          <ExternalLink className="w-4 h-4 text-amber-400" />
+                          <ExternalLink className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>Peta</span>
                         </button>
 
                         <button
+                          type="button"
                           onClick={() => onCreateSpkForPole(pole)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                          className={`col-span-2 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-colors shadow-sm cursor-pointer ${
                             isViolation
-                              ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
-                              : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                              ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                              : 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
                           }`}
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-3.5 h-3.5 shrink-0" />
                           <span>Buat SPK Rabas</span>
                         </button>
 
                         <button
-                          onClick={() => setPoleToDelete(pole)}
-                          className="bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white p-2 rounded-xl border border-rose-500/30 transition-all cursor-pointer"
-                          title="Hapus Tiang dari Sistem GIS"
+                          type="button"
+                          onClick={() => {
+                            setEditingPoleId(pole.id);
+                            setEditDistanceValue(pole.clearanceDistanceMeters);
+                          }}
+                          className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit3 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                          <span>Ubah</span>
                         </button>
                       </div>
-                    </td>
 
-                  </tr>
-                );
-              }))}
-            </tbody>
-          </table>
-        </div>
-        ) : (
-          /* Table 2: Bentangan Kabel */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="p-4">ID Kabel & Penyulang</th>
-                  <th className="p-4">Menghubungkan Tiang</th>
-                  <th className="p-4">Jenis Kabel Konduktor</th>
-                  <th className="p-4">Panjang (Spat)</th>
-                  <th className="p-4">Jarak Pohon & Bangunan</th>
-                  <th className="p-4">Kondisi Kabel</th>
-                  <th className="p-4">Status ROW</th>
-                  <th className="p-4 text-center">Tindakan Kabel</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80">
-                {displayedSpans.length === 0 ? (
+                      {/* Inline Distance Editor on Mobile */}
+                      {editingPoleId === pole.id && (
+                        <div className="bg-slate-950 p-2.5 rounded-xl border border-amber-500/50 flex items-center justify-between gap-2 mt-1">
+                          <span className="text-[11px] text-amber-300 font-bold">Ubah Jarak (m):</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={editDistanceValue}
+                              onChange={(e) => setEditDistanceValue(parseFloat(e.target.value) || 0)}
+                              className="w-16 bg-slate-900 border border-amber-400 text-white px-2 py-1 rounded text-xs font-bold text-center"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEdit(pole.id)}
+                              className="bg-amber-400 text-slate-950 font-black px-2.5 py-1 rounded text-xs cursor-pointer"
+                            >
+                              Simpan
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPoleId(null)}
+                              className="bg-slate-800 text-slate-400 font-bold px-2 py-1 rounded text-xs cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 2. DESKTOP TABLE VIEW FOR POLES (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider text-[11px]">
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
-                      Tidak ada bentangan kabel yang sesuai filter.
-                    </td>
+                    <th className="p-4">ID & Kode Tiang</th>
+                    <th className="p-4">Jenis & Tegangan</th>
+                    <th className="p-4">Lokasi / Penyulang</th>
+                    <th className="p-4">Jarak Saat Ini / Min ROW</th>
+                    <th className="p-4">Objek Terdekat</th>
+                    <th className="p-4">Status ROW Permen ESDM</th>
+                    <th className="p-4 text-center">Tindakan Lapangan</th>
                   </tr>
-                ) : (
-                  displayedSpans.map((span) => {
-                    const fromPole = poleMap.get(span.fromPoleId);
-                    const toPole = poleMap.get(span.toPoleId);
-                    const fromCode = fromPole?.code || span.fromPoleId;
-                    const toCode = toPole?.code || span.toPoleId;
-                    const effectiveFeeder = span.feeder || fromPole?.feeder || toPole?.feeder || '-';
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {displayedPoles.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        Tidak ada data tiang listrik yang sesuai filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedPoles.map((pole) => {
+                      const isViolation = checkIsRowViolation(pole.clearanceDistanceMeters, pole.type);
+                      const minReq = getMinRowRequirement(pole.type);
+                      const isCritical = pole.clearanceDistanceMeters < (minReq / 2);
 
-                    const treeDist = span.treeDistanceMeters ?? span.clearanceMeters ?? 3.5;
-                    const bldgDist = span.buildingDistanceMeters ?? 4.0;
-                    const minClear = Math.min(treeDist, bldgDist);
-                    const isViol = span.hasViolation || minClear < 3.0;
-                    const isCrit = minClear < 1.5;
+                      return (
+                        <tr key={pole.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-4 font-bold">
+                            <div className="text-white text-sm font-mono">{pole.id}</div>
+                            <div className="text-amber-400 font-mono text-[11px]">{pole.code}</div>
+                          </td>
 
-                    return (
-                      <tr key={span.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="p-4">
-                          <div className="font-mono font-bold text-white text-xs">{span.id}</div>
-                          <span className="inline-block mt-1 bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30">
-                            {effectiveFeeder}
-                          </span>
-                        </td>
+                          <td className="p-4 font-bold">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                              pole.type === 'TR'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : pole.type === 'TT'
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            }`}>
+                              {pole.type === 'TR' ? 'JTR (220-380V)' : pole.type === 'TT' ? 'SUTT (150kV+)' : 'JTM (20kV)'}
+                            </span>
+                          </td>
 
-                        <td className="p-4">
-                          <div className="flex items-center gap-1.5 font-bold text-white">
-                            <span className="text-amber-400 font-mono">{fromCode}</span>
+                          <td className="p-4">
+                            <div className="font-semibold text-slate-200">{pole.locationName}</div>
+                            <div className="text-[11px] text-slate-400">{pole.feeder}</div>
+                          </td>
+
+                          <td className="p-4">
+                            {editingPoleId === pole.id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  value={editDistanceValue}
+                                  onChange={(e) => setEditDistanceValue(parseFloat(e.target.value) || 0)}
+                                  className="w-20 bg-slate-950 border border-amber-500 text-white px-2 py-1 rounded text-xs"
+                                />
+                                <button
+                                  onClick={() => handleSaveEdit(pole.id)}
+                                  className="bg-amber-500 text-slate-950 font-bold px-2 py-1 rounded text-[10px]"
+                                >
+                                  Simpan
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-base font-black ${
+                                  isCritical ? 'text-rose-400' : isViolation ? 'text-amber-400' : 'text-emerald-400'
+                                }`}>
+                                  {pole.clearanceDistanceMeters}m
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  (Min {minReq}m)
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    setEditingPoleId(pole.id);
+                                    setEditDistanceValue(pole.clearanceDistanceMeters);
+                                  }}
+                                  className="text-[10px] text-slate-500 hover:text-slate-300 underline"
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="p-4 font-medium text-slate-300">
+                            {pole.clearanceObject}
+                          </td>
+
+                          <td className="p-4">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border ${
+                              isCritical
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                : isViolation
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            }`}>
+                              {isViolation ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                              <span>{pole.clearanceStatus}</span>
+                            </span>
+                          </td>
+
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => onOpenMapAtPole(pole)}
+                                className="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl border border-slate-700 transition-all cursor-pointer"
+                                title="Lihat di Peta GIS"
+                              >
+                                <ExternalLink className="w-4 h-4 text-amber-400" />
+                              </button>
+
+                              <button
+                                onClick={() => onCreateSpkForPole(pole)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                                  isViolation
+                                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
+                                    : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                                }`}
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Buat SPK Rabas</span>
+                              </button>
+
+                              <button
+                                onClick={() => setPoleToDelete(pole)}
+                                className="bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white p-2 rounded-xl border border-rose-500/30 transition-all cursor-pointer"
+                                title="Hapus Tiang dari Sistem GIS"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* 3. MOBILE CARD VIEW FOR CABLES (md:hidden) */}
+            <div className="md:hidden divide-y divide-slate-800/90">
+              {displayedSpans.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Tidak ada bentangan kabel yang sesuai filter pencarian.
+                </div>
+              ) : (
+                displayedSpans.map((span) => {
+                  const fromPole = poleMap.get(span.fromPoleId);
+                  const toPole = poleMap.get(span.toPoleId);
+                  const fromCode = fromPole?.code || span.fromPoleId;
+                  const toCode = toPole?.code || span.toPoleId;
+                  const effectiveFeeder = span.feeder || fromPole?.feeder || toPole?.feeder || '-';
+
+                  const treeDist = span.treeDistanceMeters ?? span.clearanceMeters ?? 3.5;
+                  const bldgDist = span.buildingDistanceMeters ?? 4.0;
+                  const minClear = Math.min(treeDist, bldgDist);
+                  const isViol = span.hasViolation || minClear < 3.0;
+                  const isCrit = minClear < 1.5;
+
+                  return (
+                    <div key={span.id} className="p-3.5 space-y-3 bg-slate-900/90 hover:bg-slate-850 transition-colors">
+                      {/* Top Row: From ↔ To, Spat, Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 font-mono font-black text-sm text-white">
+                            <span className="text-amber-400">{fromCode}</span>
                             <span className="text-slate-500">↔</span>
-                            <span className="text-amber-400 font-mono">{toCode}</span>
+                            <span className="text-amber-400">{toCode}</span>
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            {fromPole?.locationName || toPole?.locationName || 'Jalur Distribusi ULP Baguala'}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-semibold text-slate-300 bg-slate-800 px-2 py-0.5 rounded text-[10px] border border-slate-700">
+                              {span.conductorType}
+                            </span>
+                            <span className="text-[10px] text-amber-400 font-bold">
+                              ⚡ {effectiveFeeder}
+                            </span>
                           </div>
-                        </td>
+                        </div>
 
-                        <td className="p-4">
-                          <span className="font-semibold text-slate-200 bg-slate-800/90 px-2 py-1 rounded border border-slate-700 text-[11px]">
-                            {span.conductorType}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold border shrink-0 ${
+                          isCrit
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                            : isViol
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        }`}>
+                          {isViol ? <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" /> : <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />}
+                          <span>{isCrit ? 'Kritis' : isViol ? 'ROW <3m' : 'Aman'}</span>
+                        </span>
+                      </div>
+
+                      {/* Location & Spat */}
+                      <div className="flex items-center justify-between text-xs text-slate-300">
+                        <span className="text-[11px] text-slate-400 truncate max-w-[200px]">
+                          📍 {fromPole?.locationName || toPole?.locationName || 'Jalur Distribusi ULP Baguala'}
+                        </span>
+                        <span className="font-mono font-bold text-sky-400 text-xs shrink-0">
+                          Spat {span.lengthMeters}m
+                        </span>
+                      </div>
+
+                      {/* Metrics Box */}
+                      <div className="bg-slate-950/80 rounded-xl p-2.5 border border-slate-800 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Jarak Pohon:</span>
+                          <span className={`text-sm font-black block mt-0.5 ${treeDist < 3.0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            🌳 {treeDist}m
                           </span>
-                        </td>
+                        </div>
 
-                        <td className="p-4">
-                          <div className="font-mono font-bold text-sm text-sky-400">
-                            {span.lengthMeters} m
-                          </div>
-                          <span className="text-[10px] text-slate-500">Spat Jaringan</span>
-                        </td>
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Jarak Bangunan:</span>
+                          <span className={`text-sm font-black block mt-0.5 ${bldgDist < 3.0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            🏢 {bldgDist}m
+                          </span>
+                        </div>
 
-                        <td className="p-4">
-                          <div className="space-y-0.5">
-                            <div className="text-[11px]">
-                              🌳 Pohon: <b className={treeDist < 3.0 ? 'text-rose-400' : 'text-emerald-400'}>{treeDist}m</b>
-                            </div>
-                            <div className="text-[11px]">
-                              🏢 Bangunan: <b className={bldgDist < 3.0 ? 'text-amber-400' : 'text-emerald-400'}>{bldgDist}m</b>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="p-4">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
-                            span.cableCondition === 'Baik' || !span.cableCondition
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        <div className="col-span-2 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">Kondisi Fisik Kabel:</span>
+                          <span className={`font-bold ${
+                            span.cableCondition === 'Baik' || !span.cableCondition ? 'text-emerald-400' : 'text-rose-400'
                           }`}>
                             {span.cableCondition || 'Baik'}
                           </span>
-                        </td>
+                        </div>
+                      </div>
 
-                        <td className="p-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                            isCrit
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                              : isViol
-                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                          }`}>
-                            {isViol ? <AlertTriangle className="w-3 h-3 text-rose-400" /> : <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
-                            <span>{isCrit ? 'Kritis (<1.5m)' : isViol ? 'ROW <3.0m' : 'Aman (≥3.0m)'}</span>
-                          </span>
-                        </td>
+                      {/* Actions */}
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSpanForEdit(span)}
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-colors shadow-sm cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Ubah Info Kabel</span>
+                        </button>
 
-                        <td className="p-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => setSelectedSpanForEdit(span)}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs transition-all shadow-sm cursor-pointer"
-                              title="Ubah Informasi Kabel"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Ubah Info</span>
-                            </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSpanItem(span)}
+                          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-bold border border-rose-500/30 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus Kabel</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
 
-                            <button
-                              onClick={() => handleDeleteSpanItem(span)}
-                              className="bg-rose-600 hover:bg-rose-500 text-white font-bold p-2 rounded-xl flex items-center justify-center transition-all shadow-sm cursor-pointer"
-                              title="Hapus Kabel Ini dari Sistem GIS"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
+            {/* 4. DESKTOP TABLE VIEW FOR CABLES (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="p-4">ID Kabel & Penyulang</th>
+                    <th className="p-4">Menghubungkan Tiang</th>
+                    <th className="p-4">Jenis Kabel Konduktor</th>
+                    <th className="p-4">Panjang (Spat)</th>
+                    <th className="p-4">Jarak Pohon & Bangunan</th>
+                    <th className="p-4">Kondisi Kabel</th>
+                    <th className="p-4">Status ROW</th>
+                    <th className="p-4 text-center">Tindakan Kabel</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {displayedSpans.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                        Tidak ada bentangan kabel yang sesuai filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedSpans.map((span) => {
+                      const fromPole = poleMap.get(span.fromPoleId);
+                      const toPole = poleMap.get(span.toPoleId);
+                      const fromCode = fromPole?.code || span.fromPoleId;
+                      const toCode = toPole?.code || span.toPoleId;
+                      const effectiveFeeder = span.feeder || fromPole?.feeder || toPole?.feeder || '-';
 
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      const treeDist = span.treeDistanceMeters ?? span.clearanceMeters ?? 3.5;
+                      const bldgDist = span.buildingDistanceMeters ?? 4.0;
+                      const minClear = Math.min(treeDist, bldgDist);
+                      const isViol = span.hasViolation || minClear < 3.0;
+                      const isCrit = minClear < 1.5;
+
+                      return (
+                        <tr key={span.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-4">
+                            <div className="font-mono font-bold text-white text-xs">{span.id}</div>
+                            <span className="inline-block mt-1 bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold border border-amber-500/30">
+                              {effectiveFeeder}
+                            </span>
+                          </td>
+
+                          <td className="p-4">
+                            <div className="flex items-center gap-1.5 font-bold text-white">
+                              <span className="text-amber-400 font-mono">{fromCode}</span>
+                              <span className="text-slate-500">↔</span>
+                              <span className="text-amber-400 font-mono">{toCode}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              {fromPole?.locationName || toPole?.locationName || 'Jalur Distribusi ULP Baguala'}
+                            </div>
+                          </td>
+
+                          <td className="p-4">
+                            <span className="font-semibold text-slate-200 bg-slate-800/90 px-2 py-1 rounded border border-slate-700 text-[11px]">
+                              {span.conductorType}
+                            </span>
+                          </td>
+
+                          <td className="p-4">
+                            <div className="font-mono font-bold text-sm text-sky-400">
+                              {span.lengthMeters} m
+                            </div>
+                            <span className="text-[10px] text-slate-500">Spat Jaringan</span>
+                          </td>
+
+                          <td className="p-4">
+                            <div className="space-y-0.5">
+                              <div className="text-[11px]">
+                                🌳 Pohon: <b className={treeDist < 3.0 ? 'text-rose-400' : 'text-emerald-400'}>{treeDist}m</b>
+                              </div>
+                              <div className="text-[11px]">
+                                🏢 Bangunan: <b className={bldgDist < 3.0 ? 'text-amber-400' : 'text-emerald-400'}>{bldgDist}m</b>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="p-4">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                              span.cableCondition === 'Baik' || !span.cableCondition
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            }`}>
+                              {span.cableCondition || 'Baik'}
+                            </span>
+                          </td>
+
+                          <td className="p-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                              isCrit
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                                : isViol
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                            }`}>
+                              {isViol ? <AlertTriangle className="w-3 h-3 text-rose-400" /> : <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                              <span>{isCrit ? 'Kritis (<1.5m)' : isViol ? 'ROW <3.0m' : 'Aman (≥3.0m)'}</span>
+                            </span>
+                          </td>
+
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedSpanForEdit(span)}
+                                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs transition-all shadow-sm cursor-pointer"
+                                title="Ubah Informasi Kabel"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Ubah Info</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteSpanItem(span)}
+                                className="bg-rose-600 hover:bg-rose-500 text-white font-bold p-2 rounded-xl flex items-center justify-center transition-all shadow-sm cursor-pointer"
+                                title="Hapus Kabel Ini dari Sistem GIS"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
-        {/* Sleek Pagination Bar */}
+        {/* Responsive Sleek Pagination Bar */}
         {currentTotal > 0 && (
-          <div className="bg-slate-950/90 px-4 py-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="text-slate-400 flex items-center gap-2">
+          <div className="bg-slate-950/90 px-3.5 sm:px-4 py-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+            <div className="text-slate-400 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-[11px] sm:text-xs">
               <span>
-                Menampilkan <b className="text-white">{((safeCurrentPage - 1) * pageSize) + 1}</b> - <b className="text-white">{Math.min(safeCurrentPage * pageSize, currentTotal)}</b> dari <b className="text-amber-400">{currentTotal.toLocaleString('id-ID')}</b> data
+                <b className="text-white">{((safeCurrentPage - 1) * pageSize) + 1}</b> - <b className="text-white">{Math.min(safeCurrentPage * pageSize, currentTotal)}</b> dari <b className="text-amber-400">{currentTotal.toLocaleString('id-ID')}</b>
               </span>
-              <span className="text-slate-600">|</span>
+              <span className="text-slate-600 hidden sm:inline">|</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-500">Per halaman:</span>
+                <span className="text-slate-500">Per hal:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-2 py-0.5 focus:outline-none focus:border-amber-500 cursor-pointer"
+                  className="bg-slate-800 border border-slate-700 text-white text-[11px] sm:text-xs rounded-lg px-2 py-0.5 focus:outline-none focus:border-amber-500 cursor-pointer"
                 >
                   <option value={25}>25</option>
                   <option value={50}>50</option>
@@ -703,24 +1046,26 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
                 <button
+                  type="button"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={safeCurrentPage <= 1}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px] sm:text-xs"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Sebelumnya</span>
                 </button>
 
-                <div className="px-2 py-1 text-slate-300 font-semibold">
-                  Halaman <span className="text-white font-bold">{safeCurrentPage}</span> / <span className="text-slate-400">{totalPages}</span>
+                <div className="px-2 py-1 text-slate-300 font-semibold text-[11px] sm:text-xs">
+                  <span className="text-white font-bold">{safeCurrentPage}</span> / <span className="text-slate-400">{totalPages}</span>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={safeCurrentPage >= totalPages}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-bold transition-all flex items-center gap-1 cursor-pointer text-[11px] sm:text-xs"
                 >
                   <span>Selanjutnya</span>
                   <ChevronRight className="w-3.5 h-3.5" />

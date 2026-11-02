@@ -84,11 +84,46 @@ export interface KmzParseResult {
   rawKmlText?: string;
 }
 
+export interface FeederEnsData {
+  feederName: string;
+  voltageKv: number;               // Tegangan kerja (20 kV JTM)
+  averageCurrentA: number;         // Arus beban rata-rata (Ampere)
+  powerKw: number;                 // P = sqrt(3) * V * I * cosPhi (kW)
+  estimatedOutageHours: number;    // Estimasi durasi padam (jam)
+  rowViolationsCount: number;      // Jumlah titik pelanggaran ROW
+  criticalPolesCount: number;       // Tiang kritis/miring
+  riskLevel: 'Kritis' | 'Tinggi' | 'Sedang';
+  potentialEnsKwh: number;         // ENS jika terjadi gangguan pohon (kWh)
+  potentialLossRp: number;         // Potensi kerugian pendapatan (Rp)
+  savedEnsKwh: number;             // ENS yang diselamatkan via rabas pohon (kWh)
+  savedRevenueRp: number;          // Rupiah pendapatan yang diselamatkan (Rp)
+}
+
+export interface EnsAnalysisResult {
+  totalPotentialEnsKwh: number;
+  totalPotentialEnsMwh: number;
+  totalPotentialLossRp: number;
+  totalSavedEnsKwh: number;
+  totalSavedRevenueRp: number;
+  averageOutageDurationHours: number;
+  tariffPerKwh: number;            // Tarif Tenaga Listrik rata-rata (Rp 1.444,70 / kWh)
+  standardReference: string;       // SPLN No. 68-1B & Kepdir PLN No. 0687.K/DIR/2019
+  feederBreakdown: FeederEnsData[];
+  calculationFormula: {
+    powerFormula: string;
+    ensFormula: string;
+    financialFormula: string;
+    cosPhi: number;
+    voltageKv: number;
+  };
+}
+
 export interface AiAnalysisResult {
   gridHealthScore: number;
   summary: string;
   criticalPolesCount: number;
   rowViolationsCount: number;
+  ensAnalysis?: EnsAnalysisResult;
   riskAssessment: {
     highRiskPoles: { poleId: string; location: string; reason: string; riskLevel: 'Tinggi' | 'Kritis' }[];
     vegetationThreats: { poleId: string; distance: number; object: string; action: string }[];
