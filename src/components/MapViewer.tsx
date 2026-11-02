@@ -978,31 +978,37 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
         const treeInfo = treeDist < 90 ? `${treeDist}m` : '-';
         const bldgInfo = bldgDist < 90 ? `${bldgDist}m` : '-';
-        const modeBadgeLabel = cableColorMode === 'byFeeder' 
+        const compactCableStatus = isCableCritical
+          ? '🔴 Kritis'
+          : isCableViolation
+            ? '🟡 Pelanggaran ROW'
+            : '🟢 Aman';
+
+        const cableStatusText = cableColorMode === 'byFeeder' 
           ? `⚡ Feeder ${effectiveFeeder}` 
-          : lineModeDesc;
+          : `${compactCableStatus} (${minClearance < 90 ? minClearance.toFixed(1) + 'm' : '<3m'})`;
 
         line.bindTooltip(
-          `<div style="min-width:330px; max-width:460px; font-family:inherit;">` +
-            `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
-              `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em;">` +
+          `<div style="box-sizing:border-box; width:100%; min-width:320px; max-width:440px; font-family:inherit; overflow:hidden;">` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
+              `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">` +
                 `${fromPole.code} <span style="color:#0284c7; font-weight:800;">↔</span> ${toPole.code}` +
               `</div>` +
-              `<div style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; white-space:nowrap;">` +
+              `<div style="font-size:11px; font-weight:800; padding:2px 7px; border-radius:5px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; white-space:nowrap; flex-shrink:0;">` +
                 `${span.conductorType} (${span.lengthMeters}m)` +
               `</div>` +
             `</div>` +
             `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; margin-bottom:5px;">` +
-              `<div style="font-weight:800; color:${lineColor}; white-space:nowrap;">` +
-                `${modeBadgeLabel}` +
+              `<div style="font-weight:800; color:${lineColor}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px;">` +
+                `${cableStatusText}` +
               `</div>` +
-              `<div style="font-size:11.5px; font-weight:700; color:#334155; white-space:nowrap;">` +
+              `<div style="font-size:11.5px; font-weight:700; color:#334155; white-space:nowrap; flex-shrink:0;">` +
                 `Pohon: <b>${treeInfo}</b> · Bangunan: <b>${bldgInfo}</b>` +
               `</div>` +
             `</div>` +
-            `<div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:800; color:#d97706; background:#fef3c7; border:1px solid #fcd34d; padding:3px 8px; border-radius:6px;">` +
-              `<span>👉 Klik kabel untuk opsi edit / hapus</span>` +
-              `<span style="color:#78350f; font-weight:700;">Fisik: ${span.cableCondition || 'Baik'}</span>` +
+            `<div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:800; color:#d97706; background:#fef3c7; border:1px solid #fcd34d; padding:3px 8px; border-radius:6px; overflow:hidden;">` +
+              `<span style="white-space:nowrap; flex-shrink:0;">👉 Klik kabel untuk opsi edit / hapus</span>` +
+              `<span style="color:#78350f; font-weight:700; white-space:nowrap; flex-shrink:0;">Fisik: ${span.cableCondition || 'Baik'}</span>` +
             `</div>` +
           `</div>`,
           { sticky: true, direction: 'top', opacity: 1.0, className: 'custom-map-tooltip' }
@@ -1283,7 +1289,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // 5. Render visible poles (Hardware-Accelerated Canvas CircleMarkers for dot pin mode)
     visiblePoles.forEach(pole => {
-      const { color: poleColor, statusLabel } = getPoleVisualAttributes(pole);
+      const { color: poleColor, statusType } = getPoleVisualAttributes(pole);
 
       let marker: L.CircleMarker | L.Marker;
 
@@ -1326,31 +1332,37 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         marker = L.marker([pole.lat, pole.lng], { icon: customIcon });
       }
 
+      const compactRowStatus = statusType === 'critical'
+        ? '🔴 Kritis'
+        : statusType === 'warning'
+          ? '🟡 Pelanggaran ROW'
+          : '🟢 Aman';
+
       const feederOrRowBadge = cableColorMode === 'byFeeder'
         ? `⚡ ${pole.feeder}`
-        : statusLabel;
+        : `${compactRowStatus} (${pole.clearanceDistanceMeters}m)`;
 
       marker.bindTooltip(
-        `<div style="min-width:330px; max-width:460px; font-family:inherit;">` +
-          `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
-            `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em;">` +
+        `<div style="box-sizing:border-box; width:100%; min-width:320px; max-width:440px; font-family:inherit; overflow:hidden;">` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:5px;">` +
+            `<div style="font-size:14px; font-weight:900; color:#090d16; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">` +
               `${pole.code} <span style="font-size:12px; font-weight:800; color:#0284c7;">(${pole.type})</span>` +
             `</div>` +
-            `<div style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:6px; background:#f1f5f9; border:1px solid #cbd5e1; color:${poleColor}; white-space:nowrap;">` +
+            `<div style="font-size:11px; font-weight:800; padding:2px 7px; border-radius:5px; background:#f1f5f9; border:1px solid #cbd5e1; color:${poleColor}; white-space:nowrap; flex-shrink:0;">` +
               `${feederOrRowBadge}` +
             `</div>` +
           `</div>` +
           `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; margin-bottom:5px;">` +
-            `<div style="font-weight:700; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px;" title="${pole.locationName}">` +
+            `<div style="font-weight:700; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px;" title="${pole.locationName}">` +
               `📍 ${pole.locationName}` +
             `</div>` +
-            `<div style="font-size:11px; font-weight:800; color:${pole.physicalCondition === 'Baik' ? '#14532d' : '#991b1b'}; background:${pole.physicalCondition === 'Baik' ? '#dcfce7' : '#fee2e2'}; border:1px solid ${pole.physicalCondition === 'Baik' ? '#86efac' : '#fca5a5'}; padding:1.5px 7px; border-radius:5px; white-space:nowrap;">` +
+            `<div style="font-size:11px; font-weight:800; color:${pole.physicalCondition === 'Baik' ? '#14532d' : '#991b1b'}; background:${pole.physicalCondition === 'Baik' ? '#dcfce7' : '#fee2e2'}; border:1px solid ${pole.physicalCondition === 'Baik' ? '#86efac' : '#fca5a5'}; padding:1.5px 7px; border-radius:5px; white-space:nowrap; flex-shrink:0;">` +
               `Fisik: ${pole.physicalCondition}` +
             `</div>` +
           `</div>` +
-          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:4px 8px; border-radius:6px;">` +
-            `<span>Jarak ROW: <b style="color:#090d16; font-size:12px;">${pole.clearanceDistanceMeters}m</b></span>` +
-            `<span style="color:#64748b; font-weight:600;">Objek: <b style="color:#1e293b;">${pole.clearanceObject}</b></span>` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:#334155; background:#f8fafc; border:1px solid #e2e8f0; padding:4px 8px; border-radius:6px; overflow:hidden;">` +
+            `<span style="white-space:nowrap; flex-shrink:0;">Jarak ROW: <b style="color:#090d16; font-size:12px;">${pole.clearanceDistanceMeters}m</b></span>` +
+            `<span style="color:#64748b; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; text-align:right;" title="${pole.clearanceObject}">Objek: <b style="color:#1e293b;">${pole.clearanceObject}</b></span>` +
           `</div>` +
         `</div>`,
         { sticky: true, direction: 'top', opacity: 1.0, className: 'custom-map-tooltip' }
