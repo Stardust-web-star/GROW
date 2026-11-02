@@ -1134,6 +1134,7 @@ export default function App() {
       <AiAssistantDrawer
         isOpen={showAiAssistant}
         onClose={() => setShowAiAssistant(false)}
+        poles={poles}
       />
 
       {/* Feeder & Cable Color Management Drawer */}

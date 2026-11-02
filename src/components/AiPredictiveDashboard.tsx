@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PoleData, AiAnalysisResult, MaintenanceWorkOrder } from '../types';
 import { getApiUrl } from '../utils/apiConfig';
+import { generateLocalAiAnalysis } from '../utils/aiTechnicalEngine';
 import { calculatePlnEnsAnalysis, PLN_STANDARD_CONSTANTS } from '../utils/ensCalculator';
 import {
   Bot,
@@ -76,14 +77,30 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ poles })
       });
-      if (!res.ok) throw new Error('Gagal memuat analisis AI');
-      const data = await res.json();
-      setAnalysis(data);
-      try {
-        sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify(data));
-      } catch (e) {}
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.gridHealthScore !== undefined) {
+          setAnalysis(data);
+          try {
+            sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify(data));
+          } catch (e) {}
+          setLoading(false);
+          return;
+        }
+      }
     } catch (err: any) {
-      setError(err.message || 'Gagal menghubungi server GROW AI');
+      console.warn('[GROW AI] Backend API unreachable, running client-side technical engine fallback:', err);
+    }
+
+    // Client-side Technical Engine Fallback (Guarantees smooth load on Vercel or offline)
+    try {
+      const localData = generateLocalAiAnalysis(poles, outageHours, tariffPerKwh);
+      setAnalysis(localData);
+      try {
+        sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify(localData));
+      } catch (e) {}
+    } catch (fallbackErr: any) {
+      setError(fallbackErr.message || 'Gagal menghitung analisis GROW AI');
     } finally {
       setLoading(false);
     }

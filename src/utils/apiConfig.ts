@@ -21,15 +21,6 @@ export function getApiUrl(path: string): string {
     return `${custom}${cleanPath}`;
   }
 
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    // If running on Vercel, localhost (Vite dev server), or other external domain
-    if (hostname.includes('vercel.app') || hostname.includes('localhost') || !hostname.includes('run.app')) {
-      // Connect directly to the shared AI Studio production server
-      return `${AI_STUDIO_BACKEND_URL}${cleanPath}`;
-    }
-  }
-
-  // Same-origin relative path for AI Studio Cloud Run
+  // Use same-origin relative path so browser requests hit the local or Vercel domain without CORS issues
   return cleanPath;
 }
