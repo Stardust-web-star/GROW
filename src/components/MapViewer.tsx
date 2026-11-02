@@ -2137,7 +2137,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <div className="md:hidden absolute top-2.5 inset-x-2.5 z-30 pointer-events-auto flex flex-col gap-1.5 select-none">
           {/* Floating Search Pill */}
           <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-2.5 text-white">
-            <div className="w-8 h-8 rounded-xl bg-slate-950 p-1 flex items-center justify-center border border-teal-400/60 shadow-md shrink-0">
+            <div className="w-8 h-8 rounded-full bg-white p-0.5 flex items-center justify-center border border-teal-400/80 shadow-md shrink-0 overflow-hidden">
               <GisPlnLogo size={24} withBadge={false} />
             </div>
 

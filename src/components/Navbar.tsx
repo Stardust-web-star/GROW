@@ -58,11 +58,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center justify-between h-16 gap-3 lg:gap-6">
             
             {/* Official GROW Brand */}
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 select-none">
+            <div className="flex items-center gap-3 shrink-0 select-none group cursor-pointer" onClick={() => setActiveTab('map')} title="GROW - Great Right of Way PLN ULP Baguala">
               <GisPlnLogo 
-                size={36} 
+                size={40} 
                 withBadge={true} 
-                className="shrink-0 hover:scale-105 transition-transform cursor-pointer shadow-md" 
+                withGlow={true}
+                className="shrink-0 group-hover:scale-105 transition-transform duration-300" 
               />
               <div className="flex flex-col justify-center">
                 <span className="font-black text-lg sm:text-xl text-white tracking-[0.14em] leading-none whitespace-nowrap block drop-shadow-sm">
