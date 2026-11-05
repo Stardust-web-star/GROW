@@ -384,4 +384,37 @@ html, body, input, button, select, textarea {
   }
 }
 
+/* Real-time GPS User Position & Radar Pulse Animations */
+@keyframes pln-gps-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.95;
+  }
+  65% {
+    transform: scale(2.3);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(2.7);
+    opacity: 0;
+  }
+}
 
+@keyframes pln-gps-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(59, 130, 246, 1));
+  }
+}
+
+.user-gps-marker-container {
+  background: transparent !important;
+  border: none !important;
+}
+
+.nav-dest-marker {
+  background: transparent !important;
+  border: none !important;
+}

@@ -318,7 +318,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               <span>Reset Password Akun</span>
             </h3>
             <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-              Untuk mereset password akun GROW PLN, silakan hubungi <b>Administrator Utama</b> atau <b>Supervisor Teknik ULP Baguala</b> melalui menu <i>Management User</i> di dalam dashboard.
+              Untuk mereset password akun GROW PLN, silakan hubungi <b>Administrator Utama</b> atau <b>Team Leader Teknik ULP Baguala</b> melalui menu <i>Management User</i> di dalam dashboard.
             </p>
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1 mb-5">
               <div>User ID Bawaan: <b className="text-amber-400 font-mono">9925045ZY</b></div>
