@@ -2,20 +2,17 @@ import React, { useState } from 'react';
 import { MaintenanceWorkOrder, PoleData } from '../types';
 import { FileText, Plus, Printer, CheckCircle, Clock, Zap, Calendar, UserCheck, Edit3, RotateCcw, ArrowLeft, Search, ShieldCheck, MapPin, AlertTriangle, Layers, ChevronRight, Eye } from 'lucide-react';
 import plnOfficialLogo from '../assets/images/Logo_PLN.png';
-import { WhatsAppIcon } from './WhatsAppReportModal';
 
 interface SpkManagerProps {
   spks: MaintenanceWorkOrder[];
   poles: PoleData[];
   onCreateSpk: (spk: MaintenanceWorkOrder) => void;
-  onOpenWhatsAppReport?: (spk?: MaintenanceWorkOrder) => void;
 }
 
 export const SpkManager: React.FC<SpkManagerProps> = ({
   spks,
   poles,
-  onCreateSpk,
-  onOpenWhatsAppReport
+  onCreateSpk
 }) => {
   const [selectedSpk, setSelectedSpk] = useState<MaintenanceWorkOrder | null>(spks[0] || null);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -25,7 +22,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const activePole = selectedSpk ? poles.find(p => p.id === selectedSpk.poleId) : null;
 
-  // Signatory Officials State (Manager & Team Leader Teknik)
+  // Signatory Officials State (Manager & Supervisor Teknik)
   const DEFAULT_MANAGER_NAME = 'M. Ridwan Pelupessy';
   const DEFAULT_MANAGER_NIP = '8812039482';
   const DEFAULT_SUPERVISOR_NAME = 'Ahmad Latuconsina';
@@ -389,7 +386,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                   <button
                     onClick={openSignatoryModal}
                     className="flex-1 sm:flex-initial bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-bold px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 shadow-sm transition-all cursor-pointer active:scale-95"
-                    title="Ubah nama dan NIP Manager serta Team Leader Teknik ULP Baguala"
+                    title="Ubah nama dan NIP Manager serta Supervisor Teknik ULP Baguala"
                   >
                     <Edit3 className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                     <span>Ubah Pejabat</span>
@@ -403,17 +400,6 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                     <Printer className="w-3.5 h-3.5 text-slate-950" />
                     <span>Cetak SPK (A4)</span>
                   </button>
-
-                  {onOpenWhatsAppReport && (
-                    <button
-                      onClick={() => onOpenWhatsAppReport(selectedSpk || undefined)}
-                      className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-black px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer active:scale-95"
-                      title="Kirim dokumen SPK ini langsung ke chat WhatsApp regu pelaksana"
-                    >
-                      <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
-                      <span>Kirim ke WhatsApp</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -602,7 +588,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                       </div>
 
                       <div className="bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Team Leader Teknik ULP Baguala</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Supervisor Teknik</div>
                         <div className="font-bold text-slate-900 dark:text-white text-xs">{supervisorName}</div>
                         <div className="text-[9px] font-mono text-slate-500 mt-0.5">NIP. {supervisorNip}</div>
                       </div>
@@ -610,7 +596,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                   </div>
 
                   {/* Quick Bottom Action Button */}
-                  <div className="pt-2 space-y-2">
+                  <div className="pt-2">
                     <button
                       onClick={() => window.print()}
                       className="w-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
@@ -618,16 +604,6 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                       <Printer className="w-4 h-4 text-slate-950" />
                       <span>Cetak Dokumen SPK Format Resmi (A4)</span>
                     </button>
-
-                    {onOpenWhatsAppReport && (
-                      <button
-                        onClick={() => onOpenWhatsAppReport(selectedSpk || undefined)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
-                      >
-                        <WhatsAppIcon className="w-4 h-4 text-white" />
-                        <span>Kirim Tugas SPK ke WhatsApp Tim Lapangan</span>
-                      </button>
-                    )}
                   </div>
 
                 </div>
@@ -838,7 +814,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                             type="button"
                             onClick={openSignatoryModal}
                             className="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100/90 border border-amber-300/80 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                            title="Ubah nama dan NIP Manager serta Team Leader Teknik"
+                            title="Ubah nama dan NIP Manager serta Supervisor Teknik"
                           >
                             <Edit3 className="w-3 h-3 text-amber-600" />
                             <span>Ubah Nama &amp; NIP Pejabat</span>
@@ -862,7 +838,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                           <div>
                             <div className="text-slate-600 mb-14 text-[11px]">
                               Penanggung Jawab Lapangan,<br />
-                              <b>Team Leader Teknik ULP Baguala</b>
+                              <b>Supervisor Teknik ULP Baguala</b>
                             </div>
                             <div className="font-black underline text-slate-950 text-xs tracking-wide">
                               {supervisorName}
@@ -1035,11 +1011,11 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                 </div>
               </div>
 
-              {/* Team Leader Teknik Section */}
+              {/* Supervisor Teknik Section */}
               <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 space-y-3">
                 <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs">
                   <span className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400" />
-                  <span>2. Team Leader Teknik ULP Baguala (Penanggung Jawab Lapangan)</span>
+                  <span>2. Supervisor Teknik ULP Baguala (Penanggung Jawab Lapangan)</span>
                 </div>
 
                 <div>

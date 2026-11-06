@@ -1,13 +1,20 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import { PoleData, CableSpan } from '../types';
-import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin } from 'lucide-react';
+import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X } from 'lucide-react';
 import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
 import { NewCableModal } from './NewCableModal';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
 import { GisPlnLogo } from './GisPlnLogo';
-import { GeoLocationPermissionModal } from './GeoLocationPermissionModal';
+import { NavigationHud } from './NavigationHud';
+import {
+  GpsLocation,
+  RouteResult,
+  NavigationDestination,
+  fetchRouteDirections,
+  getGoogleMapsUrl
+} from '../utils/navigationService';
 
 // Helper to compress and convert photo to Base64 (max 1200px width/height, ~150-250KB)
 const compressImageFile = (file: File, maxDim = 1200, quality = 0.82): Promise<string> => {
@@ -86,7 +93,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const linesLayerRef = useRef<L.LayerGroup | null>(null);
   const heatmapLayerRef = useRef<L.LayerGroup | null>(null);
+  const userLocationLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
   const canvasRendererRef = useRef<L.Canvas | null>(null);
+
+  // GPS Live Tracking & Navigation State
+  const gpsWatchIdRef = useRef<number | null>(null);
+  const userLocationRef = useRef<GpsLocation | null>(null);
+  const [userLocation, setUserLocation] = useState<GpsLocation | null>(null);
+  const [isGpsTracking, setIsGpsTracking] = useState<boolean>(false);
+  const [isAutoFollow, setIsAutoFollow] = useState<boolean>(false);
+  const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
+  const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
+  const [gpsStatusMessage, setGpsStatusMessage] = useState<string | null>(null);
 
   const [mapType, setMapType] = useState<'satellite' | 'streets'>('satellite');
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,50 +129,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const guideLineRef = useRef<L.Polyline | null>(null);
   const snapRingRef = useRef<L.CircleMarker | null>(null);
   const downPoleRef = useRef<{ pole: PoleData; pt: L.Point } | null>(null);
-
-  // GPS Tracking & Live Navigation State (watchPosition real-time)
-  const [isGpsActive, setIsGpsActive] = useState<boolean>(false);
-  const [userCoords, setUserCoords] = useState<{
-    lat: number;
-    lng: number;
-    accuracy: number;
-    heading?: number | null;
-    speed?: number | null;
-  } | null>(null);
-  const [gpsStatus, setGpsStatus] = useState<'idle' | 'searching' | 'locked' | 'error'>('idle');
-  const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
-  const [activeNavPole, setActiveNavPole] = useState<PoleData | null>(null);
-  const [navDistanceMeters, setNavDistanceMeters] = useState<number | null>(null);
-  const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
-  const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
-
-  // In-App Geographic Location Access Request Modal state (matching user screenshot)
-  const [showGeoModal, setShowGeoModal] = useState<boolean>(false);
-  const pendingNavPoleRef = useRef<PoleData | null>(null);
-
-  // GPS Refs to eliminate stale closures in callbacks and event listeners
-  const gpsWatchIdRef = useRef<number | null>(null);
-  const gpsLayerRef = useRef<L.LayerGroup | null>(null);
-  const isGpsActiveRef = useRef<boolean>(false);
-  const userCoordsRef = useRef<{ lat: number; lng: number; accuracy: number; heading?: number | null } | null>(null);
-  const activeNavPoleRef = useRef<PoleData | null>(null);
-  const routeGeometryRef = useRef<[number, number][] | null>(null);
-
-  useEffect(() => {
-    isGpsActiveRef.current = isGpsActive;
-  }, [isGpsActive]);
-
-  useEffect(() => {
-    userCoordsRef.current = userCoords;
-  }, [userCoords]);
-
-  useEffect(() => {
-    activeNavPoleRef.current = activeNavPole;
-  }, [activeNavPole]);
-
-  useEffect(() => {
-    routeGeometryRef.current = routeGeometry;
-  }, [routeGeometry]);
 
   // Synchronize refs with state to eliminate stale closures
   useEffect(() => {
@@ -307,17 +283,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       satelliteLayer.addTo(map);
 
-      // Create Layer Groups for markers, lines, heatmap, and GPS navigation
+      // Create Layer Groups for markers, lines, heatmap, user GPS, and route directions
       const markersGroup = L.layerGroup().addTo(map);
       const linesGroup = L.layerGroup().addTo(map);
       const heatmapGroup = L.layerGroup().addTo(map);
-      const gpsGroup = L.layerGroup().addTo(map);
+      const userLocationGroup = L.layerGroup().addTo(map);
+      const routeGroup = L.layerGroup().addTo(map);
 
       mapInstanceRef.current = map;
       markersLayerRef.current = markersGroup;
       linesLayerRef.current = linesGroup;
       heatmapLayerRef.current = heatmapGroup;
-      gpsLayerRef.current = gpsGroup;
+      userLocationLayerRef.current = userLocationGroup;
+      routeLayerRef.current = routeGroup;
 
       // Handle map click for measurement tool
       map.on('click', (e: L.LeafletMouseEvent) => {
@@ -329,7 +307,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
 
     return () => {
-      if (gpsWatchIdRef.current !== null && navigator.geolocation) {
+      if (gpsWatchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.clearWatch(gpsWatchIdRef.current);
         gpsWatchIdRef.current = null;
       }
@@ -1128,6 +1106,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               `}
             </div>
 
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:7px; margin-bottom:7px;">
+              <button class="btn-navigate-cable" style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; font-size:12px; padding:9px 6px; border-radius:8px; border:1px solid #0284c7; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; box-shadow:0 1px 3px rgba(2,132,199,0.35);">
+                🧭 Petunjuk Rute
+              </button>
+              <a href="${getGoogleMapsUrl(userLocationRef.current ? [userLocationRef.current.lat, userLocationRef.current.lng] : null, [(fromPole.lat + toPole.lat)/2, (fromPole.lng + toPole.lng)/2])}" target="_blank" rel="noreferrer" style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; color:#15803d; font-size:12px; font-weight:800; padding:9px 6px; display:flex; align-items:center; justify-content:center; gap:4px; text-decoration:none; text-align:center;">
+                🗺️ Google Maps
+              </a>
+            </div>
+
             <div class="cable-popup-actions">
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap:7px;">
                 <button class="btn-edit-cable-act" style="background:#f59e0b; color:#0f172a; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #d97706; font-weight:900; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
@@ -1232,6 +1219,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               ev.stopPropagation();
               map.closePopup();
               setSelectedSpanForEdit(span);
+            });
+          }
+
+          const navCableBtn = cablePopupContent.querySelector('.btn-navigate-cable');
+          if (navCableBtn) {
+            navCableBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              map.closePopup();
+              handleNavigateToCable(span, fromPole, toPole);
             });
           }
 
@@ -1537,16 +1533,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <button class="btn-delete-act" style="width:100%; background:#ef4444; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #dc2626; font-weight:800; cursor:pointer; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
             🗑️ Hapus Titik Tiang Ini
           </button>
-          <!-- Navigasi ke Tiang: Google Maps & In-App GPS Routing -->
-          <div style="margin-top:7px;">
-            <button type="button" class="btn-nav-to-pole" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:900; padding:11px 14px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:9px; color:#ffffff; cursor:pointer; box-shadow:0 3px 10px rgba(37,99,235,0.4); text-align:center; transition:transform 0.1s;">
-              <span style="font-size:17px;">🧭</span>
-              <span>Navigasi ke Tiang</span>
-              <span style="background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:5px; font-size:10.5px; font-weight:800; letter-spacing:0.02em;">Google Maps ↗</span>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:7px; margin-bottom:8px;">
+            <button class="btn-navigate-pole" style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; font-size:12px; padding:9px 6px; border-radius:8px; border:1px solid #0284c7; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; box-shadow:0 1px 3px rgba(2,132,199,0.35);">
+              🧭 Petunjuk Rute
             </button>
-            <div style="font-size:10px; color:#64748b; text-align:center; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
-              <span>📍 Membuka rute Google Maps &amp; melacak posisi GPS di peta GIS</span>
-            </div>
+            <a href="${getGoogleMapsUrl(userLocationRef.current ? [userLocationRef.current.lat, userLocationRef.current.lng] : null, [pole.lat, pole.lng])}" target="_blank" rel="noreferrer" style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; color:#15803d; font-size:12px; font-weight:800; padding:9px 6px; display:flex; align-items:center; justify-content:center; gap:4px; text-decoration:none; text-align:center;">
+              🗺️ Google Maps
+            </a>
           </div>
         `;
 
@@ -1712,22 +1705,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           });
         }
 
-        const navBtn = popupContent.querySelector('.btn-nav-to-pole');
+        const navBtn = popupContent.querySelector('.btn-navigate-pole');
         if (navBtn) {
           navBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             marker.closePopup();
-
-            // 1. Determine Google Maps route URL (with origin if GPS is ready)
-            const coords = userCoordsRef.current;
-            const originParam = coords ? `&origin=${coords.lat},${coords.lng}` : '';
-            const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${pole.lat},${pole.lng}&travelmode=driving`;
-
-            // 2. Open Google Maps or native device navigation app
-            window.open(gmapsUrl, '_blank', 'noopener,noreferrer');
-
-            // 3. Start real-time GPS tracking with watchPosition & draw in-app route polyline
-            startNavigationToPole(pole);
+            handleNavigateToPole(pole);
           });
         }
 
@@ -1880,310 +1863,423 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     setIsMeasuring(false);
   };
 
-  const stopGpsTracking = useCallback(() => {
-    if (gpsWatchIdRef.current !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(gpsWatchIdRef.current);
-      gpsWatchIdRef.current = null;
+  // 1. Render Google Maps style live pulsing GPS marker and accuracy circle
+  const renderUserGpsMarker = useCallback((loc: GpsLocation) => {
+    const layer = userLocationLayerRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+
+    // Accuracy Circle
+    if (loc.accuracy && loc.accuracy > 0 && loc.accuracy < 2500) {
+      const accuracyCircle = L.circle([loc.lat, loc.lng], {
+        radius: loc.accuracy,
+        color: '#0284c7',
+        weight: 1.5,
+        opacity: 0.5,
+        fillColor: '#38bdf8',
+        fillOpacity: 0.12,
+        interactive: false
+      });
+      accuracyCircle.addTo(layer);
     }
-    setIsGpsActive(false);
-    isGpsActiveRef.current = false;
-    setGpsStatus('idle');
-    setGpsErrorMessage(null);
-    if (gpsLayerRef.current) {
-      gpsLayerRef.current.clearLayers();
-    }
+
+    // High-visibility animated pulsing blue marker
+    const iconHtml = `
+      <div class="user-gps-marker-container">
+        <div class="user-gps-radar-wave"></div>
+        <div class="user-gps-center-dot"></div>
+      </div>
+    `;
+
+    const gpsIcon = L.divIcon({
+      html: iconHtml,
+      className: 'custom-user-gps-pin',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    const marker = L.marker([loc.lat, loc.lng], {
+      icon: gpsIcon,
+      zIndexOffset: 1000,
+      interactive: true
+    });
+
+    marker.bindTooltip(
+      `<div style="font-size:11.5px; font-weight:800; color:#0f172a; padding:1px 3px;">
+         📍 <b>Lokasi Anda Sekarang (GPS Live)</b><br/>
+         <span style="font-size:10.5px; color:#475569; font-weight:600;">Akurasi: ±${Math.round(loc.accuracy || 5)} meter</span>
+       </div>`,
+      { direction: 'top', offset: [0, -10] }
+    );
+
+    marker.addTo(layer);
   }, []);
 
-  const startGpsTracking = useCallback((autoCenter: boolean = true) => {
-    if (!navigator.geolocation) {
-      setGpsStatus('error');
-      setGpsErrorMessage('Perangkat Anda tidak mendukung fitur Geolocation / GPS.');
+  // 2. Render route polylines and destination pin
+  const renderRouteOnMap = useCallback((route: RouteResult) => {
+    const layer = routeLayerRef.current;
+    const map = mapInstanceRef.current;
+    if (!layer || !map) return;
+    layer.clearLayers();
+
+    if (route.coordinates.length < 2) return;
+
+    // Dark Route Casing (Shadow)
+    const shadowLine = L.polyline(route.coordinates, {
+      color: '#0f172a',
+      weight: 8.5,
+      opacity: 0.75,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+    shadowLine.addTo(layer);
+
+    // Neon Highway Line (Electric Blue)
+    const neonLine = L.polyline(route.coordinates, {
+      color: '#0284c7',
+      weight: 5.5,
+      opacity: 0.95,
+      lineCap: 'round',
+      lineJoin: 'round'
+    });
+    neonLine.addTo(layer);
+
+    // Destination Pin
+    const dest = route.destination;
+    const destIconHtml = `
+      <div class="destination-pin-glow" style="
+        background: #ef4444;
+        color: #ffffff;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(239,68,68,0.65);
+        font-size: 16px;
+      ">
+        🏁
+      </div>
+    `;
+
+    const destIcon = L.divIcon({
+      html: destIconHtml,
+      className: 'custom-dest-pin',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    const destMarker = L.marker([dest.lat, dest.lng], {
+      icon: destIcon,
+      zIndexOffset: 999
+    });
+
+    destMarker.bindTooltip(
+      `<div style="font-size:12px; font-weight:800; color:#0f172a; padding:2px 4px;">
+         🏁 <b>Tujuan: ${dest.name}</b>
+       </div>`,
+      { direction: 'top', offset: [0, -16] }
+    );
+
+    destMarker.addTo(layer);
+
+    // Fit map bounds
+    const bounds = L.latLngBounds(route.coordinates);
+    map.fitBounds(bounds, {
+      paddingTopLeft: [60, 40],
+      paddingBottomRight: [60, 100],
+      maxZoom: 18,
+      animate: true
+    });
+  }, []);
+
+  // 3. Obtain single position with Promise
+  const obtainCurrentPosition = useCallback((): Promise<GpsLocation | null> => {
+    return new Promise((resolve) => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc: GpsLocation = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy || 10,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+            timestamp: pos.timestamp
+          };
+          resolve(loc);
+        },
+        (err) => {
+          console.warn('[GPS] Error getting current position:', err);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 2000 }
+      );
+    });
+  }, []);
+
+  // 4. Start Live GPS Watcher
+  const startGpsTracking = useCallback((andCenter: boolean = true) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsStatusMessage('Perangkat Anda tidak mendukung fitur Geolocation GPS.');
       return;
     }
 
-    if (gpsWatchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(gpsWatchIdRef.current);
-      gpsWatchIdRef.current = null;
-    }
+    setIsGpsTracking(true);
+    setGpsStatusMessage(null);
 
-    setIsGpsActive(true);
-    isGpsActiveRef.current = true;
-    setGpsStatus('searching');
-    setGpsErrorMessage(null);
-
-    let hasCentered = !autoCenter;
-
-    const watchId = navigator.geolocation.watchPosition(
+    // Get immediate position
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude, longitude, accuracy, heading, speed } = pos.coords;
-        const newCoords = {
-          lat: latitude,
-          lng: longitude,
-          accuracy: accuracy || 15,
-          heading: heading ?? null,
-          speed: speed ?? null
+        const loc: GpsLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy || 10,
+          heading: pos.coords.heading,
+          speed: pos.coords.speed,
+          timestamp: pos.timestamp
         };
-        setUserCoords(newCoords);
-        userCoordsRef.current = newCoords;
-        setGpsStatus('locked');
-        setGpsErrorMessage(null);
-
-        try {
-          localStorage.setItem('pln_geo_permission', 'granted');
-        } catch {}
-
-        // Center map on first GPS acquisition
-        if (!hasCentered && mapInstanceRef.current) {
-          hasCentered = true;
-          mapInstanceRef.current.setView([latitude, longitude], 17, { animate: true });
+        userLocationRef.current = loc;
+        setUserLocation(loc);
+        renderUserGpsMarker(loc);
+        if (andCenter && mapInstanceRef.current) {
+          mapInstanceRef.current.setView([loc.lat, loc.lng], 17, { animate: true });
         }
       },
       (err) => {
-        console.warn('Geolocation watchPosition error:', err);
-        let msg = 'Gagal memperoleh posisi GPS.';
-        if (err.code === err.PERMISSION_DENIED) {
-          msg = 'Izin akses lokasi GPS ditolak oleh browser. Silakan aktifkan izin lokasi di peramban Anda.';
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          msg = 'Sinyal GPS tidak tersedia. Pastikan sensor lokasi perangkat telah aktif.';
-        } else if (err.code === err.TIMEOUT) {
-          msg = 'Waktu pencarian sinyal GPS habis. Memeriksa sinyal kembali...';
-        }
-        setGpsErrorMessage(msg);
-        setGpsStatus('error');
+        console.warn('[GPS] Initial position error:', err);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 1000
-      }
+      { enableHighAccuracy: true, timeout: 8000 }
     );
 
-    gpsWatchIdRef.current = watchId;
+    // Start active watch
+    if (gpsWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+    }
+
+    gpsWatchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const loc: GpsLocation = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy || 10,
+          heading: pos.coords.heading,
+          speed: pos.coords.speed,
+          timestamp: pos.timestamp
+        };
+        userLocationRef.current = loc;
+        setUserLocation(loc);
+        renderUserGpsMarker(loc);
+
+        // Smooth camera follow if active
+        if (isAutoFollow && mapInstanceRef.current) {
+          mapInstanceRef.current.panTo([loc.lat, loc.lng], { animate: true });
+        }
+      },
+      (err) => {
+        if (err.code === 1) {
+          setGpsStatusMessage('Izin akses lokasi GPS ditolak oleh browser. Harap aktifkan izin lokasi.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }
+    );
+  }, [renderUserGpsMarker, isAutoFollow]);
+
+  // 5. Stop GPS Watcher
+  const stopGpsTracking = useCallback(() => {
+    if (gpsWatchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+      gpsWatchIdRef.current = null;
+    }
+    setIsGpsTracking(false);
+    setIsAutoFollow(false);
+    setUserLocation(null);
+    userLocationRef.current = null;
+    if (userLocationLayerRef.current) {
+      userLocationLayerRef.current.clearLayers();
+    }
   }, []);
 
+  // 6. Handle GPS FAB Toggle button
   const handleToggleGps = useCallback(() => {
-    if (isGpsActive) {
-      if (userCoords && mapInstanceRef.current) {
-        mapInstanceRef.current.setView([userCoords.lat, userCoords.lng], 17, { animate: true });
-      } else {
-        stopGpsTracking();
+    const map = mapInstanceRef.current;
+    if (!isGpsTracking) {
+      startGpsTracking(true);
+    } else if (!isAutoFollow) {
+      setIsAutoFollow(true);
+      if (userLocationRef.current && map) {
+        map.setView([userLocationRef.current.lat, userLocationRef.current.lng], 17, { animate: true });
       }
     } else {
-      startGpsTracking(true);
+      stopGpsTracking();
     }
-  }, [isGpsActive, userCoords, startGpsTracking, stopGpsTracking]);
+  }, [isGpsTracking, isAutoFollow, startGpsTracking, stopGpsTracking]);
 
+  // Keep handleMyLocation pointing to handleToggleGps for backward compatibility
   const handleMyLocation = handleToggleGps;
 
-  const fetchRoadRoute = useCallback(async (start: [number, number], end: [number, number]) => {
-    setIsLoadingRoute(true);
+  // 7. Start Navigation to Pole
+  const handleNavigateToPole = useCallback(async (pole: PoleData) => {
+    setIsCalculatingRoute(true);
+    const dest: NavigationDestination = {
+      lat: pole.lat,
+      lng: pole.lng,
+      name: `Tiang ${pole.code} (${pole.id})`,
+      subtitle: pole.locationName,
+      targetType: 'pole',
+      code: pole.code,
+      poleId: pole.id
+    };
+
+    let originLoc = userLocationRef.current;
+    if (!originLoc) {
+      originLoc = await obtainCurrentPosition();
+      if (originLoc) {
+        userLocationRef.current = originLoc;
+        setUserLocation(originLoc);
+        renderUserGpsMarker(originLoc);
+        startGpsTracking(false);
+      }
+    }
+
+    if (!originLoc) {
+      // Fallback: Default Passo / Baguala center point
+      originLoc = {
+        lat: -3.6285,
+        lng: 128.2321,
+        accuracy: 25,
+        heading: null,
+        speed: null,
+        timestamp: Date.now()
+      };
+      userLocationRef.current = originLoc;
+      setUserLocation(originLoc);
+      renderUserGpsMarker(originLoc);
+    }
+
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.routes && data.routes[0] && data.routes[0].geometry) {
-          const latlngs: [number, number][] = data.routes[0].geometry.coordinates.map(
-            (coord: [number, number]) => [coord[1], coord[0]]
-          );
-          setRouteGeometry(latlngs);
-          routeGeometryRef.current = latlngs;
-          if (data.routes[0].distance) {
-            setNavDistanceMeters(Math.round(data.routes[0].distance));
-          }
-          return;
-        }
+      const route = await fetchRouteDirections([originLoc.lat, originLoc.lng], dest, travelMode);
+      setActiveRoute(route);
+      renderRouteOnMap(route);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.closePopup();
       }
     } catch (err) {
-      console.warn('OSRM routing fetch failed, fallback to straight line:', err);
+      console.error('Failed to calculate route to pole:', err);
     } finally {
-      setIsLoadingRoute(false);
+      setIsCalculatingRoute(false);
     }
+  }, [travelMode, obtainCurrentPosition, renderUserGpsMarker, startGpsTracking, renderRouteOnMap]);
 
-    // Direct line fallback
-    const fallback = [start, end] as [number, number][];
-    setRouteGeometry(fallback);
-    routeGeometryRef.current = fallback;
-    const straight = calculateHaversineDistanceMeters(start[0], start[1], end[0], end[1]);
-    setNavDistanceMeters(Math.round(straight));
-  }, []);
+  // 8. Start Navigation to Cable Span
+  const handleNavigateToCable = useCallback(async (span: CableSpan, fromPole: PoleData, toPole: PoleData) => {
+    setIsCalculatingRoute(true);
+    const midLat = (fromPole.lat + toPole.lat) / 2;
+    const midLng = (fromPole.lng + toPole.lng) / 2;
+    const dest: NavigationDestination = {
+      lat: midLat,
+      lng: midLng,
+      name: `Kabel ${fromPole.code} ↔ ${toPole.code}`,
+      subtitle: `${span.conductorType} (${span.lengthMeters}m)`,
+      targetType: 'cable',
+      spanId: span.id
+    };
 
-  const startNavigationToPole = useCallback((pole: PoleData) => {
-    setActiveNavPole(pole);
-    activeNavPoleRef.current = pole;
-
-    if (!isGpsActiveRef.current) {
-      startGpsTracking(false);
-    }
-
-    if (userCoordsRef.current) {
-      const start: [number, number] = [userCoordsRef.current.lat, userCoordsRef.current.lng];
-      const end: [number, number] = [pole.lat, pole.lng];
-      fetchRoadRoute(start, end);
-
-      if (mapInstanceRef.current) {
-        const bounds = L.latLngBounds([start, end]);
-        mapInstanceRef.current.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
-      }
-    } else {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.setView([pole.lat, pole.lng], 16, { animate: true });
+    let originLoc = userLocationRef.current;
+    if (!originLoc) {
+      originLoc = await obtainCurrentPosition();
+      if (originLoc) {
+        userLocationRef.current = originLoc;
+        setUserLocation(originLoc);
+        renderUserGpsMarker(originLoc);
+        startGpsTracking(false);
       }
     }
-  }, [startGpsTracking, fetchRoadRoute]);
 
-  const stopNavigation = useCallback(() => {
-    setActiveNavPole(null);
-    activeNavPoleRef.current = null;
-    setRouteGeometry(null);
-    routeGeometryRef.current = null;
-    setNavDistanceMeters(null);
-  }, []);
+    if (!originLoc) {
+      originLoc = {
+        lat: -3.6285,
+        lng: 128.2321,
+        accuracy: 25,
+        heading: null,
+        speed: null,
+        timestamp: Date.now()
+      };
+      userLocationRef.current = originLoc;
+      setUserLocation(originLoc);
+      renderUserGpsMarker(originLoc);
+    }
 
-  const focusRouteBounds = useCallback(() => {
-    if (!mapInstanceRef.current) return;
-    if (routeGeometryRef.current && routeGeometryRef.current.length > 0) {
-      const bounds = L.latLngBounds(routeGeometryRef.current);
-      mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
-    } else if (userCoordsRef.current && activeNavPoleRef.current) {
-      const bounds = L.latLngBounds([
-        [userCoordsRef.current.lat, userCoordsRef.current.lng],
-        [activeNavPoleRef.current.lat, activeNavPoleRef.current.lng]
-      ]);
-      mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
-    } else if (userCoordsRef.current) {
-      mapInstanceRef.current.setView([userCoordsRef.current.lat, userCoordsRef.current.lng], 17, { animate: true });
+    try {
+      const route = await fetchRouteDirections([originLoc.lat, originLoc.lng], dest, travelMode);
+      setActiveRoute(route);
+      renderRouteOnMap(route);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.closePopup();
+      }
+    } catch (err) {
+      console.error('Failed to calculate route to cable:', err);
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  }, [travelMode, obtainCurrentPosition, renderUserGpsMarker, startGpsTracking, renderRouteOnMap]);
+
+  // 9. Close Navigation HUD and remove route polyline
+  const handleCloseNavigation = useCallback(() => {
+    setActiveRoute(null);
+    if (routeLayerRef.current) {
+      routeLayerRef.current.clearLayers();
     }
   }, []);
 
-  // Update distance when user moves while navigation is active
-  useEffect(() => {
-    if (activeNavPole && userCoords) {
-      const dist = calculateHaversineDistanceMeters(
-        userCoords.lat,
-        userCoords.lng,
-        activeNavPole.lat,
-        activeNavPole.lng
-      );
-      setNavDistanceMeters(Math.round(dist));
-
-      if (!routeGeometryRef.current) {
-        fetchRoadRoute(
-          [userCoords.lat, userCoords.lng],
-          [activeNavPole.lat, activeNavPole.lng]
+  // 10. Switch Travel Mode (Driving vs Walking)
+  const handleChangeTravelMode = useCallback(async (newMode: 'driving' | 'walking') => {
+    setTravelMode(newMode);
+    if (activeRoute && userLocationRef.current) {
+      setIsCalculatingRoute(true);
+      try {
+        const updatedRoute = await fetchRouteDirections(
+          [userLocationRef.current.lat, userLocationRef.current.lng],
+          activeRoute.destination,
+          newMode
         );
+        setActiveRoute(updatedRoute);
+        renderRouteOnMap(updatedRoute);
+      } catch (err) {
+        console.error('Failed to change route mode:', err);
+      } finally {
+        setIsCalculatingRoute(false);
       }
     }
-  }, [userCoords, activeNavPole, fetchRoadRoute]);
+  }, [activeRoute, renderRouteOnMap]);
 
-  // Render User GPS Marker, Accuracy Circle, and Navigation Route Line on Leaflet
-  useEffect(() => {
-    const layer = gpsLayerRef.current;
-    if (!layer) return;
-
-    layer.clearLayers();
-
-    if (!userCoords) return;
-
-    // 1. Accuracy Circle (Translucent blue matching mobile GPS standards)
-    const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
-      radius: Math.max(userCoords.accuracy || 20, 8),
-      color: '#2563eb',
-      weight: 1.5,
-      opacity: 0.75,
-      fillColor: '#3b82f6',
-      fillOpacity: 0.16,
-      interactive: false
+  // 11. Fit Route Bounds
+  const handleFitRoute = useCallback(() => {
+    if (!activeRoute || !mapInstanceRef.current) return;
+    const bounds = L.latLngBounds(activeRoute.coordinates);
+    mapInstanceRef.current.fitBounds(bounds, {
+      paddingTopLeft: [60, 40],
+      paddingBottomRight: [60, 100],
+      maxZoom: 18,
+      animate: true
     });
-    accuracyCircle.addTo(layer);
+  }, [activeRoute]);
 
-    // 2. User Marker with CSS Pulsing Radar Ring & Direction Indicator (matching image 22)
-    const userMarkerIcon = L.divIcon({
-      className: 'user-gps-marker-container',
-      html: `
-        <div style="position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center;">
-          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(37,99,235,0.35); animation:pln-gps-pulse 2s cubic-bezier(0.2,0,0.4,1) infinite;"></div>
-          <div style="width:22px; height:22px; border-radius:50%; background:#ffffff; box-shadow:0 3px 10px rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:2; border:1px solid rgba(0,0,0,0.12);">
-            <div style="width:12px; height:12px; border-radius:50%; background:#1d4ed8; box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);"></div>
-          </div>
-          ${userCoords.heading !== null && userCoords.heading !== undefined ? `
-            <div style="position:absolute; top:-7px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #1d4ed8; transform:rotate(${userCoords.heading}deg); transform-origin:bottom center;"></div>
-          ` : ''}
-        </div>
-      `,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
+  // 12. Toggle Auto Follow
+  const handleToggleAutoFollow = useCallback(() => {
+    setIsAutoFollow(prev => {
+      const next = !prev;
+      if (next && userLocationRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.setView([userLocationRef.current.lat, userLocationRef.current.lng], 17, { animate: true });
+      }
+      return next;
     });
-
-    const userMarker = L.marker([userCoords.lat, userCoords.lng], {
-      icon: userMarkerIcon,
-      zIndexOffset: 1000
-    });
-
-    userMarker.bindPopup(`
-      <div style="font-family:sans-serif; padding:5px; font-size:12px; color:#0f172a; line-height:1.4;">
-        <div style="font-weight:900; font-size:13px; color:#1d4ed8; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
-          📍 Posisi Anda (Petugas PLN)
-        </div>
-        <div style="font-weight:700; color:#334155; margin-bottom:2px;">
-          Akurasi GPS: <span style="color:#0284c7; font-weight:900;">±${Math.round(userCoords.accuracy)} meter</span>
-        </div>
-        <div style="font-size:10.5px; color:#64748b; background:#f1f5f9; padding:4px 6px; border-radius:4px; font-family:monospace; margin-top:4px;">
-          ${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}
-        </div>
-      </div>
-    `, { autoPan: false });
-    userMarker.addTo(layer);
-
-    // 3. Navigation Route Polyline & Destination Pin
-    if (activeNavPole) {
-      const pts: [number, number][] = (routeGeometry && routeGeometry.length > 0)
-        ? routeGeometry
-        : [[userCoords.lat, userCoords.lng], [activeNavPole.lat, activeNavPole.lng]];
-
-      // Outer glow line
-      L.polyline(pts, {
-        color: '#0284c7',
-        weight: 9,
-        opacity: 0.45,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: false
-      }).addTo(layer);
-
-      // Core route polyline
-      L.polyline(pts, {
-        color: '#2563eb',
-        weight: 5,
-        opacity: 0.95,
-        lineCap: 'round',
-        lineJoin: 'round',
-        interactive: false
-      }).addTo(layer);
-
-      // Destination Target Pin Marker
-      const destIcon = L.divIcon({
-        className: 'nav-dest-marker',
-        html: `
-          <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
-            <div style="width:34px; height:34px; background:#ef4444; border:3px solid #ffffff; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 4px 14px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;">
-              <div style="width:11px; height:11px; background:#ffffff; border-radius:50%; transform:rotate(45deg);"></div>
-            </div>
-            <div style="margin-top:3px; background:#0f172a; color:#f8fafc; font-size:10px; font-weight:900; padding:2px 7px; border-radius:5px; border:1px solid #38bdf8; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.45);">
-              🎯 ${activeNavPole.code || activeNavPole.id}
-            </div>
-          </div>
-        `,
-        iconSize: [34, 48],
-        iconAnchor: [17, 34]
-      });
-
-      L.marker([activeNavPole.lat, activeNavPole.lng], {
-        icon: destIcon,
-        zIndexOffset: 999
-      }).addTo(layer);
-    }
-  }, [userCoords, activeNavPole, routeGeometry]);
+  }, []);
 
   return (
     <div className="relative w-full h-full flex flex-col bg-slate-950 select-none overflow-hidden">
@@ -2235,6 +2331,33 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 ✕
               </button>
             )}
+          </div>
+
+          {/* 2. Feeder Dropdown Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md px-2.5 h-8 rounded-lg border border-teal-500/30 shadow-inner shrink-0">
+            <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <select
+              value={selectedFeeder}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedFeeder(val);
+                if (val !== 'ALL') {
+                  const targetPoles = poles.filter(p => p.feeder === val);
+                  focusOnCluster(targetPoles);
+                }
+              }}
+              className="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer max-w-[125px] sm:max-w-[150px] truncate"
+            >
+              <option value="ALL" className="bg-slate-900 text-white font-bold">Semua Penyulang ({poles.length})</option>
+              {allFeeders.map(fName => {
+                const count = poles.filter(p => p.feeder === fName).length;
+                return (
+                  <option key={fName} value={fName} className="bg-slate-900 text-slate-100 font-semibold">
+                    📍 {fName} ({count})
+                  </option>
+                );
+              })}
+            </select>
           </div>
 
           {/* 3. Kelola Penyulang Drawer Button */}
@@ -2289,6 +2412,33 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Tambah Tiang</span>
+          </button>
+
+          {/* GPS Live Button */}
+          <button
+            onClick={handleToggleGps}
+            className={`flex items-center gap-1.5 px-3 h-8 rounded-lg font-black text-xs cursor-pointer whitespace-nowrap btn-tactile shrink-0 border transition-all ${
+              isGpsTracking
+                ? isAutoFollow
+                  ? 'bg-blue-600 text-white border-blue-400 shadow-md shadow-blue-500/30'
+                  : 'bg-blue-950 text-blue-300 border-blue-500/70 shadow-sm'
+                : 'bg-slate-900/90 text-slate-300 border-slate-700/80 hover:text-white hover:bg-slate-800'
+            }`}
+            title={
+              !isGpsTracking
+                ? 'Aktifkan GPS Live Tracking untuk memantau posisi Anda di peta'
+                : isAutoFollow
+                  ? 'GPS Aktif (Mengikuti Pergerakan). Klik untuk matikan.'
+                  : 'GPS Aktif. Klik untuk kunci kamera mengikuti lokasi Anda (Auto-follow).'
+            }
+          >
+            <Navigation className={`w-3.5 h-3.5 rotate-45 transition-transform ${isGpsTracking ? 'text-blue-200 fill-blue-300' : ''}`} />
+            <span>{isGpsTracking ? (isAutoFollow ? 'GPS: Ikuti' : 'GPS: Aktif') : 'GPS Live'}</span>
+            {userLocation && (
+              <span className="text-[10px] bg-blue-500/40 text-blue-100 px-1.5 py-0.2 rounded-full font-bold">
+                ±{Math.round(userLocation.accuracy || 0)}m
+              </span>
+            )}
           </button>
 
           {/* Divider */}
@@ -2369,6 +2519,36 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </button>
           </div>
 
+          {/* Divider */}
+          <div className="h-5 w-px bg-teal-400/30 shrink-0 mx-0.5" />
+
+          {/* 7. Tiga (3) Tampilan Menu: Satelit, Pin KML, Menampilkan: */}
+          <div className="flex items-center gap-1 bg-slate-950/80 backdrop-blur-md p-0.5 rounded-lg border border-teal-500/30 shadow-inner h-8 shrink-0">
+            <button
+              onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
+              className={`px-2.5 h-7 text-xs font-bold rounded-md cursor-pointer flex items-center gap-1.5 btn-tactile ${
+                mapType === 'satellite'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+              title={`Ganti tampilan peta ke ${mapType === 'satellite' ? 'Vektor Jalan' : 'Satelit'}`}
+            >
+              <span>{mapType === 'satellite' ? '🛰️ Satelit' : '🗺️ Vektor'}</span>
+            </button>
+
+            <button
+              onClick={() => setPinStyle(pinStyle === 'googleEarth' ? 'badge' : 'googleEarth')}
+              className={`px-2.5 h-7 text-xs font-bold rounded-md cursor-pointer flex items-center gap-1.5 btn-tactile ${
+                pinStyle === 'googleEarth'
+                  ? 'bg-teal-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+              title={`Ganti gaya pin ke ${pinStyle === 'googleEarth' ? 'Badge Detail' : 'Pin KML'}`}
+            >
+              <span>{pinStyle === 'googleEarth' ? '📍 Pin KML' : '🏷️ Detail'}</span>
+            </button>
+          </div>
+
           {/* Live Counter (Menampilkan:) */}
           <div className="flex items-center gap-1.5 text-xs bg-slate-950/80 backdrop-blur-md px-2.5 h-8 rounded-lg border border-teal-500/30 text-slate-300 shadow-inner shrink-0">
             <span className="text-teal-200/80 font-medium">Menampilkan:</span>
@@ -2433,93 +2613,40 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         {/* Leaflet Map - Forced absolute inset-0 ensures full dimensions on mobile WebKit and Chrome */}
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
 
-        {/* Real-time GPS Error / Permission Notification Toast */}
-        {gpsErrorMessage && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 max-w-md w-[calc(100%-24px)] bg-amber-950/95 backdrop-blur-md border border-amber-500/80 text-amber-200 px-4 py-2.5 rounded-xl shadow-2xl flex items-center justify-between gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="truncate">{gpsErrorMessage}</span>
-            </div>
-            <button
-              onClick={() => setGpsErrorMessage(null)}
-              className="p-1 hover:bg-amber-900/60 text-amber-400 hover:text-amber-100 rounded-md cursor-pointer shrink-0"
-              title="Tutup pesan"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+        {/* Turn-by-Turn Navigation HUD (Google Maps Style Route Guidance) */}
+        {activeRoute && (
+          <NavigationHud
+            route={activeRoute}
+            userLocation={userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null}
+            isAutoFollow={isAutoFollow}
+            onToggleAutoFollow={handleToggleAutoFollow}
+            onFitRoute={handleFitRoute}
+            onChangeMode={handleChangeTravelMode}
+            onClose={handleCloseNavigation}
+          />
+        )}
+
+        {/* Calculating Route Toast Indicator */}
+        {isCalculatingRoute && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-4 py-2.5 rounded-full shadow-2xl border border-cyan-500/50 flex items-center gap-2.5 text-xs font-black animate-in fade-in duration-200">
+            <RefreshCw className="w-4 h-4 text-cyan-400 animate-spin" />
+            <span>Mencari rute jalan tercepat ke titik tiang...</span>
           </div>
         )}
 
-        {/* Live Field Turn-by-Turn In-App Navigation Floating Card */}
-        {activeNavPole && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[calc(100%-24px)] bg-slate-900/95 backdrop-blur-xl border-2 border-sky-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3">
-            <div className="flex items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shrink-0 shadow-md">
-                <Navigation className="w-5 h-5 text-white animate-pulse" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                    Navigasi Aktif
-                  </span>
-                  <span className="text-xs font-bold text-slate-300 truncate">
-                    {activeNavPole.code} · {activeNavPole.feeder}
-                  </span>
-                </div>
-                <div className="text-sm font-black text-white truncate">
-                  {activeNavPole.locationName}
-                </div>
-                <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-2 mt-0.5">
-                  {navDistanceMeters !== null ? (
-                    <>
-                      <span>📏 Jarak: <b>{navDistanceMeters < 1000 ? `${navDistanceMeters} m` : `${(navDistanceMeters / 1000).toFixed(2)} km`}</b></span>
-                      <span>·</span>
-                      <span>⏱️ ~{Math.max(1, Math.round(navDistanceMeters / 1.3 / 60))} mnt jalan</span>
-                      <span>·</span>
-                      <span>🚗 ~{Math.max(1, Math.round(navDistanceMeters / 8.3 / 60))} mnt</span>
-                    </>
-                  ) : (
-                    <span className="text-amber-300 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                      Menghubungkan GPS & kalkulasi rute...
-                    </span>
-                  )}
-                </div>
-              </div>
+        {/* GPS Permission Warning Toast if denied */}
+        {gpsStatusMessage && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 max-w-sm w-[90%] bg-amber-500 text-slate-950 px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-300 flex items-center justify-between gap-2 text-xs font-bold animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{gpsStatusMessage}</span>
             </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 sm:border-l border-slate-700/80 pt-2 sm:pt-0 sm:pl-3 shrink-0">
-              <a
-                href={
-                  userCoords
-                    ? `https://www.google.com/maps/dir/?api=1&origin=${userCoords.lat},${userCoords.lng}&destination=${activeNavPole.lat},${activeNavPole.lng}&travelmode=driving`
-                    : `https://www.google.com/maps/dir/?api=1&destination=${activeNavPole.lat},${activeNavPole.lng}&travelmode=driving`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition-colors"
-                title="Buka rute navigasi Google Maps atau aplikasi navigasi default perangkat"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Google Maps</span>
-              </a>
-
-              <button
-                onClick={focusRouteBounds}
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl cursor-pointer"
-                title="Pusatkan peta ke seluruh rute"
-              >
-                <Locate className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={stopNavigation}
-                className="p-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl cursor-pointer transition-colors"
-                title="Akhiri Navigasi"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => setGpsStatusMessage(null)}
+              className="text-slate-950 hover:text-white font-black p-1 text-xs cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -2561,19 +2688,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
           {/* Horizontal Category Filter Chips (Google Maps Mobile UI) */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
-            {/* Quick GPS Toggle Chip */}
-            <button
-              onClick={handleToggleGps}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                isGpsActive
-                  ? 'bg-blue-600 text-white border-blue-400 shadow-blue-500/30 font-black'
-                  : 'bg-white/90 dark:bg-slate-900/90 text-blue-600 dark:text-blue-300 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <MapPin className={`w-3.5 h-3.5 ${gpsStatus === 'searching' ? 'animate-bounce text-amber-300' : ''}`} />
-              <span>{isGpsActive ? (gpsStatus === 'locked' ? 'GPS Terkunci' : 'Mencari GPS...') : 'GPS Lapangan'}</span>
-            </button>
-
             {/* Chip 1: Semua Tiang */}
             <button
               onClick={() => {
@@ -2634,6 +2748,27 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               </select>
               <ChevronDown className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${selectedFeeder !== 'ALL' ? 'text-slate-950' : 'text-slate-400'}`} />
             </div>
+
+            {/* Chip GPS Live */}
+            <button
+              onClick={handleToggleGps}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                isGpsTracking
+                  ? isAutoFollow
+                    ? 'bg-blue-600 text-white border-blue-400 font-black shadow-blue-500/40 ring-2 ring-blue-400/50'
+                    : 'bg-blue-950 text-blue-300 border-blue-500/70 font-black'
+                  : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+              title={!isGpsTracking ? 'Aktifkan GPS Live' : isAutoFollow ? 'GPS: Mengikuti Pergerakan' : 'GPS: Aktif'}
+            >
+              <Navigation className={`w-3.5 h-3.5 rotate-45 ${isGpsTracking ? 'text-blue-200 fill-current' : 'text-blue-500'}`} />
+              <span>{isGpsTracking ? (isAutoFollow ? 'GPS Ikuti' : 'GPS Aktif') : 'GPS Live'}</span>
+              {userLocation && (
+                <span className="text-[10px] bg-blue-500/30 text-blue-200 px-1 py-0.2 rounded-full font-bold">
+                  ±{Math.round(userLocation.accuracy || 0)}m
+                </span>
+              )}
+            </button>
 
             {/* Chip 4: Tarik Kabel */}
             <button
@@ -2730,19 +2865,30 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <Layers className="w-5 h-5" />
           </button>
 
-          {/* FAB 2: Real-Time GPS Tracking Button matching image_cfb3c780.png */}
+          {/* FAB 2: Live GPS Tracking & Direction Crosshair */}
           <button
             onClick={handleToggleGps}
             className={`w-11 h-11 backdrop-blur-xl border rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all cursor-pointer relative ${
-              isGpsActive
-                ? 'bg-blue-600 border-blue-400 text-white shadow-blue-500/50 ring-2 ring-blue-400/60'
-                : 'bg-slate-900/95 border-slate-700/90 text-blue-400 hover:text-white hover:bg-slate-800'
+              isGpsTracking
+                ? isAutoFollow
+                  ? 'bg-blue-600 border-blue-400 text-white shadow-blue-500/50 ring-4 ring-blue-500/30'
+                  : 'bg-slate-900/95 border-blue-400 text-blue-400 shadow-blue-500/20 ring-2 ring-blue-400/50'
+                : 'bg-slate-900/95 border-slate-700/90 text-blue-400 hover:text-white'
             }`}
-            title={isGpsActive ? "GPS Real-time Aktif: Klik untuk pusatkan ke posisi Anda" : "Aktifkan Navigasi GPS Real-Time"}
+            title={
+              !isGpsTracking
+                ? 'Aktifkan GPS Live (Lokasi Saya)'
+                : isAutoFollow
+                  ? 'Kamera Mengikuti Lokasi Anda (Klik untuk Nonaktifkan)'
+                  : 'Pusatkan & Ikuti Lokasi GPS'
+            }
           >
-            <MapPin className={`w-5 h-5 ${gpsStatus === 'searching' ? 'animate-bounce text-amber-300' : ''}`} />
-            {isGpsActive && (
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900 animate-pulse" />
+            <Navigation className={`w-5 h-5 rotate-45 transition-transform ${isGpsTracking && isAutoFollow ? 'fill-white scale-110' : isGpsTracking ? 'fill-blue-400' : ''}`} />
+            {isGpsTracking && (
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500 border border-white"></span>
+              </span>
             )}
           </button>
 
@@ -2754,37 +2900,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           >
             <Plus className="w-5 h-5 stroke-[2.5]" />
             <span className="text-xs">Tiang</span>
-          </button>
-        </div>
-
-        {/* Desktop Map Floating Action Buttons (Top-Right) */}
-        <div className="hidden md:flex absolute top-4 right-4 z-20 flex-col items-end gap-2.5 pointer-events-auto select-none">
-          {/* GPS Live Tracking Button matching image_cfb3c780.png */}
-          <button
-            onClick={handleToggleGps}
-            className={`flex items-center gap-2 px-3.5 h-10 backdrop-blur-xl border rounded-full shadow-2xl active:scale-95 transition-all cursor-pointer ${
-              isGpsActive
-                ? 'bg-blue-600 border-blue-400 text-white shadow-blue-500/40 ring-2 ring-blue-400/50'
-                : 'bg-slate-900/95 border-slate-700/90 text-blue-400 hover:text-white hover:bg-slate-800'
-            }`}
-            title={isGpsActive ? "GPS Real-time Aktif: Klik untuk pusatkan posisi saya" : "Aktifkan Navigasi GPS Real-Time"}
-          >
-            <MapPin className={`w-4 h-4 ${gpsStatus === 'searching' ? 'animate-bounce text-amber-300' : ''}`} />
-            <span className="text-xs font-bold">
-              {isGpsActive ? (gpsStatus === 'locked' ? 'GPS Terkunci' : 'Mencari GPS...') : 'GPS Lapangan'}
-            </span>
-            {isGpsActive && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            )}
-          </button>
-
-          {/* Layer Switcher */}
-          <button
-            onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
-            className="w-10 h-10 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white active:scale-95 transition-all cursor-pointer"
-            title="Ganti Lapisan Peta (Satelit / Vektor)"
-          >
-            <Layers className="w-4 h-4" />
           </button>
         </div>
 
@@ -3027,34 +3142,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           </div>
         </div>
       )}
-
-      {/* In-App Geographic Location Access Request Modal (matching user specification) */}
-      <GeoLocationPermissionModal
-        isOpen={showGeoModal}
-        onClose={() => {
-          setShowGeoModal(false);
-          pendingNavPoleRef.current = null;
-        }}
-        onAllowSuccess={(coords) => {
-          setShowGeoModal(false);
-          const newCoords = {
-            lat: coords.lat,
-            lng: coords.lng,
-            accuracy: coords.accuracy,
-            heading: null,
-            speed: null
-          };
-          setUserCoords(newCoords);
-          userCoordsRef.current = newCoords;
-          startGpsTracking(true);
-
-          if (pendingNavPoleRef.current) {
-            const pole = pendingNavPoleRef.current;
-            pendingNavPoleRef.current = null;
-            startNavigationToPole(pole);
-          }
-        }}
-      />
 
     </div>
   );

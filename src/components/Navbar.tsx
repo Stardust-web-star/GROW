@@ -9,7 +9,6 @@ import { UserAccount } from '../types';
 import { SystemMetaState } from '../lib/firebase';
 import { PwaInstallModal } from './PwaInstallModal';
 import { useTheme } from '../context/ThemeContext';
-import { WhatsAppIcon } from './WhatsAppReportModal';
 
 interface NavbarProps {
   activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
@@ -19,7 +18,6 @@ interface NavbarProps {
   rowViolations: number;
   criticalPoles: number;
   onOpenAiAssistant: () => void;
-  onOpenWhatsAppReport?: () => void;
   masterName?: string;
   currentUser?: UserAccount | null;
   onLogout?: () => void;
@@ -37,7 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   rowViolations,
   criticalPoles,
   onOpenAiAssistant,
-  onOpenWhatsAppReport,
   masterName = 'TITIK TIANG BGL.kml',
   currentUser,
   onLogout,
@@ -211,18 +208,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="hidden xl:inline">App Mobile</span>
               </button>
-
-              {/* Kirim Laporan WhatsApp Button */}
-              {onOpenWhatsAppReport && (
-                <button
-                  onClick={onOpenWhatsAppReport}
-                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white border border-emerald-400/50 px-3 h-9 rounded-xl text-xs font-bold shadow-md cursor-pointer whitespace-nowrap btn-tactile hover:shadow-emerald-500/30"
-                  title="Kirim Laporan Resmi (SPK, Rekap Harian, Anomali Tiang) ke Chat WhatsApp"
-                >
-                  <WhatsAppIcon className="w-4 h-4 text-white shrink-0" />
-                  <span className="hidden lg:inline">Laporan WA</span>
-                </button>
-              )}
 
               <button
                 onClick={onOpenAiAssistant}
@@ -519,31 +504,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">
                 Menu & Fitur Sistem
               </div>
-
-              {/* Kirim Laporan WhatsApp */}
-              {onOpenWhatsAppReport && (
-                <button
-                  onClick={() => {
-                    setShowMobileMenu(false);
-                    onOpenWhatsAppReport();
-                  }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 border border-emerald-500/30 text-left transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <WhatsAppIcon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                        <span>Kirim Laporan ke WhatsApp</span>
-                        <span className="text-[9px] bg-emerald-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full">Baru</span>
-                      </div>
-                      <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">Kirim SPK, anomali tiang, &amp; rekap harian ke chat WA</div>
-                    </div>
-                  </div>
-                  <span className="text-xs text-emerald-500 font-bold">›</span>
-                </button>
-              )}
               
               <button
                 onClick={() => {
