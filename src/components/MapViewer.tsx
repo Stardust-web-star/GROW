@@ -1538,17 +1538,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             🗑️ Hapus Titik Tiang Ini
           </button>
           <!-- Navigasi ke Tiang: Google Maps & In-App GPS Routing -->
-          <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
-            <a href="${userCoordsRef.current ? `https://www.google.com/maps/dir/?api=1&origin=${userCoordsRef.current.lat},${userCoordsRef.current.lng}&destination=${pole.lat},${pole.lng}&travelmode=driving` : `https://www.google.com/maps/dir/?api=1&destination=${pole.lat},${pole.lng}&travelmode=driving`}" target="_blank" rel="noopener noreferrer" class="btn-nav-to-pole" style="display:flex; align-items:center; justify-content:center; gap:8px; width:100%; text-align:center; font-size:13px; font-weight:900; padding:10px 12px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:8px; color:#ffffff; text-decoration:none; box-shadow:0 3px 8px rgba(37,99,235,0.35); cursor:pointer; letter-spacing:0.01em;">
-              <span style="font-size:16px;">🧭</span>
+          <div style="margin-top:7px;">
+            <button type="button" class="btn-nav-to-pole" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:900; padding:11px 14px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:9px; color:#ffffff; cursor:pointer; box-shadow:0 3px 10px rgba(37,99,235,0.4); text-align:center; transition:transform 0.1s;">
+              <span style="font-size:17px;">🧭</span>
               <span>Navigasi ke Tiang</span>
-              <span style="background:rgba(255,255,255,0.22); padding:1.5px 6px; border-radius:4px; font-size:10px; font-weight:800;">Google Maps</span>
-            </a>
-
-            <button class="btn-start-inapp-nav" style="display:flex; align-items:center; justify-content:center; gap:6px; width:100%; text-align:center; font-size:11.5px; font-weight:800; padding:8px 10px; background:#0f172a; border:1.5px solid #38bdf8; border-radius:8px; color:#38bdf8; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.25);">
-              <span>📍</span>
-              <span>Mulai Rute GPS di Peta Ini</span>
+              <span style="background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:5px; font-size:10.5px; font-weight:800; letter-spacing:0.02em;">Google Maps ↗</span>
             </button>
+            <div style="font-size:10px; color:#64748b; text-align:center; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
+              <span>📍 Membuka rute Google Maps &amp; melacak posisi GPS di peta GIS</span>
+            </div>
           </div>
         `;
 
@@ -1714,11 +1712,21 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           });
         }
 
-        const inAppNavBtn = popupContent.querySelector('.btn-start-inapp-nav');
-        if (inAppNavBtn) {
-          inAppNavBtn.addEventListener('click', (e) => {
+        const navBtn = popupContent.querySelector('.btn-nav-to-pole');
+        if (navBtn) {
+          navBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             marker.closePopup();
+
+            // 1. Determine Google Maps route URL (with origin if GPS is ready)
+            const coords = userCoordsRef.current;
+            const originParam = coords ? `&origin=${coords.lat},${coords.lng}` : '';
+            const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${pole.lat},${pole.lng}&travelmode=driving`;
+
+            // 2. Open Google Maps or native device navigation app
+            window.open(gmapsUrl, '_blank', 'noopener,noreferrer');
+
+            // 3. Start real-time GPS tracking with watchPosition & draw in-app route polyline
             startNavigationToPole(pole);
           });
         }
@@ -1920,6 +1928,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         setGpsStatus('locked');
         setGpsErrorMessage(null);
 
+        try {
+          localStorage.setItem('pln_geo_permission', 'granted');
+        } catch {}
+
         // Center map on first GPS acquisition
         if (!hasCentered && mapInstanceRef.current) {
           hasCentered = true;
@@ -1941,8 +1953,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 3000
+        timeout: 20000,
+        maximumAge: 1000
       }
     );
 
@@ -1957,12 +1969,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         stopGpsTracking();
       }
     } else {
-      const isGranted = localStorage.getItem('pln_geo_permission') === 'granted';
-      if (!isGranted) {
-        setShowGeoModal(true);
-      } else {
-        startGpsTracking(true);
-      }
+      startGpsTracking(true);
     }
   }, [isGpsActive, userCoords, startGpsTracking, stopGpsTracking]);
 
@@ -2004,13 +2011,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const startNavigationToPole = useCallback((pole: PoleData) => {
     setActiveNavPole(pole);
     activeNavPoleRef.current = pole;
-
-    const isGranted = localStorage.getItem('pln_geo_permission') === 'granted';
-    if (!isGranted) {
-      pendingNavPoleRef.current = pole;
-      setShowGeoModal(true);
-      return;
-    }
 
     if (!isGpsActiveRef.current) {
       startGpsTracking(false);
@@ -2097,20 +2097,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     });
     accuracyCircle.addTo(layer);
 
-    // 2. User Marker with CSS Pulsing Radar Ring & Direction Indicator
+    // 2. User Marker with CSS Pulsing Radar Ring & Direction Indicator (matching image 22)
     const userMarkerIcon = L.divIcon({
       className: 'user-gps-marker-container',
       html: `
-        <div style="position:relative; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
-          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(37,99,235,0.4); animation:pln-gps-pulse 2s cubic-bezier(0.2,0,0.4,1) infinite;"></div>
-          <div style="width:18px; height:18px; border-radius:50%; background:#2563eb; border:3px solid #ffffff; box-shadow:0 3px 10px rgba(0,0,0,0.55); z-index:2;"></div>
+        <div style="position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center;">
+          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(37,99,235,0.35); animation:pln-gps-pulse 2s cubic-bezier(0.2,0,0.4,1) infinite;"></div>
+          <div style="width:22px; height:22px; border-radius:50%; background:#ffffff; box-shadow:0 3px 10px rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:2; border:1px solid rgba(0,0,0,0.12);">
+            <div style="width:12px; height:12px; border-radius:50%; background:#1d4ed8; box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);"></div>
+          </div>
           ${userCoords.heading !== null && userCoords.heading !== undefined ? `
-            <div style="position:absolute; top:-7px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #2563eb; transform:rotate(${userCoords.heading}deg); transform-origin:bottom center;"></div>
+            <div style="position:absolute; top:-7px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #1d4ed8; transform:rotate(${userCoords.heading}deg); transform-origin:bottom center;"></div>
           ` : ''}
         </div>
       `,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
     });
 
     const userMarker = L.marker([userCoords.lat, userCoords.lng], {
