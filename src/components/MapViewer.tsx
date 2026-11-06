@@ -1189,15 +1189,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               </div>
             </div>
 
-            <!-- Navigasi ke Kabel: Google Maps & In-App GPS Routing -->
+            <!-- Navigasi ke Kabel: In-App GPS Routing -->
             <div style="margin-top:7px;">
               <button type="button" class="btn-nav-to-cable" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:900; padding:11px 14px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:9px; color:#ffffff; cursor:pointer; box-shadow:0 3px 10px rgba(37,99,235,0.4); text-align:center;">
                 <span style="font-size:17px;">🧭</span>
                 <span>Navigasi ke Kabel</span>
-                <span style="background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:5px; font-size:10.5px; font-weight:800; letter-spacing:0.02em;">Google Maps ↗</span>
               </button>
               <div style="font-size:10px; color:#64748b; text-align:center; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
-                <span>📍 Panduan rute Google Maps &amp; GPS live ke titik tengah bentangan kabel</span>
+                <span>📍 Menampilkan rute petunjuk arah langsung ke bentangan kabel di peta aplikasi</span>
               </div>
             </div>
           `;
@@ -1346,14 +1345,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               ev.stopPropagation();
               map.closePopup();
 
-              const midLat = (fromPole.lat + toPole.lat) / 2;
-              const midLng = (fromPole.lng + toPole.lng) / 2;
-              const coords = userCoordsRef.current;
-              const originParam = coords ? `&origin=${coords.lat},${coords.lng}` : '';
-              const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${midLat},${midLng}&travelmode=driving`;
-
-              window.open(gmapsUrl, '_blank', 'noopener,noreferrer');
-
+              // Start in-app GPS navigation directly on the map dashboard
               startNavigationToCable(span, fromPole, toPole);
             });
           }
@@ -1617,15 +1609,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <button class="btn-delete-act" style="width:100%; background:#ef4444; color:#ffffff; font-size:12.5px; padding:9px; border-radius:8px; border:1px solid #dc2626; font-weight:800; cursor:pointer; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
             🗑️ Hapus Titik Tiang Ini
           </button>
-          <!-- Navigasi ke Tiang: Google Maps & In-App GPS Routing -->
+          <!-- Navigasi ke Tiang: In-App GPS Routing -->
           <div style="margin-top:7px;">
             <button type="button" class="btn-nav-to-pole" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:900; padding:11px 14px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:9px; color:#ffffff; cursor:pointer; box-shadow:0 3px 10px rgba(37,99,235,0.4); text-align:center; transition:transform 0.1s;">
               <span style="font-size:17px;">🧭</span>
               <span>Navigasi ke Tiang</span>
-              <span style="background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:5px; font-size:10.5px; font-weight:800; letter-spacing:0.02em;">Google Maps ↗</span>
             </button>
             <div style="font-size:10px; color:#64748b; text-align:center; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
-              <span>📍 Membuka rute Google Maps &amp; melacak posisi GPS di peta GIS</span>
+              <span>📍 Menampilkan rute petunjuk arah langsung di peta aplikasi</span>
             </div>
           </div>
         `;
@@ -1798,15 +1789,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             e.stopPropagation();
             marker.closePopup();
 
-            // 1. Determine Google Maps route URL (with origin if GPS is ready)
-            const coords = userCoordsRef.current;
-            const originParam = coords ? `&origin=${coords.lat},${coords.lng}` : '';
-            const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${pole.lat},${pole.lng}&travelmode=driving`;
-
-            // 2. Open Google Maps or native device navigation app
-            window.open(gmapsUrl, '_blank', 'noopener,noreferrer');
-
-            // 3. Start real-time GPS tracking with watchPosition & draw in-app route polyline
+            // Start real-time GPS tracking with watchPosition, draw in-app route polyline & show floating HUD card
             startNavigationToPole(pole);
           });
         }
