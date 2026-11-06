@@ -384,68 +384,37 @@ html, body, input, button, select, textarea {
   }
 }
 
-/* ========================================================
-   Google Maps Style Pulsing Blue GPS Marker & Radar Wave
-   ======================================================== */
-.user-gps-marker-container {
-  position: relative;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.user-gps-center-dot {
-  width: 14px;
-  height: 14px;
-  background-color: #0284c7;
-  border: 2.5px solid #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(2, 132, 199, 0.9), 0 2px 5px rgba(0,0,0,0.45);
-  position: relative;
-  z-index: 2;
-}
-
-.user-gps-radar-wave {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  background-color: rgba(2, 132, 199, 0.32);
-  border-radius: 50%;
-  animation: gpsRadarWave 2s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
-  z-index: 1;
-  pointer-events: none;
-}
-
-@keyframes gpsRadarWave {
+/* Real-time GPS User Position & Radar Pulse Animations */
+@keyframes pln-gps-pulse {
   0% {
-    transform: scale(0.25);
+    transform: scale(0.6);
     opacity: 0.95;
   }
-  70% {
-    transform: scale(1.5);
-    opacity: 0;
+  65% {
+    transform: scale(2.3);
+    opacity: 0.2;
   }
   100% {
-    transform: scale(1.8);
+    transform: scale(2.7);
     opacity: 0;
   }
 }
 
-/* Route Destination Marker Pin Animation */
-@keyframes destPinPulse {
+@keyframes pln-gps-glow {
   0%, 100% {
-    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
   }
   50% {
-    transform: scale(1.18);
+    filter: drop-shadow(0 0 14px rgba(59, 130, 246, 1));
   }
 }
 
-.destination-pin-glow {
-  animation: destPinPulse 2.2s ease-in-out infinite;
+.user-gps-marker-container {
+  background: transparent !important;
+  border: none !important;
 }
 
-
+.nav-dest-marker {
+  background: transparent !important;
+  border: none !important;
+}

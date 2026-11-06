@@ -14,6 +14,8 @@ import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { FeederCombobox } from './components/FeederCombobox';
+import { GeoLocationPermissionModal } from './components/GeoLocationPermissionModal';
+import { WhatsAppReportModal, ReportCategory } from './components/WhatsAppReportModal';
 import { Plus, X } from 'lucide-react';
 import {
   savePoleToCloud,
@@ -68,6 +70,35 @@ export default function App() {
 
   // Logout Animation state
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Geographic Location Access Request Modal State (matching user screenshot)
+  const [showGeoModal, setShowGeoModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const disallowed = sessionStorage.getItem('pln_geo_disallowed');
+      const granted = localStorage.getItem('pln_geo_permission');
+      if (disallowed === 'true' || granted === 'granted') return;
+
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' as PermissionName })
+          .then((status) => {
+            if (status.state === 'prompt') {
+              setShowGeoModal(true);
+            } else if (status.state === 'granted') {
+              localStorage.setItem('pln_geo_permission', 'granted');
+            }
+          })
+          .catch(() => {
+            setShowGeoModal(true);
+          });
+      } else {
+        setShowGeoModal(true);
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
 
   const handleLogout = useCallback((reason?: 'manual' | 'inactivity') => {
     setIsLoggingOut(true);
@@ -177,6 +208,17 @@ export default function App() {
   const [showAddPoleModal, setShowAddPoleModal] = useState<boolean>(false);
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [showFeederDrawer, setShowFeederDrawer] = useState<boolean>(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState<boolean>(false);
+  const [whatsAppCategory, setWhatsAppCategory] = useState<ReportCategory>('spk');
+  const [whatsAppSpkId, setWhatsAppSpkId] = useState<string | undefined>(undefined);
+  const [whatsAppPoleId, setWhatsAppPoleId] = useState<string | undefined>(undefined);
+
+  const handleOpenWhatsAppReport = useCallback((cat: ReportCategory = 'spk', spkId?: string, poleId?: string) => {
+    setWhatsAppCategory(cat);
+    if (spkId) setWhatsAppSpkId(spkId);
+    if (poleId) setWhatsAppPoleId(poleId);
+    setShowWhatsAppModal(true);
+  }, []);
 
   // Feeder Custom Colors & Visibility state (matching user's reference)
   const [feederColors, setFeederColors] = useState<Record<string, string>>({
@@ -882,13 +924,19 @@ export default function App() {
   // If not logged in, render the dedicated PLN GROW Login Screen
   if (!currentUser) {
     return (
-      <LoginScreen
-        onLoginSuccess={(user) => {
-          setSessionExpiredMessage(null);
-          setCurrentUser(user);
-        }}
-        sessionExpiredMessage={sessionExpiredMessage}
-      />
+      <>
+        <LoginScreen
+          onLoginSuccess={(user) => {
+            setSessionExpiredMessage(null);
+            setCurrentUser(user);
+          }}
+          sessionExpiredMessage={sessionExpiredMessage}
+        />
+        <GeoLocationPermissionModal
+          isOpen={showGeoModal}
+          onClose={() => setShowGeoModal(false)}
+        />
+      </>
     );
   }
 
@@ -904,6 +952,7 @@ export default function App() {
         rowViolations={rowViolations}
         criticalPoles={criticalPoles}
         onOpenAiAssistant={() => setShowAiAssistant(true)}
+        onOpenWhatsAppReport={() => handleOpenWhatsAppReport('spk')}
         masterName={masterName}
         currentUser={currentUser}
         onLogout={handleLogout}
@@ -992,6 +1041,7 @@ export default function App() {
               spks={spks}
               poles={poles}
               onCreateSpk={handleCreateSpk}
+              onOpenWhatsAppReport={(spk) => handleOpenWhatsAppReport('spk', spk?.id, spk?.poleId)}
             />
           </div>
         )}
@@ -1161,6 +1211,23 @@ export default function App() {
 
       {/* Network Offline / Online Connectivity Toast */}
       <OfflineIndicator />
+
+      {/* In-App Geographic Location Access Request Modal (matching user specification) */}
+      <GeoLocationPermissionModal
+        isOpen={showGeoModal}
+        onClose={() => setShowGeoModal(false)}
+      />
+
+      {/* WhatsApp Official Report Modal */}
+      <WhatsAppReportModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        poles={poles}
+        spks={spks}
+        initialCategory={whatsAppCategory}
+        initialSpkId={whatsAppSpkId}
+        initialPoleId={whatsAppPoleId}
+      />
 
     </div>
   );
