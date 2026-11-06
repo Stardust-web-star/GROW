@@ -7,6 +7,8 @@ export interface GpsLocation {
   heading: number | null;
   speed: number | null;
   timestamp: number;
+  isFallback?: boolean;
+  label?: string;
 }
 
 export interface RouteStep {
