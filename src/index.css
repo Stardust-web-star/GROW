@@ -414,7 +414,27 @@ html, body, input, button, select, textarea {
   border: none !important;
 }
 
+.user-gps-radar-pulse {
+  pointer-events: none !important;
+}
+
 .nav-dest-marker {
   background: transparent !important;
   border: none !important;
+  pointer-events: none !important;
 }
+
+.nav-dest-marker * {
+  pointer-events: none !important;
+}
+
+/* Ensure Leaflet GPS custom panes never intercept mouse or touch events */
+.leaflet-pane.leaflet-gpsAccuracyPane-pane,
+.leaflet-pane.leaflet-gpsRoutePane-pane,
+.leaflet-pane.leaflet-gpsAccuracyPane-pane svg,
+.leaflet-pane.leaflet-gpsRoutePane-pane svg,
+.leaflet-pane.leaflet-gpsAccuracyPane-pane path,
+.leaflet-pane.leaflet-gpsRoutePane-pane path {
+  pointer-events: none !important;
+}
+

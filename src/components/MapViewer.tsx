@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import { PoleData, CableSpan } from '../types';
-import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin } from 'lucide-react';
+import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp } from 'lucide-react';
 import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
 import { NewCableModal } from './NewCableModal';
@@ -45,6 +45,22 @@ const compressImageFile = (file: File, maxDim = 1200, quality = 0.82): Promise<s
     reader.readAsDataURL(file);
   });
 };
+
+export interface NavigationTarget {
+  type: 'pole' | 'cable';
+  id: string;
+  code: string;
+  name: string;
+  feeder: string;
+  lat: number;
+  lng: number;
+  pole?: PoleData;
+  span?: CableSpan;
+  fromPoleCode?: string;
+  toPoleCode?: string;
+  locationName?: string;
+  extraInfo?: string;
+}
 
 interface MapViewerProps {
   poles: PoleData[];
@@ -121,7 +137,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'searching' | 'locked' | 'error'>('idle');
   const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
+  const [activeNavTarget, setActiveNavTarget] = useState<NavigationTarget | null>(null);
   const [activeNavPole, setActiveNavPole] = useState<PoleData | null>(null);
+  const [isFollowingUser, setIsFollowingUser] = useState<boolean>(true);
+  const [compassBearing, setCompassBearing] = useState<number | null>(null);
   const [navDistanceMeters, setNavDistanceMeters] = useState<number | null>(null);
   const [routeGeometry, setRouteGeometry] = useState<[number, number][] | null>(null);
   const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false);
@@ -135,8 +154,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const gpsLayerRef = useRef<L.LayerGroup | null>(null);
   const isGpsActiveRef = useRef<boolean>(false);
   const userCoordsRef = useRef<{ lat: number; lng: number; accuracy: number; heading?: number | null } | null>(null);
+  const activeNavTargetRef = useRef<NavigationTarget | null>(null);
   const activeNavPoleRef = useRef<PoleData | null>(null);
+  const isFollowingUserRef = useRef<boolean>(true);
   const routeGeometryRef = useRef<[number, number][] | null>(null);
+  const lastRouteFetchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     isGpsActiveRef.current = isGpsActive;
@@ -147,8 +169,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   }, [userCoords]);
 
   useEffect(() => {
-    activeNavPoleRef.current = activeNavPole;
-  }, [activeNavPole]);
+    activeNavTargetRef.current = activeNavTarget;
+    if (activeNavTarget?.pole) {
+      setActiveNavPole(activeNavTarget.pole);
+      activeNavPoleRef.current = activeNavTarget.pole;
+    } else {
+      setActiveNavPole(null);
+      activeNavPoleRef.current = null;
+    }
+  }, [activeNavTarget]);
+
+  useEffect(() => {
+    isFollowingUserRef.current = isFollowingUser;
+  }, [isFollowingUser]);
 
   useEffect(() => {
     routeGeometryRef.current = routeGeometry;
@@ -307,6 +340,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       satelliteLayer.addTo(map);
 
+      // Create dedicated Leaflet Panes for GPS so that accuracy circle and route polyline SVG never block canvas poles & cables
+      const accuracyPane = map.createPane('gpsAccuracyPane');
+      accuracyPane.style.zIndex = '350';
+      accuracyPane.style.pointerEvents = 'none';
+
+      const routePane = map.createPane('gpsRoutePane');
+      routePane.style.zIndex = '380';
+      routePane.style.pointerEvents = 'none';
+
+      const userPane = map.createPane('gpsUserPane');
+      userPane.style.zIndex = '660';
+
       // Create Layer Groups for markers, lines, heatmap, and GPS navigation
       const markersGroup = L.layerGroup().addTo(map);
       const linesGroup = L.layerGroup().addTo(map);
@@ -318,6 +363,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       linesLayerRef.current = linesGroup;
       heatmapLayerRef.current = heatmapGroup;
       gpsLayerRef.current = gpsGroup;
+
+      // When user manually drags the map, pause auto-follow mode (Google Maps style)
+      map.on('dragstart', () => {
+        setIsFollowingUser(false);
+      });
 
       // Handle map click for measurement tool
       map.on('click', (e: L.LeafletMouseEvent) => {
@@ -1138,6 +1188,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 </button>
               </div>
             </div>
+
+            <!-- Navigasi ke Kabel: Google Maps & In-App GPS Routing -->
+            <div style="margin-top:7px;">
+              <button type="button" class="btn-nav-to-cable" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px; font-weight:900; padding:11px 14px; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border:1.5px solid #60a5fa; border-radius:9px; color:#ffffff; cursor:pointer; box-shadow:0 3px 10px rgba(37,99,235,0.4); text-align:center;">
+                <span style="font-size:17px;">🧭</span>
+                <span>Navigasi ke Kabel</span>
+                <span style="background:rgba(255,255,255,0.22); padding:2px 7px; border-radius:5px; font-size:10.5px; font-weight:800; letter-spacing:0.02em;">Google Maps ↗</span>
+              </button>
+              <div style="font-size:10px; color:#64748b; text-align:center; margin-top:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
+                <span>📍 Panduan rute Google Maps &amp; GPS live ke titik tengah bentangan kabel</span>
+              </div>
+            </div>
           `;
 
           const bindCablePhotoEvents = () => {
@@ -1275,6 +1337,24 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   map.closePopup();
                 });
               }
+            });
+          }
+
+          const navCableBtn = cablePopupContent.querySelector('.btn-nav-to-cable');
+          if (navCableBtn) {
+            navCableBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              map.closePopup();
+
+              const midLat = (fromPole.lat + toPole.lat) / 2;
+              const midLng = (fromPole.lng + toPole.lng) / 2;
+              const coords = userCoordsRef.current;
+              const originParam = coords ? `&origin=${coords.lat},${coords.lng}` : '';
+              const gmapsUrl = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${midLat},${midLng}&travelmode=driving`;
+
+              window.open(gmapsUrl, '_blank', 'noopener,noreferrer');
+
+              startNavigationToCable(span, fromPole, toPole);
             });
           }
 
@@ -1894,6 +1974,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
   }, []);
 
+  // Bearing calculation & cardinal direction helpers for live GPS turn guidance
+  const calculateBearing = (startLat: number, startLng: number, destLat: number, destLng: number): number => {
+    const startLatRad = (startLat * Math.PI) / 180;
+    const startLngRad = (startLng * Math.PI) / 180;
+    const destLatRad = (destLat * Math.PI) / 180;
+    const destLngRad = (destLng * Math.PI) / 180;
+    const y = Math.sin(destLngRad - startLngRad) * Math.cos(destLatRad);
+    const x = Math.cos(startLatRad) * Math.sin(destLatRad) -
+              Math.sin(startLatRad) * Math.cos(destLatRad) * Math.cos(destLngRad - startLngRad);
+    const brng = (Math.atan2(y, x) * 180) / Math.PI;
+    return (brng + 360) % 360;
+  };
+
+  const getCardinalDirection = (bearing: number): string => {
+    const directions = ['Utara', 'Timur Laut', 'Timur', 'Tenggara', 'Selatan', 'Barat Daya', 'Barat', 'Barat Laut'];
+    const idx = Math.round(bearing / 45) % 8;
+    return directions[idx];
+  };
+
   const startGpsTracking = useCallback((autoCenter: boolean = true) => {
     if (!navigator.geolocation) {
       setGpsStatus('error');
@@ -1932,10 +2031,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           localStorage.setItem('pln_geo_permission', 'granted');
         } catch {}
 
-        // Center map on first GPS acquisition
+        // Center map on first GPS acquisition or follow user smoothly
         if (!hasCentered && mapInstanceRef.current) {
           hasCentered = true;
           mapInstanceRef.current.setView([latitude, longitude], 17, { animate: true });
+        } else if (isFollowingUserRef.current && mapInstanceRef.current && activeNavTargetRef.current) {
+          mapInstanceRef.current.panTo([latitude, longitude], { animate: true, duration: 0.5 });
         }
       },
       (err) => {
@@ -1964,6 +2065,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const handleToggleGps = useCallback(() => {
     if (isGpsActive) {
       if (userCoords && mapInstanceRef.current) {
+        setIsFollowingUser(true);
+        isFollowingUserRef.current = true;
         mapInstanceRef.current.setView([userCoords.lat, userCoords.lng], 17, { animate: true });
       } else {
         stopGpsTracking();
@@ -2008,9 +2111,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     setNavDistanceMeters(Math.round(straight));
   }, []);
 
-  const startNavigationToPole = useCallback((pole: PoleData) => {
-    setActiveNavPole(pole);
-    activeNavPoleRef.current = pole;
+  const startNavigationToTarget = useCallback((target: NavigationTarget) => {
+    setActiveNavTarget(target);
+    activeNavTargetRef.current = target;
+    setIsFollowingUser(true);
+    isFollowingUserRef.current = true;
 
     if (!isGpsActiveRef.current) {
       startGpsTracking(false);
@@ -2018,8 +2123,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     if (userCoordsRef.current) {
       const start: [number, number] = [userCoordsRef.current.lat, userCoordsRef.current.lng];
-      const end: [number, number] = [pole.lat, pole.lng];
+      const end: [number, number] = [target.lat, target.lng];
+      lastRouteFetchCoordsRef.current = { lat: userCoordsRef.current.lat, lng: userCoordsRef.current.lng };
       fetchRoadRoute(start, end);
+
+      const brng = calculateBearing(start[0], start[1], end[0], end[1]);
+      setCompassBearing(Math.round(brng));
 
       if (mapInstanceRef.current) {
         const bounds = L.latLngBounds([start, end]);
@@ -2027,17 +2136,57 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       }
     } else {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.setView([pole.lat, pole.lng], 16, { animate: true });
+        mapInstanceRef.current.setView([target.lat, target.lng], 16, { animate: true });
       }
     }
   }, [startGpsTracking, fetchRoadRoute]);
 
+  const startNavigationToPole = useCallback((pole: PoleData) => {
+    const target: NavigationTarget = {
+      type: 'pole',
+      id: pole.id,
+      code: pole.code || pole.id,
+      name: `Tiang ${pole.code || pole.id}`,
+      feeder: pole.feeder,
+      lat: pole.lat,
+      lng: pole.lng,
+      pole: pole,
+      locationName: pole.locationName,
+      extraInfo: `ROW: ${pole.clearanceDistanceMeters}m · ${pole.physicalCondition}`
+    };
+    startNavigationToTarget(target);
+  }, [startNavigationToTarget]);
+
+  const startNavigationToCable = useCallback((span: CableSpan, fromPole: PoleData, toPole: PoleData) => {
+    const midLat = (fromPole.lat + toPole.lat) / 2;
+    const midLng = (fromPole.lng + toPole.lng) / 2;
+    const target: NavigationTarget = {
+      type: 'cable',
+      id: span.id,
+      code: `${fromPole.code} ↔ ${toPole.code}`,
+      name: `Kabel ${fromPole.code} ↔ ${toPole.code}`,
+      feeder: span.feeder || fromPole.feeder || 'Penyulang',
+      lat: midLat,
+      lng: midLng,
+      span: span,
+      fromPoleCode: fromPole.code,
+      toPoleCode: toPole.code,
+      locationName: `Bentangan spat ${span.lengthMeters}m (${fromPole.code} - ${toPole.code})`,
+      extraInfo: `Konduktor: ${span.conductorType} · Kondisi: ${span.cableCondition || 'Baik'}`
+    };
+    startNavigationToTarget(target);
+  }, [startNavigationToTarget]);
+
   const stopNavigation = useCallback(() => {
+    setActiveNavTarget(null);
+    activeNavTargetRef.current = null;
     setActiveNavPole(null);
     activeNavPoleRef.current = null;
     setRouteGeometry(null);
     routeGeometryRef.current = null;
     setNavDistanceMeters(null);
+    setCompassBearing(null);
+    lastRouteFetchCoordsRef.current = null;
   }, []);
 
   const focusRouteBounds = useCallback(() => {
@@ -2045,10 +2194,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (routeGeometryRef.current && routeGeometryRef.current.length > 0) {
       const bounds = L.latLngBounds(routeGeometryRef.current);
       mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
-    } else if (userCoordsRef.current && activeNavPoleRef.current) {
+    } else if (userCoordsRef.current && activeNavTargetRef.current) {
       const bounds = L.latLngBounds([
         [userCoordsRef.current.lat, userCoordsRef.current.lng],
-        [activeNavPoleRef.current.lat, activeNavPoleRef.current.lng]
+        [activeNavTargetRef.current.lat, activeNavTargetRef.current.lng]
       ]);
       mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 17 });
     } else if (userCoordsRef.current) {
@@ -2056,25 +2205,43 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
   }, []);
 
-  // Update distance when user moves while navigation is active
+  // Update distance, bearing, and dynamic road route recalculation as user moves
   useEffect(() => {
-    if (activeNavPole && userCoords) {
+    if (activeNavTarget && userCoords) {
       const dist = calculateHaversineDistanceMeters(
         userCoords.lat,
         userCoords.lng,
-        activeNavPole.lat,
-        activeNavPole.lng
+        activeNavTarget.lat,
+        activeNavTarget.lng
       );
       setNavDistanceMeters(Math.round(dist));
 
-      if (!routeGeometryRef.current) {
+      const brng = calculateBearing(
+        userCoords.lat,
+        userCoords.lng,
+        activeNavTarget.lat,
+        activeNavTarget.lng
+      );
+      setCompassBearing(Math.round(brng));
+
+      const lastFetch = lastRouteFetchCoordsRef.current;
+      const movedDist = lastFetch
+        ? calculateHaversineDistanceMeters(userCoords.lat, userCoords.lng, lastFetch.lat, lastFetch.lng)
+        : Infinity;
+
+      if (!routeGeometryRef.current || movedDist > 25) {
+        lastRouteFetchCoordsRef.current = { lat: userCoords.lat, lng: userCoords.lng };
         fetchRoadRoute(
           [userCoords.lat, userCoords.lng],
-          [activeNavPole.lat, activeNavPole.lng]
+          [activeNavTarget.lat, activeNavTarget.lng]
         );
+      } else if (routeGeometryRef.current && routeGeometryRef.current.length > 0) {
+        const updated: [number, number][] = [[userCoords.lat, userCoords.lng], ...routeGeometryRef.current.slice(1)];
+        setRouteGeometry(updated);
+        routeGeometryRef.current = updated;
       }
     }
-  }, [userCoords, activeNavPole, fetchRoadRoute]);
+  }, [userCoords, activeNavTarget, fetchRoadRoute]);
 
   // Render User GPS Marker, Accuracy Circle, and Navigation Route Line on Leaflet
   useEffect(() => {
@@ -2085,7 +2252,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     if (!userCoords) return;
 
-    // 1. Accuracy Circle (Translucent blue matching mobile GPS standards)
+    // 1. Accuracy Circle - rendered in 'gpsAccuracyPane' (z-index 350) with interactive: false so it never blocks clicks
     const accuracyCircle = L.circle([userCoords.lat, userCoords.lng], {
       radius: Math.max(userCoords.accuracy || 20, 8),
       color: '#2563eb',
@@ -2093,21 +2260,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       opacity: 0.75,
       fillColor: '#3b82f6',
       fillOpacity: 0.16,
+      pane: 'gpsAccuracyPane',
       interactive: false
     });
     accuracyCircle.addTo(layer);
 
-    // 2. User Marker with CSS Pulsing Radar Ring & Direction Indicator (matching image 22)
+    // 2. User Marker with CSS Pulsing Radar Ring & Direction Indicator (in 'gpsUserPane' z-index 660)
     const userMarkerIcon = L.divIcon({
       className: 'user-gps-marker-container',
       html: `
         <div style="position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center;">
-          <div style="position:absolute; inset:0; border-radius:50%; background:rgba(37,99,235,0.35); animation:pln-gps-pulse 2s cubic-bezier(0.2,0,0.4,1) infinite;"></div>
-          <div style="width:22px; height:22px; border-radius:50%; background:#ffffff; box-shadow:0 3px 10px rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:2; border:1px solid rgba(0,0,0,0.12);">
+          <div class="user-gps-radar-pulse" style="position:absolute; inset:0; border-radius:50%; background:rgba(37,99,235,0.35); animation:pln-gps-pulse 2s cubic-bezier(0.2,0,0.4,1) infinite; pointer-events:none;"></div>
+          <div style="width:22px; height:22px; border-radius:50%; background:#ffffff; box-shadow:0 3px 10px rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:2; border:1px solid rgba(0,0,0,0.12); pointer-events:none;">
             <div style="width:12px; height:12px; border-radius:50%; background:#1d4ed8; box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);"></div>
           </div>
           ${userCoords.heading !== null && userCoords.heading !== undefined ? `
-            <div style="position:absolute; top:-7px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #1d4ed8; transform:rotate(${userCoords.heading}deg); transform-origin:bottom center;"></div>
+            <div style="position:absolute; top:-7px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:8px solid #1d4ed8; transform:rotate(${userCoords.heading}deg); transform-origin:bottom center; pointer-events:none;"></div>
           ` : ''}
         </div>
       `,
@@ -2117,6 +2285,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     const userMarker = L.marker([userCoords.lat, userCoords.lng], {
       icon: userMarkerIcon,
+      pane: 'gpsUserPane',
       zIndexOffset: 1000
     });
 
@@ -2136,41 +2305,44 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     userMarker.addTo(layer);
 
     // 3. Navigation Route Polyline & Destination Pin
-    if (activeNavPole) {
+    const navTarget = activeNavTarget;
+    if (navTarget) {
       const pts: [number, number][] = (routeGeometry && routeGeometry.length > 0)
         ? routeGeometry
-        : [[userCoords.lat, userCoords.lng], [activeNavPole.lat, activeNavPole.lng]];
+        : [[userCoords.lat, userCoords.lng], [navTarget.lat, navTarget.lng]];
 
-      // Outer glow line
+      // Outer glow line - in 'gpsRoutePane' (z-index 380, beneath canvas)
       L.polyline(pts, {
         color: '#0284c7',
         weight: 9,
         opacity: 0.45,
         lineCap: 'round',
         lineJoin: 'round',
+        pane: 'gpsRoutePane',
         interactive: false
       }).addTo(layer);
 
-      // Core route polyline
+      // Core route polyline - in 'gpsRoutePane' (z-index 380, beneath canvas)
       L.polyline(pts, {
         color: '#2563eb',
         weight: 5,
         opacity: 0.95,
         lineCap: 'round',
         lineJoin: 'round',
+        pane: 'gpsRoutePane',
         interactive: false
       }).addTo(layer);
 
-      // Destination Target Pin Marker
+      // Destination Target Pin Marker - in 'gpsUserPane' (interactive: false, pointer-events: none)
       const destIcon = L.divIcon({
         className: 'nav-dest-marker',
         html: `
-          <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
-            <div style="width:34px; height:34px; background:#ef4444; border:3px solid #ffffff; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 4px 14px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; display:flex; flex-direction:column; align-items:center; pointer-events:none;">
+            <div style="width:34px; height:34px; background:${navTarget.type === 'cable' ? '#0284c7' : '#ef4444'}; border:3px solid #ffffff; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 4px 14px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;">
               <div style="width:11px; height:11px; background:#ffffff; border-radius:50%; transform:rotate(45deg);"></div>
             </div>
             <div style="margin-top:3px; background:#0f172a; color:#f8fafc; font-size:10px; font-weight:900; padding:2px 7px; border-radius:5px; border:1px solid #38bdf8; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.45);">
-              🎯 ${activeNavPole.code || activeNavPole.id}
+              ${navTarget.type === 'cable' ? '⚡ ' : '🎯 '}${navTarget.code}
             </div>
           </div>
         `,
@@ -2178,12 +2350,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         iconAnchor: [17, 34]
       });
 
-      L.marker([activeNavPole.lat, activeNavPole.lng], {
+      L.marker([navTarget.lat, navTarget.lng], {
         icon: destIcon,
-        zIndexOffset: 999
+        pane: 'gpsUserPane',
+        zIndexOffset: 999,
+        interactive: false
       }).addTo(layer);
     }
-  }, [userCoords, activeNavPole, routeGeometry]);
+  }, [userCoords, activeNavTarget, routeGeometry]);
 
   return (
     <div className="relative w-full h-full flex flex-col bg-slate-950 select-none overflow-hidden">
@@ -2451,32 +2625,61 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
 
         {/* Live Field Turn-by-Turn In-App Navigation Floating Card */}
-        {activeNavPole && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-xl w-[calc(100%-24px)] bg-slate-900/95 backdrop-blur-xl border-2 border-sky-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3">
-            <div className="flex items-center gap-3 w-full sm:w-auto min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shrink-0 shadow-md">
-                <Navigation className="w-5 h-5 text-white animate-pulse" />
+        {activeNavTarget && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[calc(100%-20px)] bg-slate-900/95 backdrop-blur-xl border-2 border-sky-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3">
+            <div className="flex items-center gap-3 w-full md:w-auto min-w-0 flex-1">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
+                activeNavTarget.type === 'cable'
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                  : 'bg-gradient-to-br from-blue-600 to-sky-500'
+              }`}>
+                {activeNavTarget.type === 'cable' ? (
+                  <Cable className="w-5 h-5 text-white animate-pulse" />
+                ) : (
+                  <Navigation className="w-5 h-5 text-white animate-pulse" />
+                )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
-                    Navigasi Aktif
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                    activeNavTarget.type === 'cable'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                      : 'bg-sky-500/20 text-sky-300 border-sky-400/30'
+                  }`}>
+                    {activeNavTarget.type === 'cable' ? '⚡ Navigasi Kabel' : '🎯 Navigasi Tiang'}
                   </span>
                   <span className="text-xs font-bold text-slate-300 truncate">
-                    {activeNavPole.code} · {activeNavPole.feeder}
+                    {activeNavTarget.code} · {activeNavTarget.feeder}
                   </span>
+                  {navDistanceMeters !== null && navDistanceMeters <= 15 && (
+                    <span className="bg-emerald-500 text-slate-950 text-[10px] px-2 py-0.5 rounded-full font-black animate-bounce shadow-md">
+                      🎉 Tiba di Sasaran!
+                    </span>
+                  )}
                 </div>
-                <div className="text-sm font-black text-white truncate">
-                  {activeNavPole.locationName}
+                <div className="text-sm font-black text-white truncate mt-0.5">
+                  {activeNavTarget.locationName || activeNavTarget.name}
                 </div>
-                <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-2 mt-0.5">
+                <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-2 flex-wrap mt-0.5">
                   {navDistanceMeters !== null ? (
                     <>
-                      <span>📏 Jarak: <b>{navDistanceMeters < 1000 ? `${navDistanceMeters} m` : `${(navDistanceMeters / 1000).toFixed(2)} km`}</b></span>
-                      <span>·</span>
-                      <span>⏱️ ~{Math.max(1, Math.round(navDistanceMeters / 1.3 / 60))} mnt jalan</span>
+                      <span>📏 <b>{navDistanceMeters < 1000 ? `${navDistanceMeters} m` : `${(navDistanceMeters / 1000).toFixed(2)} km`}</b></span>
                       <span>·</span>
                       <span>🚗 ~{Math.max(1, Math.round(navDistanceMeters / 8.3 / 60))} mnt</span>
+                      <span>·</span>
+                      <span>🚶 ~{Math.max(1, Math.round(navDistanceMeters / 1.3 / 60))} mnt jalan</span>
+                      {compassBearing !== null && (
+                        <>
+                          <span>·</span>
+                          <span className="text-sky-300 flex items-center gap-1 bg-sky-950/60 px-1.5 py-0.5 rounded-md border border-sky-500/30">
+                            <ArrowUp
+                              className="w-3 h-3 text-amber-300 transition-transform duration-300"
+                              style={{ transform: `rotate(${compassBearing}deg)` }}
+                            />
+                            <span>{compassBearing}° {getCardinalDirection(compassBearing)}</span>
+                          </span>
+                        </>
+                      )}
                     </>
                   ) : (
                     <span className="text-amber-300 flex items-center gap-1.5">
@@ -2488,25 +2691,43 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 sm:border-l border-slate-700/80 pt-2 sm:pt-0 sm:pl-3 shrink-0">
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end border-t md:border-t-0 md:border-l border-slate-700/80 pt-2 md:pt-0 md:pl-3 shrink-0">
               <a
                 href={
                   userCoords
-                    ? `https://www.google.com/maps/dir/?api=1&origin=${userCoords.lat},${userCoords.lng}&destination=${activeNavPole.lat},${activeNavPole.lng}&travelmode=driving`
-                    : `https://www.google.com/maps/dir/?api=1&destination=${activeNavPole.lat},${activeNavPole.lng}&travelmode=driving`
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${userCoords.lat},${userCoords.lng}&destination=${activeNavTarget.lat},${activeNavTarget.lng}&travelmode=driving`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${activeNavTarget.lat},${activeNavTarget.lng}&travelmode=driving`
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition-colors"
                 title="Buka rute navigasi Google Maps atau aplikasi navigasi default perangkat"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Google Maps</span>
               </a>
 
+              {/* Follow Me Auto-Center Toggle Button */}
+              <button
+                onClick={() => {
+                  setIsFollowingUser(!isFollowingUser);
+                  if (!isFollowingUser && userCoords && mapInstanceRef.current) {
+                    mapInstanceRef.current.setView([userCoords.lat, userCoords.lng], 17, { animate: true });
+                  }
+                }}
+                className={`p-2 rounded-xl cursor-pointer transition-all ${
+                  isFollowingUser
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-400/50 shadow-md'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+                title={isFollowingUser ? "Mode Ikuti Saya Aktif (Klik untuk matikan)" : "Aktifkan Mode Ikuti Saya"}
+              >
+                <LocateFixed className="w-4 h-4" />
+              </button>
+
               <button
                 onClick={focusRouteBounds}
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl cursor-pointer"
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl cursor-pointer transition-colors"
                 title="Pusatkan peta ke seluruh rute"
               >
                 <Locate className="w-4 h-4" />
