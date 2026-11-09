@@ -208,9 +208,9 @@ html, body, input, button, select, textarea {
 .leaflet-popup-content-wrapper {
   background: #ffffff !important;
   color: #090d16 !important;
-  border-radius: 16px !important;
-  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.55), 0 8px 18px -4px rgba(0, 0, 0, 0.3) !important;
-  border: 2px solid #0284c7 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.45), 0 6px 14px -4px rgba(0, 0, 0, 0.25) !important;
+  border: 1.5px solid #0284c7 !important;
   padding: 0 !important;
   overflow: hidden !important;
   -webkit-font-smoothing: antialiased !important;
@@ -222,12 +222,28 @@ html, body, input, button, select, textarea {
 .leaflet-popup-content {
   margin: 0 !important;
   padding: 0 !important;
-  line-height: 1.4 !important;
-  font-size: 13px !important;
+  line-height: 1.35 !important;
+  font-size: 12px !important;
   color: #0f172a !important;
+  max-height: min(440px, 68vh) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: geometricPrecision !important;
+}
+
+/* Custom slim scrollbar for popup */
+.leaflet-popup-content::-webkit-scrollbar {
+  width: 4px;
+}
+.leaflet-popup-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.leaflet-popup-content::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
 }
 
 .leaflet-popup-tip {
@@ -237,29 +253,51 @@ html, body, input, button, select, textarea {
 
 /* Modern, high-visibility popup close button */
 .leaflet-popup-close-button {
-  top: 10px !important;
-  right: 10px !important;
-  width: 26px !important;
-  height: 26px !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 22px !important;
+  height: 22px !important;
   border-radius: 9999px !important;
   background: #f1f5f9 !important;
   color: #334155 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 16px !important;
+  font-size: 14px !important;
   font-weight: 900 !important;
   line-height: 1 !important;
   transition: all 0.15s ease !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
   border: 1px solid #cbd5e1 !important;
   padding: 0 !important;
+  z-index: 10 !important;
 }
 
 .leaflet-popup-close-button:hover {
   background: #fee2e2 !important;
   color: #ef4444 !important;
   border-color: #fca5a5 !important;
+}
+
+@media (max-width: 640px) {
+  .leaflet-popup {
+    margin-bottom: 6px !important;
+  }
+  .leaflet-popup-content-wrapper {
+    max-width: min(285px, 84vw) !important;
+    border-radius: 12px !important;
+  }
+  .leaflet-popup-content {
+    max-height: min(340px, 50vh) !important;
+    font-size: 11px !important;
+  }
+  .leaflet-popup-close-button {
+    top: 6px !important;
+    right: 6px !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 12px !important;
+  }
 }
 
 /* High-contrast, 100% solid, razor-sharp LANDSCAPE Tooltip (Zero Overflow) */
