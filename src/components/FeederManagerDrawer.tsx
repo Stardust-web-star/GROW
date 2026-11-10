@@ -15,6 +15,7 @@ interface FeederManagerDrawerProps {
   onDeleteFeeder: (feederName: string) => void;
   onRenameFeeder?: (oldName: string, newName: string) => void;
   onOpenKmzUploader: () => void;
+  isPetugasRow?: boolean;
 }
 
 export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
@@ -29,7 +30,8 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
   onFocusFeederOnMap,
   onDeleteFeeder,
   onRenameFeeder,
-  onOpenKmzUploader
+  onOpenKmzUploader,
+  isPetugasRow
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingFeeder, setEditingFeeder] = useState<string | null>(null);
@@ -93,18 +95,20 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
 
       {/* Top Action Bar matching reference screenshot */}
       <div className="p-3 bg-slate-900/60 border-b border-slate-800 space-y-2.5">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={onOpenKmzUploader}
-            className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all shadow-md"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Import KMZ Pohon</span>
-          </button>
+        <div className={`grid ${isPetugasRow ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+          {!isPetugasRow && (
+            <button
+              onClick={onOpenKmzUploader}
+              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all shadow-md cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Import KMZ Pohon</span>
+            </button>
+          )}
 
           <button
             onClick={handleExportData}
-            className="flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all shadow-md"
+            className="flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all shadow-md cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Download Data</span>

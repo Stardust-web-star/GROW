@@ -239,6 +239,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
         return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40';
       case 'Operator GIS':
         return 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/40';
+      case 'Petugas ROW':
+        return 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-300 dark:border-teal-500/40';
       default:
         return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40';
     }
@@ -358,6 +360,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               <option value="Supervisor Teknik">Supervisor Teknik</option>
               <option value="Petugas Yantek">Petugas Yantek</option>
               <option value="Operator GIS">Operator GIS</option>
+              <option value="Petugas ROW">Petugas ROW</option>
             </select>
           </div>
         </div>
@@ -578,6 +581,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     <option value="Supervisor Teknik">Supervisor Teknik</option>
                     <option value="Petugas Yantek">Petugas Yantek (Lapangan)</option>
                     <option value="Operator GIS">Operator GIS</option>
+                    <option value="Petugas ROW">Petugas ROW (Khusus Peta, ROW & Feeder)</option>
                   </select>
                 </div>
 
@@ -705,6 +709,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   <option value="Supervisor Teknik">Supervisor Teknik</option>
                   <option value="Petugas Yantek">Petugas Yantek</option>
                   <option value="Operator GIS">Operator GIS</option>
+                  <option value="Petugas ROW">Petugas ROW (Khusus Peta, ROW & Feeder)</option>
                 </select>
               </div>
 

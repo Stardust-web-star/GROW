@@ -49,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { theme, toggleTheme, setTheme, isDark } = useTheme();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showPwaModal, setShowPwaModal] = useState(false);
+  const isPetugasRow = currentUser?.role === 'Petugas ROW';
 
   return (
     <>
@@ -94,76 +95,80 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span>Peta GIS</span>
               </button>
 
-              <button
-                onClick={() => setActiveTab('clearance')}
-                className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
-                  activeTab === 'clearance'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
-                    : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
-              >
-                <AlertTriangle className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'clearance' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
-                <span>Jarak ROW</span>
-                <span className="hidden xl:inline">& Kabel</span>
-                {rowViolations > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                    activeTab === 'clearance' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
-                  }`}>
-                    {rowViolations}
-                  </span>
-                )}
-              </button>
+              {!isPetugasRow && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('clearance')}
+                    className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                      activeTab === 'clearance'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                        : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                    }`}
+                  >
+                    <AlertTriangle className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'clearance' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                    <span>Jarak ROW</span>
+                    <span className="hidden xl:inline">& Kabel</span>
+                    {rowViolations > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                        activeTab === 'clearance' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
+                      }`}>
+                        {rowViolations}
+                      </span>
+                    )}
+                  </button>
 
-              <button
-                onClick={() => setActiveTab('ai')}
-                className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
-                  activeTab === 'ai'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
-                    : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
-              >
-                <BarChart3 className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'ai' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
-                <span>GROW AI</span>
-              </button>
+                  <button
+                    onClick={() => setActiveTab('ai')}
+                    className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                      activeTab === 'ai'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                        : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                    }`}
+                  >
+                    <BarChart3 className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'ai' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                    <span>GROW AI</span>
+                  </button>
 
-              <button
-                onClick={() => setActiveTab('spk')}
-                className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
-                  activeTab === 'spk'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
-                    : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
-              >
-                <FileText className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'spk' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
-                <span className="hidden lg:inline">Surat Kerja</span>
-                <span>(SPK)</span>
-              </button>
+                  <button
+                    onClick={() => setActiveTab('spk')}
+                    className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                      activeTab === 'spk'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                        : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                    }`}
+                  >
+                    <FileText className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'spk' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                    <span className="hidden lg:inline">Surat Kerja</span>
+                    <span>(SPK)</span>
+                  </button>
 
-              <button
-                onClick={() => setActiveTab('kmz')}
-                className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
-                  activeTab === 'kmz'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
-                    : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
-              >
-                <Upload className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'kmz' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
-                <span>Unggah KMZ</span>
-              </button>
+                  <button
+                    onClick={() => setActiveTab('kmz')}
+                    className={`flex items-center gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                      activeTab === 'kmz'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                        : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                    }`}
+                  >
+                    <Upload className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'kmz' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                    <span>Unggah KMZ</span>
+                  </button>
 
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
-                  activeTab === 'users'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
-                    : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
-                title="Kelola Pengguna & Akun Akses Sistem"
-              >
-                <Users className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'users' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
-                <span className="hidden lg:inline">Management</span>
-                <span>User</span>
-              </button>
+                  <button
+                    onClick={() => setActiveTab('users')}
+                    className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                      activeTab === 'users'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20 border border-amber-300 scale-[1.01]'
+                        : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                    }`}
+                    title="Kelola Pengguna & Akun Akses Sistem"
+                  >
+                    <Users className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'users' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                    <span className="hidden lg:inline">Management</span>
+                    <span>User</span>
+                  </button>
+                </>
+              )}
             </nav>
 
             {/* Quick Metrics & AI Button */}
@@ -224,32 +229,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              <button
-                onClick={onOpenAiAssistant}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 border border-amber-300 px-3.5 h-9 rounded-xl text-xs font-black shadow-md cursor-pointer whitespace-nowrap btn-tactile hover:shadow-amber-400/25"
-              >
-                <Bot className="w-4 h-4 text-slate-950 shrink-0" />
-                <span>Tanya GROW AI</span>
-              </button>
+              {!isPetugasRow && (
+                <button
+                  onClick={onOpenAiAssistant}
+                  className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 border border-amber-300 px-3.5 h-9 rounded-xl text-xs font-black shadow-md cursor-pointer whitespace-nowrap btn-tactile hover:shadow-amber-400/25"
+                >
+                  <Bot className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span>Tanya GROW AI</span>
+                </button>
+              )}
 
-              {/* Current Logged-in User & Logout */}
-              {currentUser && (
-                <div className="flex items-center gap-2 pl-2 border-l border-teal-500/30">
-                  <div className="hidden lg:flex flex-col text-right">
-                    <span className="text-[11px] font-bold text-white leading-none font-mono">{currentUser.userId}</span>
-                    <span className="text-[9px] font-semibold text-amber-300 leading-none mt-0.5">{currentUser.role}</span>
-                  </div>
-                  {onLogout && (
-                    <button
-                      onClick={onLogout}
-                      className="flex items-center gap-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 h-8 rounded-lg text-xs font-bold cursor-pointer shadow-xs btn-tactile"
-                      title="Keluar dari Sistem GROW"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Keluar</span>
-                    </button>
-                  )}
-                </div>
+              {/* Logout Button */}
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-1.5 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/35 hover:border-rose-400 px-3 h-9 rounded-xl text-xs font-bold cursor-pointer transition-all duration-150 shadow-md btn-tactile shrink-0"
+                  title="Keluar dari Sistem GROW"
+                >
+                  <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  <span>Keluar</span>
+                </button>
               )}
             </div>
 
@@ -326,60 +325,79 @@ export const Navbar: React.FC<NavbarProps> = ({
           }`}>
             <Map className="w-5 h-5" />
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight font-bold">Peta</span>
+          <span className="text-[10px] mt-0.5 tracking-tight font-bold">Peta GIS</span>
         </button>
 
-        {/* Tab 2: ROW & Kabel */}
-        <button
-          onClick={() => setActiveTab('clearance')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative transition-all cursor-pointer ${
-            activeTab === 'clearance'
-              ? 'text-amber-600 dark:text-amber-400 font-extrabold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
-          }`}
-        >
-          <div className={`px-4 py-1 rounded-full transition-all relative ${
-            activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
-          }`}>
-            <AlertTriangle className="w-5 h-5" />
-            {rowViolations > 0 && (
-              <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black ring-2 ring-white dark:ring-slate-900 animate-pulse">
-                {rowViolations}
-              </span>
+        {isPetugasRow ? (
+          <>
+            {/* Tab 2 (Petugas ROW): Laporan WA */}
+            {onOpenWhatsAppReport && (
+              <button
+                onClick={onOpenWhatsAppReport}
+                className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-bold"
+              >
+                <div className="px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                  <WhatsAppIcon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] mt-0.5 tracking-tight font-bold">Laporan WA</span>
+              </button>
             )}
-          </div>
-          <span className="text-[10px] mt-0.5 tracking-tight font-bold">ROW</span>
-        </button>
+          </>
+        ) : (
+          <>
+            {/* Tab 2: ROW & Kabel */}
+            <button
+              onClick={() => setActiveTab('clearance')}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative transition-all cursor-pointer ${
+                activeTab === 'clearance'
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+              }`}
+            >
+              <div className={`px-4 py-1 rounded-full transition-all relative ${
+                activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
+              }`}>
+                <AlertTriangle className="w-5 h-5" />
+                {rowViolations > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black ring-2 ring-white dark:ring-slate-900 animate-pulse">
+                    {rowViolations}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] mt-0.5 tracking-tight font-bold">ROW</span>
+            </button>
 
-        {/* Tab 3: GROW AI */}
-        <button
-          onClick={onOpenAiAssistant}
-          className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
-        >
-          <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs">
-            <Bot className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5 tracking-tight text-amber-600 dark:text-amber-300 font-extrabold">GROW AI</span>
-        </button>
+            {/* Tab 3: GROW AI */}
+            <button
+              onClick={onOpenAiAssistant}
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
+            >
+              <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs">
+                <Bot className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5 tracking-tight text-amber-600 dark:text-amber-300 font-extrabold">GROW AI</span>
+            </button>
 
-        {/* Tab 4: SPK */}
-        <button
-          onClick={() => setActiveTab('spk')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
-            activeTab === 'spk'
-              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
-          }`}
-        >
-          <div className={`px-4 py-1 rounded-full transition-all ${
-            activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
-          }`}>
-            <FileText className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] mt-0.5 tracking-tight font-bold">SPK</span>
-        </button>
+            {/* Tab 4: SPK */}
+            <button
+              onClick={() => setActiveTab('spk')}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                activeTab === 'spk'
+                  ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+              }`}
+            >
+              <div className={`px-4 py-1 rounded-full transition-all ${
+                activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
+              }`}>
+                <FileText className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5 tracking-tight font-bold">SPK</span>
+            </button>
+          </>
+        )}
 
-        {/* Tab 5: Menu / Lainnya */}
+        {/* Tab Menu / Lainnya */}
         <button
           onClick={() => setShowMobileMenu(true)}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
@@ -545,43 +563,47 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
               
-              <button
-                onClick={() => {
-                  setActiveTab('kmz');
-                  setShowMobileMenu(false);
-                }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-300 flex items-center justify-center">
-                    <Upload className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">Unggah & Kelola Master KMZ</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Import KML/KMZ atau restore data bawaan</div>
-                  </div>
-                </div>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
-              </button>
+              {!isPetugasRow && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveTab('kmz');
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-300 flex items-center justify-center">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white">Unggah & Kelola Master KMZ</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Import KML/KMZ atau restore data bawaan</div>
+                      </div>
+                    </div>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('users');
-                  setShowMobileMenu(false);
-                }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-300 flex items-center justify-center">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white">Management User & Hak Akses</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Kelola akun administrator & tim lapangan</div>
-                  </div>
-                </div>
-                <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
-              </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab('users');
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 text-left transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-white">Management User & Hak Akses</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Kelola akun administrator & tim lapangan</div>
+                      </div>
+                    </div>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">›</span>
+                  </button>
+                </>
+              )}
 
               {onOpenFeederDrawer && (
                 <button

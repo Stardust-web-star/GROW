@@ -23,5 +23,16 @@ export const INITIAL_USERS: UserAccount[] = [
     email: 'supervisor.baguala@pln.co.id',
     status: 'Aktif',
     createdAt: '2026-02-15'
+  },
+  {
+    id: 'USR-ROW-001',
+    userId: 'petugasrow',
+    name: 'Petugas ROW Lapangan',
+    role: 'Petugas ROW',
+    password: 'petugasrow123',
+    unit: 'ULP Baguala',
+    email: 'petugasrow@baguala.pln.co.id',
+    status: 'Aktif',
+    createdAt: '2026-03-01'
   }
 ];

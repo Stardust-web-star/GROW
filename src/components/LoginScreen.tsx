@@ -321,8 +321,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               Untuk mereset password akun GROW PLN, silakan hubungi <b>Administrator Utama</b> atau <b>Team Leader Teknik ULP Baguala</b> melalui menu <i>Management User</i> di dalam dashboard.
             </p>
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1 mb-5">
-              <div>User ID Bawaan: <b className="text-amber-400 font-mono">9925045ZY</b></div>
-              <div>Password Default: <b className="text-amber-400 font-mono">admin123</b></div>
+              <div>Admin: <b className="text-amber-400 font-mono">9925045ZY</b> (pass: <b className="text-amber-400 font-mono">admin123</b>)</div>
+              <div>Petugas ROW: <b className="text-teal-400 font-mono">petugasrow</b> (pass: <b className="text-teal-400 font-mono">petugasrow123</b>)</div>
               <div>Unit: <b>ULP Baguala - UP3 Ambon</b></div>
             </div>
             <button

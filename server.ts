@@ -113,11 +113,14 @@ function loadUsersData(): UserAccount[] {
       const raw = fs.readFileSync(USERS_DATA_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const hasMain = parsed.some((u: UserAccount) => u.userId.toUpperCase() === '9925045ZY');
-        if (!hasMain) {
-          return [INITIAL_USERS[0], ...parsed];
+        const list = [...parsed];
+        for (const initUser of INITIAL_USERS) {
+          const exists = list.some((u: UserAccount) => u.userId.toUpperCase() === initUser.userId.toUpperCase());
+          if (!exists) {
+            list.push(initUser);
+          }
         }
-        return parsed;
+        return list;
       }
     }
   } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
-import { PoleData, CableSpan } from '../types';
+import { PoleData, CableSpan, UserAccount } from '../types';
 import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp } from 'lucide-react';
 import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
@@ -66,6 +66,7 @@ interface MapViewerProps {
   poles: PoleData[];
   spans: CableSpan[];
   isActive?: boolean;
+  currentUser?: UserAccount | null;
   feederColors?: Record<string, string>;
   feederVisibility?: Record<string, boolean>;
   onSelectPole: (pole: PoleData) => void;
@@ -84,6 +85,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   poles,
   spans,
   isActive = true,
+  currentUser,
   feederColors = {},
   feederVisibility = {},
   onSelectPole,
@@ -97,6 +99,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onUpdateSpan,
   onDeleteSpan
 }) => {
+  const isPetugasRow = currentUser?.role === 'Petugas ROW';
+  const isPetugasRowRef = useRef<boolean>(isPetugasRow);
+  useEffect(() => {
+    isPetugasRowRef.current = isPetugasRow;
+  }, [isPetugasRow]);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -1514,13 +1521,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   const otherCode = otherPole?.code || otherId;
                   return `
                     <div style="display:flex; align-items:center; justify-content:space-between; padding:3px 6px; font-size:10.5px; border-bottom:1px solid #e2e8f0; background:#ffffff;">
-                      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px; font-weight:700; color:#0f172a;">
+                      <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:${isPetugasRowRef.current ? '220px' : '130px'}; font-weight:700; color:#0f172a;">
                         <b>↔ ${otherCode}</b> (${s.lengthMeters}m)
                       </div>
-                      <div style="display:flex; gap:3px;">
-                        <button data-id="${s.id}" class="btn-pole-edit-span" style="background:#f59e0b; color:#0f172a; padding:2px 6px; border-radius:4px; border:1px solid #d97706; font-size:10px; font-weight:800; cursor:pointer;">Ubah</button>
-                        <button data-id="${s.id}" class="btn-pole-del-span" style="background:#ef4444; color:#ffffff; padding:2px 6px; border-radius:4px; border:1px solid #dc2626; font-size:10px; font-weight:800; cursor:pointer;">Hapus</button>
-                      </div>
+                      ${!isPetugasRowRef.current ? `
+                        <div style="display:flex; gap:3px;">
+                          <button data-id="${s.id}" class="btn-pole-edit-span" style="background:#f59e0b; color:#0f172a; padding:2px 6px; border-radius:4px; border:1px solid #d97706; font-size:10px; font-weight:800; cursor:pointer;">Ubah</button>
+                          <button data-id="${s.id}" class="btn-pole-del-span" style="background:#ef4444; color:#ffffff; padding:2px 6px; border-radius:4px; border:1px solid #dc2626; font-size:10px; font-weight:800; cursor:pointer;">Hapus</button>
+                        </div>
+                      ` : ''}
                     </div>
                   `;
                 }).join('')}
@@ -1601,23 +1610,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <span>Navigasi ke Tiang</span>
           </button>
 
-          <!-- Secondary Actions: 3 Columns Grid -->
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-bottom:5px;">
-            <button type="button" class="btn-cable-pull-act" style="background:#0284c7; color:#ffffff; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #0369a1; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; white-space:nowrap;">
-              ⚡ Tarik Kabel
-            </button>
-            <button type="button" class="btn-inspect-act" style="background:#0f172a; color:#ffffff; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #0f172a; font-weight:800; cursor:pointer; text-align:center; white-space:nowrap;">
-              + Inspeksi
-            </button>
-            <button type="button" class="btn-spk-act" style="background:#f59e0b; color:#0f172a; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #d97706; font-weight:900; cursor:pointer; text-align:center; white-space:nowrap;">
-              + SPK Rabas
-            </button>
-          </div>
+          ${!isPetugasRowRef.current ? `
+            <!-- Secondary Actions: 3 Columns Grid -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-bottom:5px;">
+              <button type="button" class="btn-cable-pull-act" style="background:#0284c7; color:#ffffff; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #0369a1; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:2px; white-space:nowrap;">
+                ⚡ Tarik Kabel
+              </button>
+              <button type="button" class="btn-inspect-act" style="background:#0f172a; color:#ffffff; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #0f172a; font-weight:800; cursor:pointer; text-align:center; white-space:nowrap;">
+                + Inspeksi
+              </button>
+              <button type="button" class="btn-spk-act" style="background:#f59e0b; color:#0f172a; font-size:10px; padding:6px 2px; border-radius:6px; border:1px solid #d97706; font-weight:900; cursor:pointer; text-align:center; white-space:nowrap;">
+                + SPK Rabas
+              </button>
+            </div>
 
-          <!-- Danger Action: Compact & Safe -->
-          <button type="button" class="btn-delete-act" style="width:100%; background:#fff1f2; color:#be123c; font-size:10px; padding:4px 6px; border-radius:5px; border:1px solid #fecdd3; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
-            🗑️ Hapus Titik Tiang Ini
-          </button>
+            <!-- Danger Action: Compact & Safe -->
+            <button type="button" class="btn-delete-act" style="width:100%; background:#fff1f2; color:#be123c; font-size:10px; padding:4px 6px; border-radius:5px; border:1px solid #fecdd3; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
+              🗑️ Hapus Titik Tiang Ini
+            </button>
+          ` : ''}
         `;
 
         const bindPolePhotoEvents = () => {
@@ -2454,83 +2465,87 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <span>Tambah Tiang</span>
           </button>
 
-          {/* Divider */}
-          <div className="h-5 w-px bg-teal-400/30 shrink-0 mx-0.5" />
+          {/* 6. Empat (4) Menu Operasi: Tarik Kabel, Ukur ROW, ROW < 3m, Heatmap (Hanya untuk Admin/Supervisor) */}
+          {!isPetugasRow && (
+            <>
+              {/* Divider */}
+              <div className="h-5 w-px bg-teal-400/30 shrink-0 mx-0.5" />
 
-          {/* 6. Empat (4) Menu Operasi: Tarik Kabel, Ukur ROW, ROW < 3m, Heatmap */}
-          <div className="flex items-center gap-1 bg-slate-950/80 backdrop-blur-md p-0.5 rounded-lg border border-teal-500/30 shadow-inner h-8 shrink-0">
-            <button
-              onClick={() => {
-                if (isPullingCable) {
-                  cancelCablePulling();
-                } else {
-                  setIsPullingCable(true);
-                  isPullingCableRef.current = true;
-                  setCableSourcePole(null);
-                  cableSourcePoleRef.current = null;
-                  if (mapInstanceRef.current) {
-                    mapInstanceRef.current.getContainer().classList.add('cable-pulling-mode');
-                  }
-                }
-              }}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
-                isPullingCable
-                  ? 'bg-teal-500 text-slate-950 font-black shadow-xs'
-                  : 'text-teal-400 hover:bg-slate-800/80'
-              }`}
-              title="Tarik dan pasang kabel baru antar tiang di peta (Drag & Drop atau Klik Antar Tiang)"
-            >
-              <Cable className="w-3.5 h-3.5" />
-              <span>Tarik Kabel</span>
-            </button>
+              <div className="flex items-center gap-1 bg-slate-950/80 backdrop-blur-md p-0.5 rounded-lg border border-teal-500/30 shadow-inner h-8 shrink-0">
+                <button
+                  onClick={() => {
+                    if (isPullingCable) {
+                      cancelCablePulling();
+                    } else {
+                      setIsPullingCable(true);
+                      isPullingCableRef.current = true;
+                      setCableSourcePole(null);
+                      cableSourcePoleRef.current = null;
+                      if (mapInstanceRef.current) {
+                        mapInstanceRef.current.getContainer().classList.add('cable-pulling-mode');
+                      }
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
+                    isPullingCable
+                      ? 'bg-teal-500 text-slate-950 font-black shadow-xs'
+                      : 'text-teal-400 hover:bg-slate-800/80'
+                  }`}
+                  title="Tarik dan pasang kabel baru antar tiang di peta (Drag & Drop atau Klik Antar Tiang)"
+                >
+                  <Cable className="w-3.5 h-3.5" />
+                  <span>Tarik Kabel</span>
+                </button>
 
-            <button
-              onClick={() => {
-                if (isMeasuring) {
-                  clearMeasurement();
-                } else {
-                  setIsMeasuring(true);
-                  setMeasurePoints([]);
-                  setMeasuredDistance(null);
-                }
-              }}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
-                isMeasuring
-                  ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
-                  : 'text-emerald-400 hover:bg-slate-800/80'
-              }`}
-              title="Ukur jarak langsung antara kabel ke pohon atau bangunan"
-            >
-              <Ruler className="w-3.5 h-3.5" />
-              <span>{isMeasuring ? 'Batal Ukur' : 'Ukur ROW'}</span>
-            </button>
+                <button
+                  onClick={() => {
+                    if (isMeasuring) {
+                      clearMeasurement();
+                    } else {
+                      setIsMeasuring(true);
+                      setMeasurePoints([]);
+                      setMeasuredDistance(null);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
+                    isMeasuring
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-xs'
+                      : 'text-emerald-400 hover:bg-slate-800/80'
+                  }`}
+                  title="Ukur jarak langsung antara kabel ke pohon atau bangunan"
+                >
+                  <Ruler className="w-3.5 h-3.5" />
+                  <span>{isMeasuring ? 'Batal Ukur' : 'Ukur ROW'}</span>
+                </button>
 
-            <button
-              onClick={() => setShowRowOnly(!showRowOnly)}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
-                showRowOnly
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                  : 'text-amber-400 hover:bg-slate-800/80'
-              }`}
-              title="Filter hanya menampilkan tiang & kabel dengan ROW < 3 meter"
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>ROW &lt; 3m</span>
-            </button>
+                <button
+                  onClick={() => setShowRowOnly(!showRowOnly)}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
+                    showRowOnly
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                      : 'text-amber-400 hover:bg-slate-800/80'
+                  }`}
+                  title="Filter hanya menampilkan tiang & kabel dengan ROW < 3 meter"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>ROW &lt; 3m</span>
+                </button>
 
-            <button
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
-                showHeatmap
-                  ? 'bg-rose-600 text-white font-black shadow-xs'
-                  : 'text-rose-400 hover:bg-slate-800/80'
-              }`}
-              title="Visualisasi Heatmap sebaran tiang berstatus bahaya kritis pada peta"
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Heatmap</span>
-            </button>
-          </div>
+                <button
+                  onClick={() => setShowHeatmap(!showHeatmap)}
+                  className={`flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-bold cursor-pointer btn-tactile ${
+                    showHeatmap
+                      ? 'bg-rose-600 text-white font-black shadow-xs'
+                      : 'text-rose-400 hover:bg-slate-800/80'
+                  }`}
+                  title="Visualisasi Heatmap sebaran tiang berstatus bahaya kritis pada peta"
+                >
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>Heatmap</span>
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Live Counter (Menampilkan:) */}
           <div className="flex items-center gap-1.5 text-xs bg-slate-950/80 backdrop-blur-md px-2.5 h-8 rounded-lg border border-teal-500/30 text-slate-300 shadow-inner shrink-0">
@@ -2849,29 +2864,31 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <ChevronDown className={`w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${selectedFeeder !== 'ALL' ? 'text-slate-950' : 'text-slate-400'}`} />
             </div>
 
-            {/* Chip 4: Tarik Kabel */}
-            <button
-              onClick={() => {
-                if (isPullingCable) cancelCablePulling();
-                else {
-                  setIsPullingCable(true);
-                  isPullingCableRef.current = true;
-                  setCableSourcePole(null);
-                  cableSourcePoleRef.current = null;
-                  if (mapInstanceRef.current) {
-                    mapInstanceRef.current.getContainer().classList.add('cable-pulling-mode');
+            {/* Chip 4: Tarik Kabel (Hanya untuk Admin/Supervisor) */}
+            {!isPetugasRow && (
+              <button
+                onClick={() => {
+                  if (isPullingCable) cancelCablePulling();
+                  else {
+                    setIsPullingCable(true);
+                    isPullingCableRef.current = true;
+                    setCableSourcePole(null);
+                    cableSourcePoleRef.current = null;
+                    if (mapInstanceRef.current) {
+                      mapInstanceRef.current.getContainer().classList.add('cable-pulling-mode');
+                    }
                   }
-                }
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                isPullingCable
-                  ? 'bg-teal-500 text-slate-950 border-teal-300 font-black'
-                  : 'bg-slate-900/90 text-teal-300 border-teal-500/40 hover:bg-slate-800'
-              }`}
-            >
-              <Cable className="w-3.5 h-3.5" />
-              <span>Tarik Kabel</span>
-            </button>
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  isPullingCable
+                    ? 'bg-teal-500 text-slate-950 border-teal-300 font-black'
+                    : 'bg-slate-900/90 text-teal-300 border-teal-500/40 hover:bg-slate-800'
+                }`}
+              >
+                <Cable className="w-3.5 h-3.5" />
+                <span>Tarik Kabel</span>
+              </button>
+            )}
 
             {/* Chip 5: Mode ROW vs Feeder */}
             <button
@@ -2895,38 +2912,42 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <span>{mapType === 'satellite' ? 'Satelit' : 'Vektor'}</span>
             </button>
 
-            {/* Chip 7: Ukur Jarak */}
-            <button
-              onClick={() => {
-                if (isMeasuring) clearMeasurement();
-                else {
-                  setIsMeasuring(true);
-                  setMeasurePoints([]);
-                  setMeasuredDistance(null);
-                }
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                isMeasuring
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black'
-                  : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
-              }`}
-            >
-              <Ruler className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isMeasuring ? 'Batal Ukur' : 'Ukur ROW'}</span>
-            </button>
+            {/* Chip 7: Ukur Jarak (Hanya untuk Admin/Supervisor) */}
+            {!isPetugasRow && (
+              <button
+                onClick={() => {
+                  if (isMeasuring) clearMeasurement();
+                  else {
+                    setIsMeasuring(true);
+                    setMeasurePoints([]);
+                    setMeasuredDistance(null);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  isMeasuring
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black'
+                    : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
+                }`}
+              >
+                <Ruler className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isMeasuring ? 'Batal Ukur' : 'Ukur ROW'}</span>
+              </button>
+            )}
 
-            {/* Chip 8: Heatmap */}
-            <button
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                showHeatmap
-                  ? 'bg-rose-600 text-white border-rose-400'
-                  : 'bg-slate-900/90 text-rose-300 border-rose-500/40 hover:bg-slate-800'
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Heatmap</span>
-            </button>
+            {/* Chip 8: Heatmap (Hanya untuk Admin/Supervisor) */}
+            {!isPetugasRow && (
+              <button
+                onClick={() => setShowHeatmap(!showHeatmap)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  showHeatmap
+                    ? 'bg-rose-600 text-white border-rose-400'
+                    : 'bg-slate-900/90 text-rose-300 border-rose-500/40 hover:bg-slate-800'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5" />
+                <span>Heatmap</span>
+              </button>
+            )}
           </div>
         </div>
 

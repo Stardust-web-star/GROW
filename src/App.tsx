@@ -184,7 +184,16 @@ export default function App() {
     };
   }, [currentUser, handleLogout]);
 
+  const isPetugasRow = currentUser?.role === 'Petugas ROW';
+
+  useEffect(() => {
+    if (isPetugasRow && activeTab !== 'map') {
+      setActiveTab('map');
+    }
+  }, [isPetugasRow, activeTab]);
+
   const handleSelectTab = (tab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => {
+    if (isPetugasRow && tab !== 'map') return;
     setVisitedTabs(prev => prev[tab] ? prev : { ...prev, [tab]: true });
     setActiveTab(tab);
   };
@@ -951,7 +960,9 @@ export default function App() {
         totalSpans={spans.length}
         rowViolations={rowViolations}
         criticalPoles={criticalPoles}
-        onOpenAiAssistant={() => setShowAiAssistant(true)}
+        onOpenAiAssistant={() => {
+          if (!isPetugasRow) setShowAiAssistant(true);
+        }}
         onOpenWhatsAppReport={() => handleOpenWhatsAppReport('spk')}
         masterName={masterName}
         currentUser={currentUser}
@@ -970,6 +981,7 @@ export default function App() {
             poles={poles}
             spans={spans}
             isActive={activeTab === 'map'}
+            currentUser={currentUser}
             feederColors={feederColors}
             feederVisibility={feederVisibility}
             onSelectPole={(pole) => setInspectingPole(pole)}
@@ -1203,9 +1215,12 @@ export default function App() {
         }}
         onDeleteFeeder={handleDeleteFeeder}
         onRenameFeeder={handleRenameFeeder}
+        isPetugasRow={isPetugasRow}
         onOpenKmzUploader={() => {
-          setShowFeederDrawer(false);
-          setActiveTab('kmz');
+          if (!isPetugasRow) {
+            setShowFeederDrawer(false);
+            setActiveTab('kmz');
+          }
         }}
       />
 
