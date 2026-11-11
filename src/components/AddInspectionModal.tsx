@@ -40,7 +40,7 @@ export const AddInspectionModal: React.FC<AddInspectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-100">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-100 animate-modal-pop">
         
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>

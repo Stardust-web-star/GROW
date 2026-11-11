@@ -117,7 +117,7 @@ export const KmzUploader: React.FC<KmzUploaderProps> = ({
               </div>
               <button
                 onClick={onRestoreMasterData}
-                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer btn-tactile"
                 title={`Kembalikan peta ke master data ${masterName}`}
               >
                 <ShieldCheck className="w-4 h-4" />
@@ -127,7 +127,7 @@ export const KmzUploader: React.FC<KmzUploaderProps> = ({
           )}
 
           {/* Card 2: Sinkron Ulang Data */}
-          <div className="bg-white dark:bg-slate-900/90 border border-amber-200 dark:border-amber-500/30 hover:border-amber-400 dark:hover:border-amber-500/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-all group">
+          <div className="bg-white dark:bg-slate-900/90 border border-amber-200 dark:border-amber-500/30 hover:border-amber-400 dark:hover:border-amber-500/60 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-all group card-interactive">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
@@ -148,7 +148,7 @@ export const KmzUploader: React.FC<KmzUploaderProps> = ({
             </div>
             <button
               onClick={onLoadSampleKmz}
-              className="w-full mt-4 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              className="w-full mt-4 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer btn-tactile"
               title="Sinkronkan ulang data jaringan ke peta"
             >
               <Zap className="w-4 h-4 fill-current" />

@@ -1098,7 +1098,7 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
       {/* Delete Span Confirmation Modal */}
       {spanToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 transition-colors animate-modal-pop">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <div className="p-2.5 bg-rose-500/15 rounded-xl border border-rose-500/30">
                 <Trash2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
@@ -1159,7 +1159,7 @@ export const CableClearanceManager: React.FC<CableClearanceManagerProps> = ({
       {/* Delete Pole Confirmation Modal */}
       {poleToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 transition-colors animate-modal-pop">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <div className="p-2.5 bg-rose-500/15 rounded-xl border border-rose-500/30">
                 <Trash2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />

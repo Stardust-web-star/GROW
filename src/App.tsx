@@ -1092,7 +1092,7 @@ export default function App() {
       {/* Manual Add Pole Modal */}
       {showAddPoleModal && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-slate-100 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-900 dark:text-slate-100 transition-colors animate-modal-pop">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-base text-slate-900 dark:text-white">Tambah Titik Tiang Listrik Baru</h3>
               <button onClick={() => setShowAddPoleModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer">

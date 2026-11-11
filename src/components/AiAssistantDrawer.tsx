@@ -76,7 +76,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 w-full max-w-md bg-slate-900 border-l border-slate-800 z-50 flex flex-col shadow-2xl text-slate-100 animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 w-full max-w-md bg-slate-900 border-l border-slate-800 z-50 flex flex-col shadow-2xl text-slate-100 animate-drawer-right">
       
       {/* Header */}
       <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">

@@ -508,7 +508,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* MODAL 1: Tambah User Baru */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 text-slate-900 dark:text-slate-100 shadow-2xl space-y-5 my-8 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 text-slate-900 dark:text-slate-100 shadow-2xl space-y-5 my-8 transition-colors animate-modal-pop">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
@@ -672,7 +672,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* MODAL 2: Edit User & Reset Password */}
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 text-slate-900 dark:text-slate-100 shadow-2xl space-y-4 my-8 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-6 text-slate-900 dark:text-slate-100 shadow-2xl space-y-4 my-8 transition-colors animate-modal-pop">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
                 <h3 className="font-black text-base text-slate-900 dark:text-white">Edit User &amp; Hak Akses</h3>
@@ -777,7 +777,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       {/* MODAL 3: Konfirmasi Hapus User */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl max-w-sm w-full p-6 text-slate-800 dark:text-slate-200 shadow-2xl space-y-4 transition-colors">
+          <div className="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-500/50 rounded-2xl max-w-sm w-full p-6 text-slate-800 dark:text-slate-200 shadow-2xl space-y-4 transition-colors animate-modal-pop">
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-black text-base text-slate-900 dark:text-white">Hapus User Ini?</h3>

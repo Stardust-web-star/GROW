@@ -84,7 +84,7 @@ export const EditCableModal: React.FC<EditCableModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[100] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl text-slate-800 dark:text-slate-100 my-8 transition-colors">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-6 shadow-2xl text-slate-800 dark:text-slate-100 my-8 transition-colors animate-modal-pop">
         
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-200 dark:border-slate-800 pb-4">

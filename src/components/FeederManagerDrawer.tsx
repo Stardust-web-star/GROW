@@ -66,7 +66,7 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-950/95 backdrop-blur-xl border-l border-slate-800 text-white shadow-2xl flex flex-col font-sans animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-950/95 backdrop-blur-xl border-l border-slate-800 text-white shadow-2xl flex flex-col font-sans animate-drawer-right">
       
       {/* Header matching user's reference screenshot */}
       <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">

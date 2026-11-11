@@ -95,7 +95,7 @@ export const GeoLocationPermissionModal: React.FC<GeoLocationPermissionModalProp
       }}
     >
       <div 
-        className="relative w-full max-w-md bg-[#1e232b] text-white border border-slate-700/80 rounded-2xl shadow-2xl p-5 sm:p-6 animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md bg-[#1e232b] text-white border border-slate-700/80 rounded-2xl shadow-2xl p-5 sm:p-6 animate-modal-pop"
         role="dialog"
         aria-modal="true"
         aria-labelledby="geo-modal-title"

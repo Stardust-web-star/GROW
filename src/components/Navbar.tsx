@@ -314,16 +314,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Tab 1: Peta */}
         <button
           onClick={() => setActiveTab('map')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer ${
             activeTab === 'map'
-              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold scale-105'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
-          <div className={`px-4 py-1 rounded-full transition-all ${
+          <div className={`px-4 py-1 rounded-full transition-all duration-200 ${
             activeTab === 'map' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
-            <Map className="w-5 h-5" />
+            <Map className="w-5 h-5 transition-transform duration-200" />
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight font-bold">Peta GIS</span>
         </button>
@@ -334,9 +334,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenWhatsAppReport && (
               <button
                 onClick={onOpenWhatsAppReport}
-                className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-bold"
+                className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-bold"
               >
-                <div className="px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shadow-xs">
+                <div className="px-4 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shadow-xs transition-transform duration-200">
                   <WhatsAppIcon className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] mt-0.5 tracking-tight font-bold">Laporan WA</span>
@@ -348,13 +348,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Tab 2: ROW & Kabel */}
             <button
               onClick={() => setActiveTab('clearance')}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative active:scale-90 transition-all duration-150 cursor-pointer ${
                 activeTab === 'clearance'
-                  ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
               }`}
             >
-              <div className={`px-4 py-1 rounded-full transition-all relative ${
+              <div className={`px-4 py-1 rounded-full transition-all duration-200 relative ${
                 activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
               }`}>
                 <AlertTriangle className="w-5 h-5" />
@@ -370,9 +370,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Tab 3: GROW AI */}
             <button
               onClick={onOpenAiAssistant}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
+              className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
             >
-              <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs">
+              <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs transition-transform duration-200">
                 <Bot className="w-5 h-5" />
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight text-amber-600 dark:text-amber-300 font-extrabold">GROW AI</span>
@@ -381,13 +381,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Tab 4: SPK */}
             <button
               onClick={() => setActiveTab('spk')}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer ${
                 activeTab === 'spk'
-                  ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+                  ? 'text-cyan-600 dark:text-cyan-400 font-extrabold scale-105'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
               }`}
             >
-              <div className={`px-4 py-1 rounded-full transition-all ${
+              <div className={`px-4 py-1 rounded-full transition-all duration-200 ${
                 activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
               }`}>
                 <FileText className="w-5 h-5" />
@@ -400,13 +400,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Tab Menu / Lainnya */}
         <button
           onClick={() => setShowMobileMenu(true)}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer ${
             ['kmz', 'users'].includes(activeTab) || showMobileMenu
-              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold'
+              ? 'text-cyan-600 dark:text-cyan-400 font-extrabold scale-105'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
-          <div className={`px-4 py-1 rounded-full transition-all ${
+          <div className={`px-4 py-1 rounded-full transition-all duration-200 ${
             ['kmz', 'users'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
             <Grid className="w-5 h-5" />
@@ -423,7 +423,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Backdrop Click */}
           <div className="flex-1" onClick={() => setShowMobileMenu(false)} />
           
-          <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 rounded-t-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto text-slate-900 dark:text-white transition-colors duration-200">
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 rounded-t-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto text-slate-900 dark:text-white transition-colors duration-200 animate-sheet-up">
             {/* Sheet Handle */}
             <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto" />
 

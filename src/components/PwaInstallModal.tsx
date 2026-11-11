@@ -29,7 +29,7 @@ export const PwaInstallModal: React.FC<PwaInstallModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl text-white overflow-hidden">
+      <div className="relative w-full max-w-md bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 shadow-2xl text-white overflow-hidden animate-modal-pop">
         {/* Glow decoration */}
         <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />

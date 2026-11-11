@@ -2630,7 +2630,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
         {/* Live Field Turn-by-Turn In-App Navigation Floating Card */}
         {activeNavTarget && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[calc(100%-20px)] bg-slate-900/95 backdrop-blur-xl border-2 border-sky-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[calc(100%-20px)] bg-slate-900/95 backdrop-blur-xl border-2 border-sky-400 text-white px-4 py-3 rounded-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 animate-modal-pop">
             <div className="flex items-center gap-3 w-full md:w-auto min-w-0 flex-1">
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
                 activeNavTarget.type === 'cable'
@@ -2785,11 +2785,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           </div>
 
           {/* Horizontal Category Filter Chips (Google Maps Mobile UI) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth">
             {/* Quick GPS Toggle Chip */}
             <button
               onClick={handleToggleGps}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                 isGpsActive
                   ? 'bg-blue-600 text-white border-blue-400 shadow-blue-500/30 font-black'
                   : 'bg-white/90 dark:bg-slate-900/90 text-blue-600 dark:text-blue-300 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -2810,7 +2810,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 setShowRowOnly(false);
                 setSearchQuery('');
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                 selectedFeeder === 'ALL' && !showRowOnly && !searchQuery
                   ? 'bg-blue-600 text-white border-blue-400 shadow-blue-500/20'
                   : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -2823,7 +2823,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             {/* Chip 2: ROW Kritis (< 3m) */}
             <button
               onClick={() => setShowRowOnly(!showRowOnly)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                 showRowOnly
                   ? 'bg-rose-600 text-white border-rose-400 shadow-rose-500/20'
                   : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -2837,7 +2837,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </button>
 
             {/* Chip 3: Selector Penyulang */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 chip-interactive">
               <select
                 value={selectedFeeder}
                 onChange={(e) => {
@@ -2879,7 +2879,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     }
                   }
                 }}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                   isPullingCable
                     ? 'bg-teal-500 text-slate-950 border-teal-300 font-black'
                     : 'bg-slate-900/90 text-teal-300 border-teal-500/40 hover:bg-slate-800'
@@ -2893,7 +2893,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             {/* Chip 5: Mode ROW vs Feeder */}
             <button
               onClick={() => setCableColorMode(cableColorMode === 'byClearance' ? 'byFeeder' : 'byClearance')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                 cableColorMode === 'byClearance'
                   ? 'bg-emerald-600 text-white border-emerald-400'
                   : 'bg-cyan-600 text-white border-cyan-400'
@@ -2906,7 +2906,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             {/* Chip 6: Satelit vs Vektor */}
             <button
               onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
-              className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border border-slate-700/80 bg-slate-900/90 text-slate-200 flex items-center gap-1.5 shrink-0 cursor-pointer hover:bg-slate-800"
+              className="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border border-slate-700/80 bg-slate-900/90 text-slate-200 flex items-center gap-1.5 shrink-0 cursor-pointer hover:bg-slate-800 chip-interactive"
             >
               <Layers className="w-3.5 h-3.5 text-cyan-400" />
               <span>{mapType === 'satellite' ? 'Satelit' : 'Vektor'}</span>
@@ -2923,7 +2923,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     setMeasuredDistance(null);
                   }
                 }}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                   isMeasuring
                     ? 'bg-emerald-500 text-slate-950 border-emerald-300 font-black'
                     : 'bg-slate-900/90 text-slate-200 border-slate-700/80 hover:bg-slate-800'
@@ -2938,7 +2938,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             {!isPetugasRow && (
               <button
                 onClick={() => setShowHeatmap(!showHeatmap)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
                   showHeatmap
                     ? 'bg-rose-600 text-white border-rose-400'
                     : 'bg-slate-900/90 text-rose-300 border-rose-500/40 hover:bg-slate-800'
@@ -2959,7 +2959,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* FAB 1: Layer Switcher */}
           <button
             onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
-            className="w-11 h-11 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+            className="w-11 h-11 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center btn-tactile active:scale-90 hover:scale-105 transition-all cursor-pointer"
             title="Ganti Lapisan Peta (Satelit / Vektor)"
           >
             <Layers className="w-5 h-5" />
@@ -2968,7 +2968,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* FAB 2: Real-Time GPS Tracking Button matching image_cfb3c780.png */}
           <button
             onClick={handleToggleGps}
-            className={`w-11 h-11 backdrop-blur-xl border rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all cursor-pointer relative ${
+            className={`w-11 h-11 backdrop-blur-xl border rounded-full shadow-2xl flex items-center justify-center btn-tactile active:scale-90 hover:scale-105 transition-all cursor-pointer relative ${
               isGpsActive
                 ? 'bg-blue-600 border-blue-400 text-white shadow-blue-500/50 ring-2 ring-blue-400/60'
                 : 'bg-slate-900/95 border-slate-700/90 text-blue-400 hover:text-white hover:bg-slate-800'
@@ -2984,7 +2984,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* FAB 3: Primary Action (+ Tiang Lapangan) */}
           <button
             onClick={onAddCustomPole}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black px-3.5 h-11 rounded-full shadow-2xl border border-amber-300 active:scale-95 transition-transform cursor-pointer"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black px-3.5 h-11 rounded-full shadow-2xl border border-amber-300 btn-tactile active:scale-90 hover:scale-105 transition-all cursor-pointer"
             title="Tambah Titik Tiang Baru"
           >
             <Plus className="w-5 h-5 stroke-[2.5]" />
@@ -2997,7 +2997,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* GPS Live Tracking Button matching image_cfb3c780.png */}
           <button
             onClick={handleToggleGps}
-            className={`flex items-center gap-2 px-3.5 h-10 backdrop-blur-xl border rounded-full shadow-2xl active:scale-95 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 h-10 backdrop-blur-xl border rounded-full shadow-2xl btn-tactile active:scale-95 hover:scale-105 transition-all cursor-pointer ${
               isGpsActive
                 ? 'bg-blue-600 border-blue-400 text-white shadow-blue-500/40 ring-2 ring-blue-400/50'
                 : 'bg-slate-900/95 border-slate-700/90 text-blue-400 hover:text-white hover:bg-slate-800'
@@ -3016,7 +3016,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           {/* Layer Switcher */}
           <button
             onClick={() => setMapType(mapType === 'satellite' ? 'streets' : 'satellite')}
-            className="w-10 h-10 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white active:scale-95 transition-all cursor-pointer"
+            className="w-10 h-10 bg-slate-900/95 backdrop-blur-xl border border-slate-700/90 text-cyan-400 rounded-full shadow-2xl flex items-center justify-center hover:bg-slate-800 hover:text-white btn-tactile active:scale-95 hover:scale-105 transition-all cursor-pointer"
             title="Ganti Lapisan Peta (Satelit / Vektor)"
           >
             <Layers className="w-4 h-4" />
