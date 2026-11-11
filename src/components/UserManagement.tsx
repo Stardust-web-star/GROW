@@ -50,7 +50,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       if (res.ok) {
         const data = await res.json();
         if (data.users && data.users.length > 0) {
-          setUsers(data.users);
+          setUsers(data.users.map((u: UserAccount) => ({
+            ...u,
+            role: (u.role as string) === 'Supervisor Teknik' ? 'Team Leader Teknik' : u.role
+          })));
           return;
         }
       }
@@ -67,7 +70,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     // Subscribe to Firestore users collection in real time
     const unsub = subscribeToUsers((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
-        setUsers(cloudUsers);
+        setUsers(cloudUsers.map((u: UserAccount) => ({
+          ...u,
+          role: (u.role as string) === 'Supervisor Teknik' ? 'Team Leader Teknik' : u.role
+        })));
         setLoading(false);
       } else {
         // Seed initial users into Firestore on first setup
@@ -89,7 +95,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   const handleOpenEdit = (user: UserAccount) => {
     setEditingUser(user);
     setEditName(user.name);
-    setEditRole(user.role);
+    setEditRole((user.role as string) === 'Supervisor Teknik' ? 'Team Leader Teknik' : user.role);
     setEditStatus(user.status);
     setEditUnit(user.unit || 'ULP Baguala');
     setEditEmail(user.email || '');
@@ -226,7 +232,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesRole = selectedRoleFilter === 'ALL' || user.role === selectedRoleFilter;
+    const userEffectiveRole = (user.role as string) === 'Supervisor Teknik' ? 'Team Leader Teknik' : user.role;
+    const matchesRole = selectedRoleFilter === 'ALL' || userEffectiveRole === selectedRoleFilter || user.role === selectedRoleFilter;
     return matchesSearch && matchesRole;
   });
 
@@ -235,6 +242,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
     switch (role) {
       case 'Administrator':
         return 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40';
+      case 'Team Leader Teknik':
       case 'Supervisor Teknik':
         return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40';
       case 'Operator GIS':
@@ -289,7 +297,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
               className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer active:scale-95"
             >
               <UserPlus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Tambah User Baru</span>
+              <span>Tambah User Baru</span>
             </button>
           </div>
         </div>
@@ -311,9 +319,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
           </div>
 
           <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-md transition-colors">
-            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Supervisor &amp; Lapangan</div>
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Team Leader &amp; Lapangan</div>
             <div className="text-2xl sm:text-3xl font-black text-sky-600 dark:text-sky-400 mt-1">
-              {users.filter(u => u.role === 'Supervisor Teknik' || u.role === 'Petugas Yantek').length}
+              {users.filter(u => u.role === 'Team Leader Teknik' || u.role === 'Supervisor Teknik' || u.role === 'Petugas Yantek').length}
             </div>
             <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Operasional &amp; SPK</div>
           </div>
@@ -357,7 +365,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
             >
               <option value="ALL">Semua Peran ({users.length})</option>
               <option value="Administrator">Administrator</option>
-              <option value="Supervisor Teknik">Supervisor Teknik</option>
+              <option value="Team Leader Teknik">Team Leader Teknik</option>
               <option value="Petugas Yantek">Petugas Yantek</option>
               <option value="Operator GIS">Operator GIS</option>
               <option value="Petugas ROW">Petugas ROW</option>
@@ -429,7 +437,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                         <td className="p-4 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${getRoleBadge(user.role)}`}>
                             <Shield className="w-3 h-3" />
-                            <span>{user.role}</span>
+                            <span>{user.role === 'Supervisor Teknik' ? 'Team Leader Teknik' : user.role}</span>
                           </span>
                         </td>
 
@@ -578,7 +586,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium outline-none cursor-pointer"
                   >
                     <option value="Administrator">Administrator (Akses Penuh)</option>
-                    <option value="Supervisor Teknik">Supervisor Teknik</option>
+                    <option value="Team Leader Teknik">Team Leader Teknik</option>
                     <option value="Petugas Yantek">Petugas Yantek (Lapangan)</option>
                     <option value="Operator GIS">Operator GIS</option>
                     <option value="Petugas ROW">Petugas ROW (Khusus Peta, ROW & Feeder)</option>
@@ -706,7 +714,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium outline-none cursor-pointer"
                 >
                   <option value="Administrator">Administrator</option>
-                  <option value="Supervisor Teknik">Supervisor Teknik</option>
+                  <option value="Team Leader Teknik">Team Leader Teknik</option>
                   <option value="Petugas Yantek">Petugas Yantek</option>
                   <option value="Operator GIS">Operator GIS</option>
                   <option value="Petugas ROW">Petugas ROW (Khusus Peta, ROW & Feeder)</option>

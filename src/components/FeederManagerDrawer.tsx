@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PoleData } from '../types';
-import { Search, Eye, EyeOff, Trash2, Edit3, Target, Upload, Download, X, Layers, CheckSquare, Square, Palette, Plus } from 'lucide-react';
+import { Search, Eye, EyeOff, Trash2, Edit3, Target, Upload, Download, X, Layers, Palette, Plus } from 'lucide-react';
 
 interface FeederManagerDrawerProps {
   isOpen: boolean;
@@ -49,7 +49,6 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
     f.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isAllVisible = allFeeders.every(f => feederVisibility[f] !== false);
 
   const handleExportData = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(poles, null, 2));
@@ -102,7 +101,7 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
               className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-xl text-xs transition-all shadow-md cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>+ Import KMZ Pohon</span>
+              <span>Import KMZ Pohon</span>
             </button>
           )}
 
@@ -129,13 +128,9 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
 
         {/* Global Toolbar */}
         <div className="flex items-center justify-between pt-1 text-xs text-slate-400 border-t border-slate-800/80">
-          <button
-            onClick={() => onToggleAllFeeders(!isAllVisible)}
-            className="flex items-center gap-1.5 hover:text-white transition-all font-semibold"
-          >
-            {isAllVisible ? <CheckSquare className="w-4 h-4 text-emerald-400" /> : <Square className="w-4 h-4 text-slate-500" />}
+          <div className="flex items-center gap-1.5 text-slate-300 font-bold uppercase tracking-wider text-xs">
             <span>DAFTAR ({filteredFeeders.length})</span>
-          </button>
+          </div>
 
           <div className="flex items-center gap-3">
             <button
@@ -179,21 +174,16 @@ export const FeederManagerDrawer: React.FC<FeederManagerDrawerProps> = ({
               >
                 <div className="flex items-center justify-between gap-2">
                   
-                  {/* Left: Checkbox + Eye + Color Swatch + Title */}
+                  {/* Left: Eye + Color Swatch + Title */}
                   <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <input
-                      type="checkbox"
-                      checked={isVisible}
-                      onChange={() => onToggleFeederVisibility(feederName)}
-                      className="w-4 h-4 accent-amber-500 cursor-pointer rounded"
-                    />
-
                     <button
                       onClick={() => onToggleFeederVisibility(feederName)}
-                      className={`p-1 rounded-lg transition-all ${
-                        isVisible ? 'text-emerald-400 hover:bg-emerald-500/20' : 'text-slate-500 hover:bg-slate-800'
+                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                        isVisible
+                          ? 'text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30'
+                          : 'text-slate-500 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60'
                       }`}
-                      title={isVisible ? 'Sembunyikan Feeder ini' : 'Tampilkan Feeder ini'}
+                      title={isVisible ? 'Sembunyikan Feeder ini di peta' : 'Tampilkan Feeder ini di peta'}
                     >
                       {isVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                     </button>

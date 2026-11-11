@@ -142,7 +142,7 @@ export interface UserAccount {
   id: string;
   userId: string;
   name: string;
-  role: 'Administrator' | 'Supervisor Teknik' | 'Petugas Yantek' | 'Operator GIS' | 'Petugas ROW';
+  role: 'Administrator' | 'Team Leader Teknik' | 'Supervisor Teknik' | 'Petugas Yantek' | 'Operator GIS' | 'Petugas ROW';
   password?: string;
   unit?: string;
   email?: string;

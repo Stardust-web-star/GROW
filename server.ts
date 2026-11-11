@@ -98,7 +98,7 @@ const INITIAL_USERS: UserAccount[] = [
     id: 'USR-SPV-8816024',
     userId: '8816024BT',
     name: 'Ir. Ahmad Zulkarnaen',
-    role: 'Supervisor Teknik',
+    role: 'Team Leader Teknik',
     password: 'admin123',
     unit: 'ULP Baguala',
     email: 'supervisor.baguala@pln.co.id',
@@ -113,7 +113,12 @@ function loadUsersData(): UserAccount[] {
       const raw = fs.readFileSync(USERS_DATA_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const list = [...parsed];
+        const list = parsed.map((u: UserAccount) => {
+          if ((u.role as string) === 'Supervisor Teknik') {
+            return { ...u, role: 'Team Leader Teknik' as const };
+          }
+          return u;
+        });
         for (const initUser of INITIAL_USERS) {
           const exists = list.some((u: UserAccount) => u.userId.toUpperCase() === initUser.userId.toUpperCase());
           if (!exists) {

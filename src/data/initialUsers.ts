@@ -17,7 +17,7 @@ export const INITIAL_USERS: UserAccount[] = [
     id: 'USR-SPV-8816024',
     userId: '8816024BT',
     name: 'Ir. Ahmad Zulkarnaen',
-    role: 'Supervisor Teknik',
+    role: 'Team Leader Teknik',
     password: 'admin123',
     unit: 'ULP Baguala',
     email: 'supervisor.baguala@pln.co.id',
