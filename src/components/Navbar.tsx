@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Map, BarChart3, AlertTriangle, FileText, Upload, Bot, Zap, Users, LogOut, 
+  Map, BarChart3, AlertTriangle, FileText, Upload, Zap, Users, LogOut, 
   ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone, Sun, Moon
 } from 'lucide-react';
 import { GisPlnLogo } from './GisPlnLogo';
@@ -18,7 +18,6 @@ interface NavbarProps {
   totalSpans?: number;
   rowViolations: number;
   criticalPoles: number;
-  onOpenAiAssistant: () => void;
   onOpenWhatsAppReport?: () => void;
   masterName?: string;
   currentUser?: UserAccount | null;
@@ -36,7 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalSpans = 0,
   rowViolations,
   criticalPoles,
-  onOpenAiAssistant,
   onOpenWhatsAppReport,
   masterName = 'TITIK TIANG BGL.kml',
   currentUser,
@@ -229,15 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {!isPetugasRow && (
-                <button
-                  onClick={onOpenAiAssistant}
-                  className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 border border-amber-300 px-3.5 h-9 rounded-xl text-xs font-black shadow-md cursor-pointer whitespace-nowrap btn-tactile hover:shadow-amber-400/25"
-                >
-                  <Bot className="w-4 h-4 text-slate-950 shrink-0" />
-                  <span>Tanya GROW AI</span>
-                </button>
-              )}
+
 
               {/* Logout Button */}
               {onLogout && (
@@ -369,13 +359,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Tab 3: GROW AI */}
             <button
-              onClick={onOpenAiAssistant}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-300 font-medium"
+              onClick={() => setActiveTab('ai')}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer ${
+                activeTab === 'ai'
+                  ? 'text-amber-600 dark:text-amber-400 font-extrabold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+              }`}
             >
-              <div className="px-4 py-1 rounded-full bg-gradient-to-r from-amber-500/25 to-amber-400/20 text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs transition-transform duration-200">
-                <Bot className="w-5 h-5" />
+              <div className={`px-4 py-1 rounded-full transition-all duration-200 ${
+                activeTab === 'ai' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
+              }`}>
+                <BarChart3 className="w-5 h-5" />
               </div>
-              <span className="text-[10px] mt-0.5 tracking-tight text-amber-600 dark:text-amber-300 font-extrabold">GROW AI</span>
+              <span className="text-[10px] mt-0.5 tracking-tight font-bold">GROW AI</span>
             </button>
 
             {/* Tab 4: SPK */}

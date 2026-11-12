@@ -8,7 +8,6 @@ import { AiPredictiveDashboard } from './components/AiPredictiveDashboard';
 import { SpkManager } from './components/SpkManager';
 import { KmzUploader } from './components/KmzUploader';
 import { AddInspectionModal } from './components/AddInspectionModal';
-import { AiAssistantDrawer } from './components/AiAssistantDrawer';
 import { FeederManagerDrawer } from './components/FeederManagerDrawer';
 import { LoginScreen } from './components/LoginScreen';
 import { UserManagement } from './components/UserManagement';
@@ -215,7 +214,6 @@ export default function App() {
 
   const [inspectingPole, setInspectingPole] = useState<PoleData | null>(null);
   const [showAddPoleModal, setShowAddPoleModal] = useState<boolean>(false);
-  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
   const [showFeederDrawer, setShowFeederDrawer] = useState<boolean>(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState<boolean>(false);
   const [whatsAppCategory, setWhatsAppCategory] = useState<ReportCategory>('spk');
@@ -960,9 +958,6 @@ export default function App() {
         totalSpans={spans.length}
         rowViolations={rowViolations}
         criticalPoles={criticalPoles}
-        onOpenAiAssistant={() => {
-          if (!isPetugasRow) setShowAiAssistant(true);
-        }}
         onOpenWhatsAppReport={() => handleOpenWhatsAppReport('spk')}
         masterName={masterName}
         currentUser={currentUser}
@@ -1191,13 +1186,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* AI Consultation Drawer */}
-      <AiAssistantDrawer
-        isOpen={showAiAssistant}
-        onClose={() => setShowAiAssistant(false)}
-        poles={poles}
-      />
 
       {/* Feeder & Cable Color Management Drawer */}
       <FeederManagerDrawer
