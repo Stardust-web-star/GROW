@@ -7,11 +7,14 @@ import {
   saveSpkToCloud,
   saveUserToCloud,
   deleteUserFromCloud,
+  saveRowTreeToCloud,
+  deleteRowTreeFromCloud,
   saveAppStateToCloud,
   subscribeToPoles,
   subscribeToSpans,
   subscribeToSpks,
   subscribeToUsers,
+  subscribeToRowTrees,
   subscribeToAppState,
   AppSyncState
 } from './firebase';
@@ -25,11 +28,14 @@ export {
   saveSpkToCloud,
   saveUserToCloud,
   deleteUserFromCloud,
+  saveRowTreeToCloud,
+  deleteRowTreeFromCloud,
   saveAppStateToCloud,
   subscribeToPoles,
   subscribeToSpans,
   subscribeToSpks,
   subscribeToUsers,
+  subscribeToRowTrees,
   subscribeToAppState
 };
 

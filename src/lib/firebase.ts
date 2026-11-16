@@ -11,7 +11,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { PoleData, CableSpan, MaintenanceWorkOrder, UserAccount } from '../types';
+import { PoleData, CableSpan, MaintenanceWorkOrder, UserAccount, RowTreeInspection } from '../types';
 
 export enum OperationType {
   CREATE = 'create',
@@ -182,6 +182,26 @@ export function subscribeToUsers(onUpdate: (users: UserAccount[]) => void, onErr
   );
 }
 
+export function subscribeToRowTrees(onUpdate: (trees: RowTreeInspection[]) => void, onError?: (err: any) => void) {
+  const path = 'row_trees';
+  return onSnapshot(
+    collection(db, path),
+    (snapshot) => {
+      const trees: RowTreeInspection[] = [];
+      snapshot.forEach((d) => {
+        trees.push(d.data() as RowTreeInspection);
+      });
+      // Sort newest first by updatedAt or waktu
+      trees.sort((a, b) => (b.updatedAt || b.waktu || '').localeCompare(a.updatedAt || a.waktu || ''));
+      onUpdate(trees);
+    },
+    (error) => {
+      if (onError) onError(error);
+      handleFirestoreError(error, OperationType.GET, path);
+    }
+  );
+}
+
 export function subscribeToAppState(onUpdate: (state: AppSyncState | null) => void, onError?: (err: any) => void) {
   const path = 'app_state/global';
   return onSnapshot(
@@ -317,6 +337,44 @@ export async function deleteUserFromCloud(userId: string) {
   try {
     await deleteDoc(doc(db, 'users', cleanId));
     console.log(`[Firestore Sync] 🗑️ User ${cleanId} deleted from cloud.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function saveRowTreeToCloud(tree: RowTreeInspection) {
+  const cleanId = (tree.id || `TREE-${Date.now()}`).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const path = `row_trees/${cleanId}`;
+  try {
+    const nowIso = new Date().toISOString();
+    const dataToSave = sanitizeForFirestore({
+      ...tree,
+      id: cleanId,
+      waktu: String(tree.waktu || nowIso).slice(0, 64),
+      penyulang: String(tree.penyulang || '-').slice(0, 128),
+      section: String(tree.section || '-').slice(0, 256),
+      pohon: String(tree.pohon || '-').slice(0, 128),
+      lat: Number(tree.lat),
+      lng: Number(tree.lng),
+      inspektor: String(tree.inspektor || 'Inspektor 1').slice(0, 64),
+      eksekutor: String(tree.eksekutor || 'Tim Putih').slice(0, 64),
+      keteranganEksekusi: tree.keteranganEksekusi === 'Sudah Eksekusi' ? 'Sudah Eksekusi' : 'Belum Eksekusi',
+      createdAt: tree.createdAt || nowIso,
+      updatedAt: nowIso
+    });
+    await setDoc(doc(db, 'row_trees', cleanId), dataToSave, { merge: true });
+    console.log(`[Firestore Sync] 🌳 RowTree ${cleanId} saved to cloud.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteRowTreeFromCloud(treeId: string) {
+  const cleanId = treeId.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const path = `row_trees/${cleanId}`;
+  try {
+    await deleteDoc(doc(db, 'row_trees', cleanId));
+    console.log(`[Firestore Sync] 🗑️ RowTree ${cleanId} deleted from cloud.`);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

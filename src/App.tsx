@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { PoleData, CableSpan, MaintenanceWorkOrder, InspectionRecord, UserAccount } from './types';
+import { PoleData, CableSpan, MaintenanceWorkOrder, InspectionRecord, UserAccount, RowTreeInspection } from './types';
 import { INITIAL_POLES, INITIAL_SPANS, INITIAL_SPKS } from './data/initialPoles';
 import { Navbar } from './components/Navbar';
 import { MapViewer } from './components/MapViewer';
+import { RowTreeInspectionManager } from './components/RowTreeInspectionManager';
 import { CableClearanceManager } from './components/CableClearanceManager';
 import { AiPredictiveDashboard } from './components/AiPredictiveDashboard';
 import { SpkManager } from './components/SpkManager';
@@ -22,10 +23,13 @@ import {
   saveSpanToCloud,
   deleteSpanFromCloud,
   saveSpkToCloud,
+  saveRowTreeToCloud,
+  deleteRowTreeFromCloud,
   saveAppStateToCloud,
   subscribeToPoles,
   subscribeToSpans,
   subscribeToSpks,
+  subscribeToRowTrees,
   subscribeToAppState,
   mergePolesWithCloud,
   mergeSpansWithCloud
@@ -33,7 +37,7 @@ import {
 import { SystemMetaState } from './lib/firebase';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({ map: true });
 
   // 7 Menit Inactivity Timeout (7 * 60 * 1000 = 420,000 ms)
@@ -184,15 +188,22 @@ export default function App() {
   }, [currentUser, handleLogout]);
 
   const isPetugasRow = currentUser?.role === 'Petugas ROW';
+  const normalizedUserId = (currentUser?.userId || '').trim().toLowerCase();
+  const canAccessRowTreeMenu = normalizedUserId === 'petugasrow' || normalizedUserId === '9925045zy';
 
   useEffect(() => {
-    if (isPetugasRow && activeTab !== 'map') {
+    if (activeTab === 'rowTrees' && !canAccessRowTreeMenu) {
+      setActiveTab('map');
+      return;
+    }
+    if (isPetugasRow && activeTab !== 'map' && !(canAccessRowTreeMenu && activeTab === 'rowTrees')) {
       setActiveTab('map');
     }
-  }, [isPetugasRow, activeTab]);
+  }, [isPetugasRow, canAccessRowTreeMenu, activeTab]);
 
-  const handleSelectTab = (tab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => {
-    if (isPetugasRow && tab !== 'map') return;
+  const handleSelectTab = (tab: 'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => {
+    if (tab === 'rowTrees' && !canAccessRowTreeMenu) return;
+    if (isPetugasRow && tab !== 'map' && !(canAccessRowTreeMenu && tab === 'rowTrees')) return;
     setVisitedTabs(prev => prev[tab] ? prev : { ...prev, [tab]: true });
     setActiveTab(tab);
   };
@@ -200,6 +211,18 @@ export default function App() {
   const [poles, setPoles] = useState<PoleData[]>(INITIAL_POLES);
   const [spans, setSpans] = useState<CableSpan[]>(INITIAL_SPANS);
   const [spks, setSpks] = useState<MaintenanceWorkOrder[]>(INITIAL_SPKS);
+  const [rowTrees, setRowTrees] = useState<RowTreeInspection[]>(() => {
+    try {
+      const cached = localStorage.getItem('grow_row_trees_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+  const [focusedTree, setFocusedTree] = useState<RowTreeInspection | null>(null);
+  const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
   const [masterName, setMasterName] = useState<string>('TITIK TIANG BGL.kml');
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(true);
   const [systemMeta, setSystemMeta] = useState<SystemMetaState | null>(null);
@@ -428,13 +451,53 @@ export default function App() {
       }
     });
 
+    // 5. Subscribe to Real-Time ROW Tree Inspections (Form Peta Pohon)
+    const unsubRowTrees = subscribeToRowTrees((cloudTrees) => {
+      setRowTrees(cloudTrees || []);
+      try {
+        localStorage.setItem('grow_row_trees_cache', JSON.stringify(cloudTrees || []));
+      } catch {}
+    });
+
     return () => {
       unsubAppState();
       unsubPoles();
       unsubSpans();
       unsubSpks();
+      unsubRowTrees();
     };
   }, []);
+
+  const handleSaveRowTree = async (tree: RowTreeInspection) => {
+    setRowTrees((prev) => {
+      const exists = prev.some((t) => t.id === tree.id);
+      const next = exists ? prev.map((t) => (t.id === tree.id ? tree : t)) : [tree, ...prev];
+      try {
+        localStorage.setItem('grow_row_trees_cache', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    try {
+      await saveRowTreeToCloud(tree);
+    } catch (err) {
+      console.error('Error saving ROW tree to Cloud Firestore:', err);
+    }
+  };
+
+  const handleDeleteRowTree = async (treeId: string) => {
+    setRowTrees((prev) => {
+      const next = prev.filter((t) => t.id !== treeId);
+      try {
+        localStorage.setItem('grow_row_trees_cache', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    try {
+      await deleteRowTreeFromCloud(treeId);
+    } catch (err) {
+      console.error('Error deleting ROW tree from Cloud Firestore:', err);
+    }
+  };
 
   // Handlers with Two-Way Real-time Cloud Synchronization
   const handleRestoreMasterData = async () => {
@@ -958,6 +1021,8 @@ export default function App() {
         totalSpans={spans.length}
         rowViolations={rowViolations}
         criticalPoles={criticalPoles}
+        canAccessRowTreeMenu={canAccessRowTreeMenu}
+        pendingRowTreesCount={rowTrees.filter(t => t.keteranganEksekusi === 'Belum Eksekusi').length}
         onOpenWhatsAppReport={() => handleOpenWhatsAppReport('spk')}
         masterName={masterName}
         currentUser={currentUser}
@@ -975,8 +1040,17 @@ export default function App() {
           <MapViewer
             poles={poles}
             spans={spans}
+            rowTrees={rowTrees}
             isActive={activeTab === 'map'}
             currentUser={currentUser}
+            canAccessRowTreeMenu={canAccessRowTreeMenu}
+            focusedTree={focusedTree}
+            onClearFocusedTree={() => setFocusedTree(null)}
+            onEditRowTree={(tree) => {
+              if (!canAccessRowTreeMenu) return;
+              setEditingTreeId(tree.id);
+              handleSelectTab('rowTrees');
+            }}
             feederColors={feederColors}
             feederVisibility={feederVisibility}
             onSelectPole={(pole) => setInspectingPole(pole)}
@@ -1004,6 +1078,25 @@ export default function App() {
             onDeleteSpan={handleDeleteSpan}
           />
         </div>
+
+        {/* Form Peta Pohon Tab - Strictly accessible ONLY for User ID petugasrow & 9925045ZY */}
+        {canAccessRowTreeMenu && visitedTabs['rowTrees'] && (
+          <div className={`w-full min-h-full ${activeTab === 'rowTrees' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+            <RowTreeInspectionManager
+              rowTrees={rowTrees}
+              poles={poles}
+              currentUser={currentUser}
+              onSaveTree={handleSaveRowTree}
+              onDeleteTree={handleDeleteRowTree}
+              onFocusTreeOnMap={(tree) => {
+                setFocusedTree(tree);
+                handleSelectTab('map');
+              }}
+              initialEditingTreeId={editingTreeId}
+              onClearInitialEdit={() => setEditingTreeId(null)}
+            />
+          </div>
+        )}
 
         {visitedTabs['clearance'] && (
           <div className={`w-full min-h-full ${activeTab === 'clearance' ? 'block animate-tab-fade-slide' : 'hidden'}`}>

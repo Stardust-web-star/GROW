@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Map, BarChart3, AlertTriangle, FileText, Upload, Zap, Users, LogOut, 
-  ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone, Sun, Moon
+  ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone, Sun, Moon, TreePine
 } from 'lucide-react';
 import { GisPlnLogo } from './GisPlnLogo';
 import { GeometricBlueHeaderBg } from './GeometricBlueHeaderBg';
@@ -12,12 +12,14 @@ import { useTheme } from '../context/ThemeContext';
 import { WhatsAppIcon } from './WhatsAppReportModal';
 
 interface NavbarProps {
-  activeTab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
-  setActiveTab: (tab: 'map' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => void;
+  activeTab: 'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users';
+  setActiveTab: (tab: 'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => void;
   totalPoles: number;
   totalSpans?: number;
   rowViolations: number;
   criticalPoles: number;
+  canAccessRowTreeMenu?: boolean;
+  pendingRowTreesCount?: number;
   onOpenWhatsAppReport?: () => void;
   masterName?: string;
   currentUser?: UserAccount | null;
@@ -35,6 +37,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalSpans = 0,
   rowViolations,
   criticalPoles,
+  canAccessRowTreeMenu = false,
+  pendingRowTreesCount = 0,
   onOpenWhatsAppReport,
   masterName = 'TITIK TIANG BGL.kml',
   currentUser,
@@ -92,6 +96,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Map className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'map' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
                 <span>Peta GIS</span>
               </button>
+
+              {canAccessRowTreeMenu && (
+                <button
+                  onClick={() => setActiveTab('rowTrees')}
+                  className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-3.5 h-8 text-xs rounded-lg whitespace-nowrap cursor-pointer btn-tactile ${
+                    activeTab === 'rowTrees'
+                      ? 'bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-400/25 border border-emerald-300 scale-[1.01]'
+                      : 'text-slate-100 hover:text-white font-semibold hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                  }`}
+                  title="Form Peta Pohon (Inspeksi ROW Sebelum & Sesudah Rabas Pohon)"
+                >
+                  <TreePine className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'rowTrees' ? 'text-slate-950 scale-110' : 'text-emerald-400'}`} />
+                  <span>Form Peta Pohon</span>
+                  {pendingRowTreesCount > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      activeTab === 'rowTrees' ? 'bg-slate-950 text-emerald-300' : 'bg-amber-500 text-slate-950 shadow-xs'
+                    }`}>
+                      {pendingRowTreesCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {!isPetugasRow && (
                 <>
@@ -262,6 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <div className="flex flex-col">
               <h1 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight leading-tight">
+                {activeTab === 'rowTrees' && 'Form Peta Pohon'}
                 {activeTab === 'clearance' && 'Jarak ROW & Kabel'}
                 {activeTab === 'ai' && 'GROW AI Predictive'}
                 {activeTab === 'spk' && 'Surat Perintah Kerja (SPK)'}
@@ -320,7 +347,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {isPetugasRow ? (
           <>
-            {/* Tab 2 (Petugas ROW): Laporan WA */}
+            {/* Tab 2 (Petugas ROW): Form Peta Pohon */}
+            {canAccessRowTreeMenu && (
+              <button
+                onClick={() => setActiveTab('rowTrees')}
+                className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl relative active:scale-90 transition-all duration-150 cursor-pointer ${
+                  activeTab === 'rowTrees'
+                    ? 'text-emerald-600 dark:text-emerald-400 font-extrabold scale-105'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
+                }`}
+              >
+                <div className={`px-4 py-1 rounded-full transition-all duration-200 relative ${
+                  activeTab === 'rowTrees' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-xs' : ''
+                }`}>
+                  <TreePine className="w-5 h-5" />
+                  {pendingRowTreesCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black ring-2 ring-white dark:ring-slate-900">
+                      {pendingRowTreesCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] mt-0.5 tracking-tight font-bold">Form Pohon</span>
+              </button>
+            )}
+
+            {/* Tab 3 (Petugas ROW): Laporan WA */}
             {onOpenWhatsAppReport && (
               <button
                 onClick={onOpenWhatsAppReport}
@@ -397,13 +448,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={() => setShowMobileMenu(true)}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl active:scale-90 transition-all duration-150 cursor-pointer ${
-            ['kmz', 'users'].includes(activeTab) || showMobileMenu
+            ['kmz', 'users', 'rowTrees'].includes(activeTab) || showMobileMenu
               ? 'text-cyan-600 dark:text-cyan-400 font-extrabold scale-105'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium'
           }`}
         >
           <div className={`px-4 py-1 rounded-full transition-all duration-200 ${
-            ['kmz', 'users'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
+            ['kmz', 'users', 'rowTrees'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
           }`}>
             <Grid className="w-5 h-5" />
           </div>
@@ -533,6 +584,37 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1">
                 Menu & Fitur Sistem
               </div>
+
+              {/* Form Peta Pohon (Khusus User ID petugasrow & 9925045ZY) */}
+              {canAccessRowTreeMenu && (
+                <button
+                  onClick={() => {
+                    setActiveTab('rowTrees');
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 border border-emerald-500/35 text-left transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <TreePine className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <span>Form Peta Pohon (Inspeksi ROW)</span>
+                        {pendingRowTreesCount > 0 && (
+                          <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded-full">
+                            {pendingRowTreesCount} Pending
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80">
+                        Input inspeksi sebelum &amp; sesudah rabas pohon + pin Peta GIS
+                      </div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-emerald-500 font-bold">›</span>
+                </button>
+              )}
 
               {/* Kirim Laporan WhatsApp */}
               {onOpenWhatsAppReport && (

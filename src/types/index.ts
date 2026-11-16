@@ -151,3 +151,23 @@ export interface UserAccount {
   lastLogin?: string;
 }
 
+export interface RowTreeInspection {
+  id: string;
+  waktu: string;
+  penyulang: string;
+  section: string;
+  pohon: string;
+  lat: number;
+  lng: number;
+  evidenSebelum?: string;
+  evidenSesudah?: string;
+  inspektor: 'Inspektor 1' | 'Inspektor 2' | string;
+  eksekutor: 'Tim Putih' | 'Tim Hitam' | string;
+  keteranganEksekusi: 'Belum Eksekusi' | 'Sudah Eksekusi';
+  catatan?: string;
+  createdByUserId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
-import { PoleData, CableSpan, UserAccount } from '../types';
-import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp } from 'lucide-react';
+import { PoleData, CableSpan, UserAccount, RowTreeInspection } from '../types';
+import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp, TreePine } from 'lucide-react';
 import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
 import { NewCableModal } from './NewCableModal';
@@ -47,7 +47,7 @@ const compressImageFile = (file: File, maxDim = 1200, quality = 0.82): Promise<s
 };
 
 export interface NavigationTarget {
-  type: 'pole' | 'cable';
+  type: 'pole' | 'cable' | 'tree';
   id: string;
   code: string;
   name: string;
@@ -56,6 +56,7 @@ export interface NavigationTarget {
   lng: number;
   pole?: PoleData;
   span?: CableSpan;
+  tree?: RowTreeInspection;
   fromPoleCode?: string;
   toPoleCode?: string;
   locationName?: string;
@@ -65,8 +66,13 @@ export interface NavigationTarget {
 interface MapViewerProps {
   poles: PoleData[];
   spans: CableSpan[];
+  rowTrees?: RowTreeInspection[];
   isActive?: boolean;
   currentUser?: UserAccount | null;
+  canAccessRowTreeMenu?: boolean;
+  focusedTree?: RowTreeInspection | null;
+  onClearFocusedTree?: () => void;
+  onEditRowTree?: (tree: RowTreeInspection) => void;
   feederColors?: Record<string, string>;
   feederVisibility?: Record<string, boolean>;
   onSelectPole: (pole: PoleData) => void;
@@ -84,8 +90,13 @@ interface MapViewerProps {
 export const MapViewer: React.FC<MapViewerProps> = ({
   poles,
   spans,
+  rowTrees = [],
   isActive = true,
   currentUser,
+  canAccessRowTreeMenu = false,
+  focusedTree = null,
+  onClearFocusedTree,
+  onEditRowTree,
   feederColors = {},
   feederVisibility = {},
   onSelectPole,
@@ -104,11 +115,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   useEffect(() => {
     isPetugasRowRef.current = isPetugasRow;
   }, [isPetugasRow]);
+  const canAccessRowTreeRef = useRef<boolean>(canAccessRowTreeMenu);
+  useEffect(() => {
+    canAccessRowTreeRef.current = canAccessRowTreeMenu;
+  }, [canAccessRowTreeMenu]);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const linesLayerRef = useRef<L.LayerGroup | null>(null);
   const heatmapLayerRef = useRef<L.LayerGroup | null>(null);
+  const treesLayerRef = useRef<L.LayerGroup | null>(null);
+  const treeMarkersMapRef = useRef<Map<string, L.Marker>>(new Map());
   const canvasRendererRef = useRef<L.Canvas | null>(null);
 
   const [mapType, setMapType] = useState<'satellite' | 'streets'>('satellite');
@@ -242,6 +259,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Heatmap State
   const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
 
+  // ROW Tree Markers Visibility State
+  const [showRowTrees, setShowRowTrees] = useState<boolean>(true);
+
   // Floating Legend visibility
   const [isLegendOpen, setIsLegendOpen] = useState<boolean>(true);
 
@@ -359,16 +379,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       const userPane = map.createPane('gpsUserPane');
       userPane.style.zIndex = '660';
 
-      // Create Layer Groups for markers, lines, heatmap, and GPS navigation
+      // Create Layer Groups for markers, lines, heatmap, ROW trees, and GPS navigation
       const markersGroup = L.layerGroup().addTo(map);
       const linesGroup = L.layerGroup().addTo(map);
       const heatmapGroup = L.layerGroup().addTo(map);
+      const treesGroup = L.layerGroup().addTo(map);
       const gpsGroup = L.layerGroup().addTo(map);
 
       mapInstanceRef.current = map;
       markersLayerRef.current = markersGroup;
       linesLayerRef.current = linesGroup;
       heatmapLayerRef.current = heatmapGroup;
+      treesLayerRef.current = treesGroup;
       gpsLayerRef.current = gpsGroup;
 
       // When user manually drags the map, pause auto-follow mode (Google Maps style)
@@ -2177,6 +2199,264 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     startNavigationToTarget(target);
   }, [startNavigationToTarget]);
 
+  const startNavigationToTree = useCallback((tree: RowTreeInspection) => {
+    const target: NavigationTarget = {
+      type: 'tree',
+      id: tree.id,
+      code: tree.pohon,
+      name: `${tree.pohon} (${tree.keteranganEksekusi})`,
+      feeder: tree.penyulang,
+      lat: tree.lat,
+      lng: tree.lng,
+      tree,
+      locationName: `${tree.section} · ${tree.penyulang}`,
+      extraInfo: `Inspektor: ${tree.inspektor} · Eksekutor: ${tree.eksekutor}`
+    };
+    startNavigationToTarget(target);
+  }, [startNavigationToTarget]);
+
+  // Render ROW Tree Inspection Markers on dedicated Layer Group (custom Tree SVG icons)
+  const renderRowTreeLayers = useCallback(() => {
+    const map = mapInstanceRef.current;
+    const treesGroup = treesLayerRef.current;
+    if (!map || !treesGroup) return;
+
+    treesGroup.clearLayers();
+    treeMarkersMapRef.current.clear();
+
+    if (!showRowTrees || rowTrees.length === 0) return;
+
+    const q = searchQuery.trim().toLowerCase();
+    const visibleTrees = rowTrees.filter((t) => {
+      if (Number.isNaN(Number(t.lat)) || Number.isNaN(Number(t.lng))) return false;
+      const matchesFeeder = selectedFeeder === 'ALL' || t.penyulang === selectedFeeder;
+      const matchesSearch =
+        !q ||
+        t.pohon.toLowerCase().includes(q) ||
+        t.section.toLowerCase().includes(q) ||
+        t.penyulang.toLowerCase().includes(q) ||
+        t.eksekutor.toLowerCase().includes(q);
+      return matchesFeeder && matchesSearch;
+    });
+
+    visibleTrees.forEach((tree) => {
+      const isDone = tree.keteranganEksekusi === 'Sudah Eksekusi';
+      const primaryBg = isDone ? '#059669' : '#d97706';
+      const gradientBg = isDone
+        ? 'linear-gradient(135deg, #10b981 0%, #047857 100%)'
+        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+      const badgeColor = isDone ? '#10b981' : '#ef4444';
+      const badgeSymbol = isDone ? '✓' : '!';
+
+      const treeIcon = L.divIcon({
+        className: 'custom-row-tree-marker',
+        html: `
+          <div style="position:relative; display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+            <div style="
+              width: 34px; height: 34px; border-radius: 9999px;
+              background: ${gradientBg};
+              border: 2.5px solid #ffffff;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.55);
+              display: flex; align-items: center; justify-content: center;
+              position: relative;
+            ">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z" fill="rgba(255,255,255,0.22)"/>
+                <path d="M12 22v-3"/>
+              </svg>
+              <span style="
+                position:absolute; top:-4px; right:-4px;
+                width:14px; height:14px; border-radius:9999px;
+                background:${badgeColor}; border:1.5px solid #ffffff;
+                color:#ffffff; font-size:9px; font-weight:900;
+                display:flex; align-items:center; justify-content:center;
+                box-shadow:0 1px 4px rgba(0,0,0,0.4);
+              ">${badgeSymbol}</span>
+            </div>
+            <div style="
+              width: 0; height: 0;
+              border-left: 5px solid transparent;
+              border-right: 5px solid transparent;
+              border-top: 7px solid #ffffff;
+              margin-top: -1px;
+              filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+            "></div>
+          </div>
+        `,
+        iconSize: [34, 42],
+        iconAnchor: [17, 40],
+        popupAnchor: [0, -36]
+      });
+
+      const marker = L.marker([Number(tree.lat), Number(tree.lng)], {
+        icon: treeIcon,
+        zIndexOffset: 450
+      });
+
+      const readableTime = (() => {
+        const d = new Date(tree.waktu);
+        return Number.isNaN(d.getTime())
+          ? tree.waktu
+          : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      })();
+
+      marker.bindTooltip(
+        `<div style="box-sizing:border-box; min-width:260px; max-width:380px; font-family:inherit;">` +
+          `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:4px;">` +
+            `<span style="font-size:13.5px; font-weight:900; color:#065f46;">🌳 ${tree.pohon}</span>` +
+            `<span style="font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:999px; background:${isDone ? '#dcfce7' : '#fef3c7'}; color:${isDone ? '#166534' : '#92400e'}; border:1px solid ${isDone ? '#86efac' : '#fcd34d'};">${tree.keteranganEksekusi}</span>` +
+          `</div>` +
+          `<div style="font-size:11.5px; font-weight:700; color:#1e293b; margin-bottom:2px;">⚡ ${tree.penyulang}</div>` +
+          `<div style="font-size:11px; color:#475569; font-weight:600;">📍 ${tree.section} · ${tree.eksekutor}</div>` +
+        `</div>`,
+        { direction: 'top', offset: [0, -28], opacity: 1.0, className: 'custom-map-tooltip' }
+      );
+
+      marker.bindPopup(() => {
+        const popupEl = document.createElement('div');
+        popupEl.className = 'custom-tree-popup p-3 text-slate-900 font-sans';
+        popupEl.style.width = '280px';
+        popupEl.style.maxWidth = 'min(290px, 85vw)';
+        popupEl.style.boxSizing = 'border-box';
+
+        const beforeImgHtml = tree.evidenSebelum
+          ? `<div class="btn-zoom-tree-before" style="cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; position:relative; height:76px; background:#0f172a;">
+               <img src="${tree.evidenSebelum}" alt="Sebelum" style="width:100%; height:100%; object-fit:cover;" />
+               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#fde68a; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sebelum 🔍</span>
+             </div>`
+          : `<div style="height:76px; border-radius:6px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#94a3b8; font-weight:600;">Belum ada foto</div>`;
+
+        const afterImgHtml = tree.evidenSesudah
+          ? `<div class="btn-zoom-tree-after" style="cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; position:relative; height:76px; background:#0f172a;">
+               <img src="${tree.evidenSesudah}" alt="Sesudah" style="width:100%; height:100%; object-fit:cover;" />
+               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#6ee7b7; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sesudah 🔍</span>
+             </div>`
+          : `<div style="height:76px; border-radius:6px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#94a3b8; font-weight:600; text-align:center; padding:4px;">Belum ada foto</div>`;
+
+        popupEl.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:5px; padding-right:24px;">
+            <span style="display:inline-flex; align-items:center; gap:4px; background:${isDone ? '#dcfce7' : '#fef3c7'}; border:1px solid ${isDone ? '#86efac' : '#fcd34d'}; color:${isDone ? '#166534' : '#92400e'}; font-size:10px; font-weight:900; padding:2px 7px; border-radius:5px; text-transform:uppercase;">
+              🌳 Pohon ROW · ${tree.keteranganEksekusi}
+            </span>
+          </div>
+          <div style="font-weight:900; font-size:15px; color:#090d16; line-height:1.2; margin-bottom:2px;">
+            ${tree.pohon}
+          </div>
+          <div style="font-size:11.5px; font-weight:800; color:${primaryBg}; margin-bottom:2px;">
+            ⚡ ${tree.penyulang}
+          </div>
+          <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;">
+            📍 Section: <b style="color:#0f172a;">${tree.section}</b>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:6px; font-size:10px;">
+            <div style="background:#f1f5f9; padding:4px 6px; border-radius:6px; border:1px solid #cbd5e1;">
+              <span style="color:#64748b; display:block;">Inspektor</span>
+              <b style="color:#090d16;">${tree.inspektor}</b>
+            </div>
+            <div style="background:#f1f5f9; padding:4px 6px; border-radius:6px; border:1px solid #cbd5e1;">
+              <span style="color:#64748b; display:block;">Eksekutor</span>
+              <b style="color:#090d16;">${tree.eksekutor}</b>
+            </div>
+          </div>
+
+          <div style="font-size:10px; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:4px 7px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>🕒 ${readableTime}</span>
+            <span style="font-family:monospace; color:#0284c7; font-weight:700;">${Number(tree.lat).toFixed(5)}, ${Number(tree.lng).toFixed(5)}</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:7px;">
+            ${beforeImgHtml}
+            ${afterImgHtml}
+          </div>
+
+          <button type="button" class="btn-nav-to-tree" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px; font-size:11.5px; font-weight:900; padding:7px 10px; background:linear-gradient(135deg, #059669 0%, #0d9488 100%); border:1px solid #34d399; border-radius:7px; color:#ffffff; cursor:pointer; box-shadow:0 2px 6px rgba(5,150,105,0.35); margin-bottom:${canAccessRowTreeRef.current ? '5px' : '0'};">
+            <span>🧭</span>
+            <span>Navigasi ke Titik Pohon</span>
+          </button>
+
+          ${canAccessRowTreeRef.current ? `
+            <button type="button" class="btn-edit-row-tree" style="width:100%; display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; font-weight:900; padding:6px 10px; background:#f59e0b; border:1px solid #d97706; border-radius:7px; color:#0f172a; cursor:pointer;">
+              <span>✏️</span>
+              <span>Edit / Update Eviden Sesudah</span>
+            </button>
+          ` : ''}
+        `;
+
+        const zoomBefore = popupEl.querySelector('.btn-zoom-tree-before');
+        if (zoomBefore && tree.evidenSebelum) {
+          zoomBefore.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            setPreviewPhoto({
+              url: tree.evidenSebelum!,
+              title: `Eviden Sebelum - ${tree.pohon}`,
+              subtitle: `${tree.penyulang} · ${tree.section}`
+            });
+          });
+        }
+
+        const zoomAfter = popupEl.querySelector('.btn-zoom-tree-after');
+        if (zoomAfter && tree.evidenSesudah) {
+          zoomAfter.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            setPreviewPhoto({
+              url: tree.evidenSesudah!,
+              title: `Eviden Sesudah - ${tree.pohon}`,
+              subtitle: `${tree.penyulang} · ${tree.section}`
+            });
+          });
+        }
+
+        const navTreeBtn = popupEl.querySelector('.btn-nav-to-tree');
+        if (navTreeBtn) {
+          navTreeBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            map.closePopup();
+            startNavigationToTree(tree);
+          });
+        }
+
+        const editTreeBtn = popupEl.querySelector('.btn-edit-row-tree');
+        if (editTreeBtn && onEditRowTree) {
+          editTreeBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            map.closePopup();
+            onEditRowTree(tree);
+          });
+        }
+
+        return popupEl;
+      }, { autoPan: true, autoPanPadding: [12, 65], maxWidth: 300, minWidth: 250 });
+
+      marker.addTo(treesGroup);
+      treeMarkersMapRef.current.set(tree.id, marker);
+    });
+  }, [rowTrees, showRowTrees, selectedFeeder, searchQuery, startNavigationToTree, onEditRowTree]);
+
+  useEffect(() => {
+    renderRowTreeLayers();
+  }, [renderRowTreeLayers]);
+
+  // Focus & zoom to tree marker when navigated from Form Peta Pohon ("Lihat di Peta")
+  useEffect(() => {
+    if (!focusedTree || !isActive || !mapInstanceRef.current) return;
+    setShowRowTrees(true);
+    const map = mapInstanceRef.current;
+    map.setView([Number(focusedTree.lat), Number(focusedTree.lng)], 18, { animate: true });
+
+    const timer = setTimeout(() => {
+      const m = treeMarkersMapRef.current.get(focusedTree.id);
+      if (m) {
+        m.openPopup();
+      }
+      if (onClearFocusedTree) {
+        onClearFocusedTree();
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [focusedTree, isActive, onClearFocusedTree]);
+
   const stopNavigation = useCallback(() => {
     setActiveNavTarget(null);
     activeNavTargetRef.current = null;
@@ -2338,11 +2618,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         className: 'nav-dest-marker',
         html: `
           <div style="position:relative; display:flex; flex-direction:column; align-items:center; pointer-events:none;">
-            <div style="width:34px; height:34px; background:${navTarget.type === 'cable' ? '#0284c7' : '#ef4444'}; border:3px solid #ffffff; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 4px 14px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;">
+            <div style="width:34px; height:34px; background:${navTarget.type === 'cable' ? '#0284c7' : navTarget.type === 'tree' ? '#059669' : '#ef4444'}; border:3px solid #ffffff; border-radius:50% 50% 50% 0; transform:rotate(-45deg); box-shadow:0 4px 14px rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center;">
               <div style="width:11px; height:11px; background:#ffffff; border-radius:50%; transform:rotate(45deg);"></div>
             </div>
             <div style="margin-top:3px; background:#0f172a; color:#f8fafc; font-size:10px; font-weight:900; padding:2px 7px; border-radius:5px; border:1px solid #38bdf8; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.45);">
-              ${navTarget.type === 'cable' ? '⚡ ' : '🎯 '}${navTarget.code}
+              ${navTarget.type === 'cable' ? '⚡ ' : navTarget.type === 'tree' ? '🌳 ' : '🎯 '}${navTarget.code}
             </div>
           </div>
         `,
@@ -2547,6 +2827,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </>
           )}
 
+          {/* Toggle Pohon ROW Visibility Button */}
+          <button
+            onClick={() => setShowRowTrees((v) => !v)}
+            className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg border text-xs font-bold cursor-pointer shrink-0 btn-tactile ${
+              showRowTrees
+                ? 'bg-emerald-600 text-white border-emerald-400 shadow-xs'
+                : 'bg-slate-950/80 text-slate-300 border-teal-500/30 hover:text-white'
+            }`}
+            title="Tampilkan atau sembunyikan titik Pohon ROW pada peta"
+          >
+            <TreePine className="w-3.5 h-3.5 shrink-0" />
+            <span>Pohon</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+              showRowTrees ? 'bg-white text-emerald-700' : 'bg-slate-800 text-slate-300'
+            }`}>
+              {rowTrees.length}
+            </span>
+          </button>
+
           {/* Live Counter (Menampilkan:) */}
           <div className="flex items-center gap-1.5 text-xs bg-slate-950/80 backdrop-blur-md px-2.5 h-8 rounded-lg border border-teal-500/30 text-slate-300 shadow-inner shrink-0">
             <span className="text-teal-200/80 font-medium">Menampilkan:</span>
@@ -2635,10 +2934,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md ${
                 activeNavTarget.type === 'cable'
                   ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                  : 'bg-gradient-to-br from-blue-600 to-sky-500'
+                  : activeNavTarget.type === 'tree'
+                    ? 'bg-gradient-to-br from-emerald-600 to-teal-500'
+                    : 'bg-gradient-to-br from-blue-600 to-sky-500'
               }`}>
                 {activeNavTarget.type === 'cable' ? (
                   <Cable className="w-5 h-5 text-white animate-pulse" />
+                ) : activeNavTarget.type === 'tree' ? (
+                  <TreePine className="w-5 h-5 text-white animate-pulse" />
                 ) : (
                   <Navigation className="w-5 h-5 text-white animate-pulse" />
                 )}
@@ -2648,9 +2951,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                     activeNavTarget.type === 'cable'
                       ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                      : 'bg-sky-500/20 text-sky-300 border-sky-400/30'
+                      : activeNavTarget.type === 'tree'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                        : 'bg-sky-500/20 text-sky-300 border-sky-400/30'
                   }`}>
-                    {activeNavTarget.type === 'cable' ? '⚡ Navigasi Kabel' : '🎯 Navigasi Tiang'}
+                    {activeNavTarget.type === 'cable' ? '⚡ Navigasi Kabel' : activeNavTarget.type === 'tree' ? '🌳 Navigasi Pohon ROW' : '🎯 Navigasi Tiang'}
                   </span>
                   <span className="text-xs font-bold text-slate-300 truncate">
                     {activeNavTarget.code} · {activeNavTarget.feeder}
@@ -2912,6 +3217,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <span>{mapType === 'satellite' ? 'Satelit' : 'Vektor'}</span>
             </button>
 
+            {/* Chip 6: Mode Pohon ROW */}
+            <button
+              onClick={() => setShowRowTrees((v) => !v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
+                showRowTrees
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-emerald-500/20'
+                  : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80'
+              }`}
+            >
+              <TreePine className="w-3.5 h-3.5" />
+              <span>Pohon ROW</span>
+              <span className="text-[10px] bg-slate-950/30 px-1.5 py-0.2 rounded-full font-black">
+                {rowTrees.length}
+              </span>
+            </button>
+
             {/* Chip 7: Ukur Jarak (Hanya untuk Admin/Supervisor) */}
             {!isPetugasRow && (
               <button
@@ -3073,6 +3394,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     <span className="w-6 h-0.5 bg-emerald-500" />
                     <span className="text-slate-300">Kabel ROW Aman & Kondisi Baik</span>
                   </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-800 text-[10.5px]">
+                    <span className="w-4 h-4 rounded-full bg-amber-500 border border-white flex items-center justify-center shrink-0">
+                      <TreePine className="w-2.5 h-2.5 text-white" />
+                    </span>
+                    <span className="text-amber-300 font-semibold">Pohon ROW (Belum Eksekusi)</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10.5px]">
+                    <span className="w-4 h-4 rounded-full bg-emerald-600 border border-white flex items-center justify-center shrink-0">
+                      <TreePine className="w-2.5 h-2.5 text-white" />
+                    </span>
+                    <span className="text-emerald-300 font-semibold">Pohon ROW (Sudah Eksekusi)</span>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -3121,6 +3454,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                       +{allFeeders.length - 8} penyulang lainnya (buka drawer)
                     </div>
                   )}
+                  <div className="flex items-center gap-2 pt-1.5 border-t border-slate-800 text-[10.5px]">
+                    <span className="w-4 h-4 rounded-full bg-emerald-600 border border-white flex items-center justify-center shrink-0">
+                      <TreePine className="w-2.5 h-2.5 text-white" />
+                    </span>
+                    <span className="text-emerald-300 font-semibold">Titik Pohon ROW ({rowTrees.length})</span>
+                  </div>
                 </div>
               </div>
             )

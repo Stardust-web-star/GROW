@@ -136,5 +136,32 @@ service cloud.firestore {
       allow update: if isValidId(stateId) && isValidAppState(incoming());
       allow delete: if isValidId(stateId);
     }
+
+    // Validation for ROW Tree Inspections (Form Peta Pohon)
+    function isValidRowTree(data) {
+      return data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+             data.waktu is string && data.waktu.size() <= 64 &&
+             data.penyulang is string && data.penyulang.size() <= 128 &&
+             data.section is string && data.section.size() <= 256 &&
+             data.pohon is string && data.pohon.size() <= 128 &&
+             data.lat is number && data.lat >= -90.0 && data.lat <= 90.0 &&
+             data.lng is number && data.lng >= -180.0 && data.lng <= 180.0 &&
+             data.inspektor is string && data.inspektor.size() <= 64 &&
+             data.eksekutor is string && data.eksekutor.size() <= 64 &&
+             data.keteranganEksekusi is string && data.keteranganEksekusi in ['Belum Eksekusi', 'Sudah Eksekusi'] &&
+             (!('evidenSebelum' in data) || data.evidenSebelum == null || (data.evidenSebelum is string && data.evidenSebelum.size() <= 450000)) &&
+             (!('evidenSesudah' in data) || data.evidenSesudah == null || (data.evidenSesudah is string && data.evidenSesudah.size() <= 450000)) &&
+             (!('catatan' in data) || data.catatan == null || (data.catatan is string && data.catatan.size() <= 1000)) &&
+             (!('createdByUserId' in data) || data.createdByUserId == null || (data.createdByUserId is string && data.createdByUserId.size() <= 64)) &&
+             (!('createdAt' in data) || data.createdAt == null || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    match /row_trees/{treeId} {
+      allow read: if true;
+      allow create: if isValidId(treeId) && isValidRowTree(incoming());
+      allow update: if isValidId(treeId) && isValidRowTree(incoming());
+      allow delete: if isValidId(treeId);
+    }
   }
 }

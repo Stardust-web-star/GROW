@@ -100,6 +100,30 @@
         "feederColors": { "type": "string", "maxLength": 5000, "description": "JSON stringified feeder color map" }
       },
       "required": ["id", "lastUpdated"]
+    },
+    "RowTreeInspection": {
+      "title": "RowTreeInspection",
+      "description": "ROW tree pruning before/after inspection record with GPS coordinates and evidence photos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-\\.]+$", "description": "Unique tree inspection ID" },
+        "waktu": { "type": "string", "maxLength": 64, "description": "Inspection date and time" },
+        "penyulang": { "type": "string", "maxLength": 128, "description": "Feeder line name" },
+        "section": { "type": "string", "maxLength": 256, "description": "Line section or pole segment" },
+        "pohon": { "type": "string", "maxLength": 128, "description": "Tree type or name" },
+        "lat": { "type": "number", "description": "Tree latitude coordinate" },
+        "lng": { "type": "number", "description": "Tree longitude coordinate" },
+        "evidenSebelum": { "type": "string", "maxLength": 450000, "description": "Before pruning photo evidence" },
+        "evidenSesudah": { "type": "string", "maxLength": 450000, "description": "After pruning photo evidence" },
+        "inspektor": { "type": "string", "maxLength": 64, "description": "Inspector name" },
+        "eksekutor": { "type": "string", "maxLength": 64, "description": "Execution team name" },
+        "keteranganEksekusi": { "type": "string", "enum": ["Belum Eksekusi", "Sudah Eksekusi"], "description": "Execution status" },
+        "catatan": { "type": "string", "maxLength": 1000, "description": "Additional field notes" },
+        "createdByUserId": { "type": "string", "maxLength": 64, "description": "User ID of creator" },
+        "createdAt": { "type": "string", "maxLength": 64, "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "maxLength": 64, "description": "Last updated timestamp" }
+      },
+      "required": ["id", "waktu", "penyulang", "section", "pohon", "lat", "lng", "inspektor", "eksekutor", "keteranganEksekusi"]
     }
   },
   "firestore": {
@@ -122,6 +146,10 @@
     "/app_state/{stateId}": {
       "schema": "AppState",
       "description": "Global synchronization metadata and deletion ledger"
+    },
+    "/row_trees/{treeId}": {
+      "schema": "RowTreeInspection",
+      "description": "ROW tree pruning inspection records with GPS coordinates"
     }
   }
 }
