@@ -479,7 +479,11 @@ app.delete('/api/users/:id', (req, res) => {
 // AI Gemini Endpoints
 app.post('/api/ai/analyze', async (req, res) => {
   try {
-    const result = await analyzePoleDataWithGemini(polesDatabase);
+    const targetPoles =
+      Array.isArray(req.body?.poles) && req.body.poles.length > 0
+        ? (req.body.poles as PoleData[])
+        : polesDatabase;
+    const result = await analyzePoleDataWithGemini(targetPoles);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Gagal menjalankan analisis AI' });

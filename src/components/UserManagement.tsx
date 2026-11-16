@@ -255,7 +255,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ currentUser }) =
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans select-none transition-colors pb-24 md:pb-8">
+    <div className="w-full min-h-full p-4 sm:p-6 lg:p-8 bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans select-none transition-colors">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Top Header Card */}

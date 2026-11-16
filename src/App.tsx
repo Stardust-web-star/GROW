@@ -201,6 +201,17 @@ export default function App() {
     }
   }, [isPetugasRow, canAccessRowTreeMenu, activeTab]);
 
+  const tabPanelRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (activeTab !== 'map') {
+      const panel = tabPanelRefs.current[activeTab];
+      if (panel) {
+        panel.scrollTop = 0;
+      }
+    }
+  }, [activeTab]);
+
   const handleSelectTab = (tab: 'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => {
     if (tab === 'rowTrees' && !canAccessRowTreeMenu) return;
     if (isPetugasRow && tab !== 'map' && !(canAccessRowTreeMenu && tab === 'rowTrees')) return;
@@ -1033,10 +1044,10 @@ export default function App() {
         onAddCustomPole={() => setShowAddPoleModal(true)}
       />
 
-      {/* Main Content Area */}
-      <main className={`flex-1 w-full h-full relative ${activeTab === 'map' ? 'overflow-hidden' : 'overflow-y-auto pb-16 md:pb-0'}`}>
+      {/* Main Content Area - Locked flex height (min-h-0), zero outer scroll jump */}
+      <main className="flex-1 min-h-0 w-full relative overflow-hidden">
         {/* Map Tab - Kept mounted to preserve Leaflet instance & prevent reinitialization freeze */}
-        <div className={`w-full h-full relative ${activeTab === 'map' ? 'block' : 'hidden'}`}>
+        <div className={`absolute inset-0 w-full h-full overflow-hidden ${activeTab === 'map' ? 'block' : 'hidden'}`}>
           <MapViewer
             poles={poles}
             spans={spans}
@@ -1081,7 +1092,10 @@ export default function App() {
 
         {/* Form Peta Pohon Tab - Strictly accessible ONLY for User ID petugasrow & 9925045ZY */}
         {canAccessRowTreeMenu && visitedTabs['rowTrees'] && (
-          <div className={`w-full min-h-full ${activeTab === 'rowTrees' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['rowTrees'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'rowTrees' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <RowTreeInspectionManager
               rowTrees={rowTrees}
               poles={poles}
@@ -1099,7 +1113,10 @@ export default function App() {
         )}
 
         {visitedTabs['clearance'] && (
-          <div className={`w-full min-h-full ${activeTab === 'clearance' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['clearance'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'clearance' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <CableClearanceManager
               poles={poles}
               spans={spans}
@@ -1127,7 +1144,10 @@ export default function App() {
         )}
 
         {visitedTabs['ai'] && (
-          <div className={`w-full min-h-full ${activeTab === 'ai' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['ai'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'ai' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <AiPredictiveDashboard
               poles={poles}
               onAutoGenerateSpks={handleAutoGenerateSpksFromAi}
@@ -1136,7 +1156,10 @@ export default function App() {
         )}
 
         {visitedTabs['spk'] && (
-          <div className={`w-full min-h-full ${activeTab === 'spk' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['spk'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'spk' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <SpkManager
               spks={spks}
               poles={poles}
@@ -1147,7 +1170,10 @@ export default function App() {
         )}
 
         {visitedTabs['kmz'] && (
-          <div className={`w-full min-h-full ${activeTab === 'kmz' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['kmz'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'kmz' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <KmzUploader
               onImportSuccess={handleImportKmzPoles}
               onLoadSampleKmz={() => {
@@ -1162,7 +1188,10 @@ export default function App() {
         )}
 
         {visitedTabs['users'] && (
-          <div className={`w-full min-h-full ${activeTab === 'users' ? 'block animate-tab-fade-slide' : 'hidden'}`}>
+          <div
+            ref={(el) => { tabPanelRefs.current['users'] = el; }}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'users' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+          >
             <UserManagement currentUser={currentUser} />
           </div>
         )}

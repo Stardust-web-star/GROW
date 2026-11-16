@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import { PoleData, CableSpan, UserAccount, RowTreeInspection } from '../types';
-import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp, TreePine } from 'lucide-react';
+import { Search, Filter, Layers, Navigation, AlertTriangle, Plus, ShieldCheck, Ruler, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Grid, Eye, EyeOff, Zap, Sliders, Flame, Cable, Camera, Image as ImageIcon, Download, X, Locate, LocateFixed, ExternalLink, MapPin, Compass, ArrowUp, TreePine, Check } from 'lucide-react';
 import { calculateHaversineDistanceMeters, checkIsRowViolation, getMinRowRequirement } from '../utils/kmzParser';
 import { EditCableModal } from './EditCableModal';
 import { NewCableModal } from './NewCableModal';
@@ -259,8 +259,61 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Heatmap State
   const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
 
-  // ROW Tree Markers Visibility State
-  const [showRowTrees, setShowRowTrees] = useState<boolean>(true);
+  // Unified Map Object Layer Visibility State (Tiang, Kabel, Pohon)
+  const [visibleLayers, setVisibleLayers] = useState<{
+    poles: boolean;
+    cables: boolean;
+    trees: boolean;
+  }>({
+    poles: true,
+    cables: true,
+    trees: true,
+  });
+  const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
+  const layerMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const activeLayerCount =
+    (visibleLayers.poles ? 1 : 0) +
+    (visibleLayers.cables ? 1 : 0) +
+    (visibleLayers.trees ? 1 : 0);
+
+  const layerSummaryLabel = useMemo(() => {
+    const { poles: p, cables: c, trees: t } = visibleLayers;
+    if (p && c && t) return 'Semua Layer';
+    if (p && !c && !t) return 'Tiang Saja';
+    if (!p && c && !t) return 'Kabel Saja';
+    if (!p && !c && t) return 'Pohon Saja';
+    const parts: string[] = [];
+    if (p) parts.push('Tiang');
+    if (c) parts.push('Kabel');
+    if (t) parts.push('Pohon');
+    return parts.length > 0 ? parts.join(' + ') : 'Kosong (0)';
+  }, [visibleLayers]);
+
+  // Dismiss layer menu when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showLayerMenu) return;
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && target.closest('[data-layer-menu-trigger="true"]')) return;
+      if (layerMenuRef.current && target && !layerMenuRef.current.contains(target)) {
+        setShowLayerMenu(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowLayerMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLayerMenu]);
 
   // Floating Legend visibility
   const [isLegendOpen, setIsLegendOpen] = useState<boolean>(true);
@@ -915,74 +968,80 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     };
 
     if (isZoomedOut) {
-      // RENDER CLUSTER BUBBLES FOR MAXIMUM ZOOM-OUT PERFORMANCE (Zero Lag!)
-      feederClusters.forEach(cluster => {
-        if (!cluster.isActive || cluster.poleCount === 0) return;
+      // If poles are visible, render Feeder Cluster Bubbles for fast zoomed-out overview
+      if (visibleLayers.poles) {
+        feederClusters.forEach(cluster => {
+          if (!cluster.isActive || cluster.poleCount === 0) return;
 
-        let bubbleColor = '#10B981';
-        if (cableColorMode === 'byFeeder') {
-          bubbleColor = feederColors[cluster.feederName] || getFeederColor(cluster.feederName);
-        } else {
-          if (cluster.criticalCount > 0) {
-            bubbleColor = '#EF4444';
-          } else if (cluster.rowCount > 0) {
-            bubbleColor = '#F59E0B';
+          let bubbleColor = '#10B981';
+          if (cableColorMode === 'byFeeder') {
+            bubbleColor = feederColors[cluster.feederName] || getFeederColor(cluster.feederName);
           } else {
-            bubbleColor = '#10B981';
+            if (cluster.criticalCount > 0) {
+              bubbleColor = '#EF4444';
+            } else if (cluster.rowCount > 0) {
+              bubbleColor = '#F59E0B';
+            } else {
+              bubbleColor = '#10B981';
+            }
           }
-        }
 
-        const clusterIconHtml = `
-          <div style="
-            background: rgba(15, 23, 42, 0.98);
-            border: 3px solid ${bubbleColor};
-            color: white;
-            border-radius: 20px;
-            padding: 6px 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            font-family: sans-serif;
-            cursor: pointer;
-            -webkit-font-smoothing: antialiased;
-          ">
-            <span style="background:${bubbleColor}; color:#0f172a; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px;">
-              ⚡
-            </span>
-            <div style="text-align:left;">
-              <div style="font-weight:bold; font-size:12px; color:white;">${cluster.feederName}</div>
-              <div style="font-size:10px; color:#cbd5e1;">${cluster.poleCount} Tiang ${cableColorMode === 'byClearance' && cluster.rowCount > 0 ? `· <b style="color:#f87171;">${cluster.rowCount} ROW &lt;3m</b>` : ''}</div>
+          const clusterIconHtml = `
+            <div style="
+              background: rgba(15, 23, 42, 0.98);
+              border: 3px solid ${bubbleColor};
+              color: white;
+              border-radius: 20px;
+              padding: 6px 12px;
+              box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              white-space: nowrap;
+              font-family: sans-serif;
+              cursor: pointer;
+              -webkit-font-smoothing: antialiased;
+            ">
+              <span style="background:${bubbleColor}; color:#0f172a; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:11px;">
+                ⚡
+              </span>
+              <div style="text-align:left;">
+                <div style="font-weight:bold; font-size:12px; color:white;">${cluster.feederName}</div>
+                <div style="font-size:10px; color:#cbd5e1;">${cluster.poleCount} Tiang ${cableColorMode === 'byClearance' && cluster.rowCount > 0 ? `· <b style="color:#f87171;">${cluster.rowCount} ROW &lt;3m</b>` : ''}</div>
+              </div>
             </div>
-          </div>
-        `;
+          `;
 
-        const clusterIcon = L.divIcon({
-          html: clusterIconHtml,
-          className: 'feeder-cluster-bubble',
-          iconSize: [160, 40],
-          iconAnchor: [80, 20]
+          const clusterIcon = L.divIcon({
+            html: clusterIconHtml,
+            className: 'feeder-cluster-bubble',
+            iconSize: [160, 40],
+            iconAnchor: [80, 20]
+          });
+
+          const clusterMarker = L.marker([cluster.avgLat, cluster.avgLng], { icon: clusterIcon });
+          clusterMarker.on('click', () => {
+            focusOnCluster(cluster.poles);
+          });
+
+          clusterMarker.addTo(markersGroup);
         });
-
-        const clusterMarker = L.marker([cluster.avgLat, cluster.avgLng], { icon: clusterIcon });
-        clusterMarker.on('click', () => {
-          focusOnCluster(cluster.poles);
-        });
-
-        clusterMarker.addTo(markersGroup);
-      });
-      return;
+        return;
+      }
+      // If poles are hidden and cables are also hidden (e.g., "Pohon Saja"), nothing more to draw here
+      if (!visibleLayers.cables) {
+        return;
+      }
     }
 
-    // ZOOMED IN (zoom >= 13 or search active): Viewport Culling & Hardware-Accelerated Canvas Rendering
+    // ZOOMED IN (zoom >= 13 or search active) or Cable-only view: Viewport Culling & Hardware-Accelerated Canvas Rendering
     const bounds = map.getBounds().pad(0.35); // 35% margin beyond viewport for butter-smooth panning
 
     // 1. Filter visible poles within padded bounds
-    const visiblePoles = filteredPoles.filter(p => bounds.contains([p.lat, p.lng]));
+    const visiblePoles = visibleLayers.poles ? filteredPoles.filter(p => bounds.contains([p.lat, p.lng])) : [];
 
-    // 2. Render Heatmap Overlay if active
-    if (showHeatmap && heatmapGroup) {
+    // 2. Render Heatmap Overlay if active and poles layer is enabled
+    if (showHeatmap && heatmapGroup && visibleLayers.poles) {
       const criticalHazardPoles = visiblePoles.filter(p =>
         checkIsRowViolation(p.clearanceDistanceMeters, p.type) ||
         p.physicalCondition === 'Korosi Kritis' ||
@@ -1040,12 +1099,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
 
     // 3. Render Cable Spans (Lines between adjacent poles only within padded bounds)
-    const visibleSpans = spans.filter(s => {
-      const from = findPole(s.fromPoleId);
-      const to = findPole(s.toPoleId);
-      if (!from || !to) return false;
-      return bounds.contains([from.lat, from.lng]) || bounds.contains([to.lat, to.lng]);
-    });
+    const visibleSpans = visibleLayers.cables
+      ? spans.filter(s => {
+          const from = findPole(s.fromPoleId);
+          const to = findPole(s.toPoleId);
+          if (!from || !to) return false;
+          return bounds.contains([from.lat, from.lng]) || bounds.contains([to.lat, to.lng]);
+        })
+      : [];
 
     visibleSpans.forEach(span => {
       const fromPole = findPole(span.fromPoleId);
@@ -1904,6 +1965,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     activeFeedersMap,
     feederVisibility,
     showHeatmap,
+    visibleLayers.poles,
+    visibleLayers.cables,
     cableColorMode,
     pinStyle,
     selectedFeeder,
@@ -2224,7 +2287,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     treesGroup.clearLayers();
     treeMarkersMapRef.current.clear();
 
-    if (!showRowTrees || rowTrees.length === 0) return;
+    if (!visibleLayers.trees || rowTrees.length === 0) return;
 
     const q = searchQuery.trim().toLowerCase();
     const visibleTrees = rowTrees.filter((t) => {
@@ -2431,7 +2494,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       marker.addTo(treesGroup);
       treeMarkersMapRef.current.set(tree.id, marker);
     });
-  }, [rowTrees, showRowTrees, selectedFeeder, searchQuery, startNavigationToTree, onEditRowTree]);
+  }, [rowTrees, visibleLayers.trees, selectedFeeder, searchQuery, startNavigationToTree, onEditRowTree]);
 
   useEffect(() => {
     renderRowTreeLayers();
@@ -2440,7 +2503,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Focus & zoom to tree marker when navigated from Form Peta Pohon ("Lihat di Peta")
   useEffect(() => {
     if (!focusedTree || !isActive || !mapInstanceRef.current) return;
-    setShowRowTrees(true);
+    setVisibleLayers(prev => (prev.trees ? prev : { ...prev, trees: true }));
     const map = mapInstanceRef.current;
     map.setView([Number(focusedTree.lat), Number(focusedTree.lng)], 18, { animate: true });
 
@@ -2757,6 +2820,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     if (isPullingCable) {
                       cancelCablePulling();
                     } else {
+                      setVisibleLayers(prev => (prev.poles ? prev : { ...prev, poles: true }));
                       setIsPullingCable(true);
                       isPullingCableRef.current = true;
                       setCableSourcePole(null);
@@ -2827,39 +2891,65 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </>
           )}
 
-          {/* Toggle Pohon ROW Visibility Button */}
+          {/* Menu Filter Tampilan Objek Peta (Tiang / Kabel / Pohon / Kombinasi / Semua) */}
           <button
-            onClick={() => setShowRowTrees((v) => !v)}
+            data-layer-menu-trigger="true"
+            onClick={() => setShowLayerMenu((v) => !v)}
             className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg border text-xs font-bold cursor-pointer shrink-0 btn-tactile ${
-              showRowTrees
-                ? 'bg-emerald-600 text-white border-emerald-400 shadow-xs'
-                : 'bg-slate-950/80 text-slate-300 border-teal-500/30 hover:text-white'
+              showLayerMenu || activeLayerCount < 3
+                ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                : 'bg-slate-950/80 text-slate-200 border-teal-500/30 hover:bg-slate-900 hover:text-white'
             }`}
-            title="Tampilkan atau sembunyikan titik Pohon ROW pada peta"
+            title="Pilih tampilan objek peta: Tiang saja, Kabel saja, Pohon saja, beberapa pilihan, atau Semua"
           >
-            <TreePine className="w-3.5 h-3.5 shrink-0" />
-            <span>Pohon</span>
+            <Eye className="w-3.5 h-3.5 shrink-0 text-amber-300" />
+            <span>Tampilan: {layerSummaryLabel}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-              showRowTrees ? 'bg-white text-emerald-700' : 'bg-slate-800 text-slate-300'
+              showLayerMenu || activeLayerCount < 3
+                ? 'bg-white text-emerald-700'
+                : 'bg-teal-500/25 text-teal-200'
             }`}>
-              {rowTrees.length}
+              {activeLayerCount}/3
             </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showLayerMenu ? 'rotate-180' : ''}`} />
           </button>
 
           {/* Live Counter (Menampilkan:) */}
           <div className="flex items-center gap-1.5 text-xs bg-slate-950/80 backdrop-blur-md px-2.5 h-8 rounded-lg border border-teal-500/30 text-slate-300 shadow-inner shrink-0">
             <span className="text-teal-200/80 font-medium">Menampilkan:</span>
-            <span className="font-bold text-amber-400">{filteredPoles.length}</span>
-            <span className="text-teal-200/80 font-medium">/ {poles.length} Tiang</span>
-            {(searchQuery || selectedFeeder !== 'ALL' || showRowOnly) && (
+            {visibleLayers.poles && (
+              <>
+                <span className="font-bold text-amber-400">{filteredPoles.length}</span>
+                <span className="text-teal-200/80 font-medium">Tiang</span>
+              </>
+            )}
+            {visibleLayers.cables && (
+              <>
+                {visibleLayers.poles && <span className="text-slate-600">·</span>}
+                <span className="font-bold text-cyan-400">{spans.length}</span>
+                <span className="text-teal-200/80 font-medium">Kabel</span>
+              </>
+            )}
+            {visibleLayers.trees && (
+              <>
+                {(visibleLayers.poles || visibleLayers.cables) && <span className="text-slate-600">·</span>}
+                <span className="font-bold text-emerald-400">{rowTrees.length}</span>
+                <span className="text-teal-200/80 font-medium">Pohon</span>
+              </>
+            )}
+            {activeLayerCount === 0 && (
+              <span className="font-bold text-rose-400">0 Layer</span>
+            )}
+            {(searchQuery || selectedFeeder !== 'ALL' || showRowOnly || activeLayerCount < 3) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedFeeder('ALL');
                   setShowRowOnly(false);
+                  setVisibleLayers({ poles: true, cables: true, trees: true });
                 }}
                 className="ml-1 text-[11px] text-amber-300 hover:text-white underline cursor-pointer font-bold btn-tactile"
-                title="Reset semua filter"
+                title="Reset semua filter & tampilkan semua layer"
               >
                 Reset
               </button>
@@ -3175,6 +3265,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 onClick={() => {
                   if (isPullingCable) cancelCablePulling();
                   else {
+                    setVisibleLayers(prev => (prev.poles ? prev : { ...prev, poles: true }));
                     setIsPullingCable(true);
                     isPullingCableRef.current = true;
                     setCableSourcePole(null);
@@ -3217,19 +3308,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <span>{mapType === 'satellite' ? 'Satelit' : 'Vektor'}</span>
             </button>
 
-            {/* Chip 6: Mode Pohon ROW */}
+            {/* Chip 7: Filter Tampilan Objek Peta (Tiang / Kabel / Pohon / Kombinasi / Semua) */}
             <button
-              onClick={() => setShowRowTrees((v) => !v)}
+              data-layer-menu-trigger="true"
+              onClick={() => setShowLayerMenu((v) => !v)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-md backdrop-blur-md border transition-all flex items-center gap-1.5 shrink-0 cursor-pointer chip-interactive ${
-                showRowTrees
+                showLayerMenu || activeLayerCount < 3
                   ? 'bg-emerald-600 text-white border-emerald-400 shadow-emerald-500/20'
                   : 'bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700/80'
               }`}
             >
-              <TreePine className="w-3.5 h-3.5" />
-              <span>Pohon ROW</span>
+              <Eye className="w-3.5 h-3.5" />
+              <span>Tampilan: {layerSummaryLabel}</span>
               <span className="text-[10px] bg-slate-950/30 px-1.5 py-0.2 rounded-full font-black">
-                {rowTrees.length}
+                {activeLayerCount}/3
               </span>
             </button>
 
@@ -3514,6 +3606,234 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             >
               Batal
             </button>
+          </div>
+        )}
+
+        {/* ========================================================
+            MENU FILTER TAMPILAN OBJEK PETA (TIANG / KABEL / POHON / KOMBINASI / SEMUA)
+            ======================================================== */}
+        {showLayerMenu && (
+          <div
+            ref={layerMenuRef}
+            className="absolute top-[108px] left-3 right-3 sm:left-auto sm:w-80 md:top-3 md:right-48 z-[450] bg-slate-900/95 backdrop-blur-xl border border-teal-500/40 rounded-2xl shadow-2xl text-white overflow-hidden animate-modal-pop select-none"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-gradient-to-r from-teal-950/90 via-slate-900 to-slate-900">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0">
+                  <Eye className="w-4 h-4 text-amber-300" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-black tracking-tight text-white truncate">
+                    Filter Tampilan Peta
+                  </h3>
+                  <p className="text-[10px] text-teal-300/90 font-semibold truncate">
+                    Aktif: {layerSummaryLabel} ({activeLayerCount}/3)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLayerMenu(false)}
+                className="w-7 h-7 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                title="Tutup Menu Tampilan"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 space-y-3.5">
+              {/* Mode Cepat (1-Klik) */}
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-0.5">
+                  Mode Cepat
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers({ poles: true, cables: true, trees: true })}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer btn-tactile ${
+                      visibleLayers.poles && visibleLayers.cables && visibleLayers.trees
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 border-amber-300 shadow-md font-black'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Tampilkan Semua</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers({ poles: true, cables: false, trees: false })}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer btn-tactile ${
+                      visibleLayers.poles && !visibleLayers.cables && !visibleLayers.trees
+                        ? 'bg-sky-500 text-slate-950 border-sky-300 shadow-md font-black'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Tiang Saja</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers({ poles: false, cables: true, trees: false })}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer btn-tactile ${
+                      !visibleLayers.poles && visibleLayers.cables && !visibleLayers.trees
+                        ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-md font-black'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700'
+                    }`}
+                  >
+                    <Cable className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Kabel Saja</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers({ poles: false, cables: false, trees: true })}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left text-xs font-bold transition-all cursor-pointer btn-tactile ${
+                      !visibleLayers.poles && !visibleLayers.cables && visibleLayers.trees
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-md font-black'
+                        : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700'
+                    }`}
+                  >
+                    <TreePine className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Pohon Saja</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Pilih Kombinasi Beberapa Objek */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    Pilih Kombinasi (Multi-Pilih)
+                  </span>
+                  <span className="text-[10px] font-bold text-teal-400">
+                    Centang bebas
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {/* Checkbox 1: Tiang */}
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers(prev => ({ ...prev, poles: !prev.poles }))}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all cursor-pointer btn-tactile ${
+                      visibleLayers.poles
+                        ? 'bg-sky-500/15 border-sky-400/50 text-white'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                        visibleLayers.poles
+                          ? 'bg-sky-500 border-sky-300 text-slate-950'
+                          : 'bg-slate-900 border-slate-700 text-transparent'
+                      }`}>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                      <div className="text-left">
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Tiang Listrik</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {filteredPoles.length} titik tiang terfilter
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      visibleLayers.poles ? 'bg-sky-500/20 text-sky-300' : 'bg-slate-800 text-slate-500'
+                    }`}>
+                      {visibleLayers.poles ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  {/* Checkbox 2: Kabel */}
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers(prev => ({ ...prev, cables: !prev.cables }))}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all cursor-pointer btn-tactile ${
+                      visibleLayers.cables
+                        ? 'bg-cyan-500/15 border-cyan-400/50 text-white'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                        visibleLayers.cables
+                          ? 'bg-cyan-500 border-cyan-300 text-slate-950'
+                          : 'bg-slate-900 border-slate-700 text-transparent'
+                      }`}>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                      <div className="text-left">
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <Cable className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Kabel Jaringan</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {spans.length} bentangan konduktor
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      visibleLayers.cables ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-800 text-slate-500'
+                    }`}>
+                      {visibleLayers.cables ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+
+                  {/* Checkbox 3: Pohon */}
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers(prev => ({ ...prev, trees: !prev.trees }))}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all cursor-pointer btn-tactile ${
+                      visibleLayers.trees
+                        ? 'bg-emerald-500/15 border-emerald-400/50 text-white'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                        visibleLayers.trees
+                          ? 'bg-emerald-500 border-emerald-300 text-slate-950'
+                          : 'bg-slate-900 border-slate-700 text-transparent'
+                      }`}>
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                      <div className="text-left">
+                        <div className="text-xs font-bold flex items-center gap-1.5">
+                          <TreePine className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Pohon ROW</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {rowTrees.length} titik koordinat pohon
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      visibleLayers.trees ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-500'
+                    }`}>
+                      {visibleLayers.trees ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {activeLayerCount === 0 && (
+                <div className="bg-rose-500/15 border border-rose-500/40 rounded-xl px-3 py-2 text-[11px] text-rose-200 flex items-center justify-between gap-2">
+                  <span>Semua objek sedang disembunyikan.</span>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLayers({ poles: true, cables: true, trees: true })}
+                    className="text-amber-300 hover:text-white font-black underline shrink-0 cursor-pointer"
+                  >
+                    Tampilkan Semua
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
