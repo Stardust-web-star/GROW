@@ -4,10 +4,12 @@ import {
   getFirestore,
   doc,
   getDocFromServer,
+  getDocs,
   collection,
   onSnapshot,
   setDoc,
   deleteDoc,
+  deleteField,
   writeBatch
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -92,6 +94,7 @@ export interface AppSyncState {
   deletedPoleIds?: string[];
   deletedSpanIds?: string[];
   feederColors?: string;
+  baselineAllGreenV1?: boolean;
 }
 
 export type SystemMetaState = AppSyncState;
@@ -278,13 +281,16 @@ export async function saveSpanToCloud(span: CableSpan) {
   const cleanId = (span.id || `SPAN-${Date.now()}`).trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `spans/${cleanId}`;
   try {
-    const dataToSave = sanitizeForFirestore({
+    const dataToSave: Record<string, any> = sanitizeForFirestore({
       ...span,
       id: cleanId,
       lengthMeters: Number(span.lengthMeters || 0),
       clearanceMeters: Number(span.clearanceMeters || 0),
       updatedAt: new Date().toISOString()
     });
+    if (!span.violationType) {
+      dataToSave.violationType = deleteField();
+    }
     await setDoc(doc(db, 'spans', cleanId), dataToSave, { merge: true });
     console.log(`[Firestore Sync] ✅ Cable Span ${cleanId} saved to cloud.`);
   } catch (error) {
@@ -393,4 +399,116 @@ export async function saveAppStateToCloud(state: Partial<AppSyncState>) {
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
+}
+
+/**
+ * One-time baseline normalization so any stale pre-launch test statuses stored
+ * in Cloud Firestore start cleanly in Baik / Aman (Hijau) condition until
+ * field officers record real inspection changes.
+ */
+export async function ensureAllGreenBaselineInCloud(force: boolean = false): Promise<boolean> {
+  const stateRef = doc(db, 'app_state', 'global');
+  if (!force) {
+    try {
+      const stateSnap = await getDocFromServer(stateRef);
+      if (stateSnap.exists() && stateSnap.data()?.baselineAllGreenV1 === true) {
+        return false;
+      }
+    } catch {
+      // Proceed to check/normalize or retry cleanly if offline
+    }
+  }
+
+  const nowIso = new Date().toISOString();
+  const [polesSnap, spansSnap, spksSnap] = await Promise.all([
+    getDocs(collection(db, 'poles')),
+    getDocs(collection(db, 'spans')),
+    getDocs(collection(db, 'spks'))
+  ]);
+
+  const ops: Array<(batch: ReturnType<typeof writeBatch>) => void> = [];
+
+  polesSnap.forEach((poleDoc) => {
+    const data = poleDoc.data() as Partial<PoleData>;
+    const clearanceStatus =
+      data.type === 'TR'
+        ? 'Aman JTR (≥1.0m)'
+        : data.type === 'TT'
+          ? 'Aman SUTT (≥5.0m)'
+          : 'Aman JTM (≥3.0m)';
+
+    ops.push((batch) => {
+      batch.set(
+        poleDoc.ref,
+        {
+          id: data.id || poleDoc.id,
+          code: data.code || poleDoc.id,
+          feeder: data.feeder || 'Penyulang Passo',
+          lat: Number(data.lat ?? -3.6285),
+          lng: Number(data.lng ?? 128.2321),
+          physicalCondition: 'Baik',
+          clearanceDistanceMeters: 5,
+          clearanceStatus,
+          clearanceObject: 'Bebas',
+          spkStatus: 'Belum SPK',
+          updatedAt: nowIso
+        },
+        { merge: true }
+      );
+    });
+  });
+
+  spansSnap.forEach((spanDoc) => {
+    const data = spanDoc.data() as Partial<CableSpan>;
+    ops.push((batch) => {
+      batch.set(
+        spanDoc.ref,
+        {
+          id: data.id || spanDoc.id,
+          fromPoleId: data.fromPoleId || '',
+          toPoleId: data.toPoleId || '',
+          cableCondition: 'Baik',
+          clearanceMeters: 5,
+          treeDistanceMeters: 5,
+          buildingDistanceMeters: 5,
+          hasViolation: false,
+          violationType: deleteField(),
+          updatedAt: nowIso
+        },
+        { merge: true }
+      );
+    });
+  });
+
+  spksSnap.forEach((spkDoc) => {
+    ops.push((batch) => {
+      batch.delete(spkDoc.ref);
+    });
+  });
+
+  const BATCH_LIMIT = 400;
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    const chunk = ops.slice(i, i + BATCH_LIMIT);
+    for (const applyOp of chunk) {
+      applyOp(batch);
+    }
+    await batch.commit();
+  }
+
+  await setDoc(
+    stateRef,
+    {
+      id: 'global',
+      baselineAllGreenV1: true,
+      lastUpdated: nowIso,
+      lastAction: 'baseline_all_green_v1'
+    },
+    { merge: true }
+  );
+
+  console.log(
+    `[Firestore Sync] ✅ Baseline all-green diterapkan (${polesSnap.size} tiang, ${spansSnap.size} kabel, ${spksSnap.size} spk).`
+  );
+  return true;
 }

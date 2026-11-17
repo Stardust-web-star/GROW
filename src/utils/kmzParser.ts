@@ -165,13 +165,8 @@ function extractClearanceFromDesc(desc: string): number {
     const val = parseFloat(match[1]);
     if (!isNaN(val)) return val;
   }
-  // Generate realistic default clearance if not specified in text
-  // 30% chance of ROW violation (<3m) to simulate realistic field conditions
-  const isViolation = Math.random() < 0.35;
-  if (isViolation) {
-    return Number((1.2 + Math.random() * 1.6).toFixed(1)); // 1.2m to 2.8m
-  }
-  return Number((3.2 + Math.random() * 2.5).toFixed(1)); // 3.2m to 5.7m
+  // Default safe/good baseline (5.0m - Hijau) until updated by field officer
+  return 5.0;
 }
 
 export function getMinRowRequirement(type: PoleType): number {
@@ -345,6 +340,9 @@ export function generateNearestNeighborCableSpans(poles: PoleData[]): CableSpan[
           conductorType: p1.type === 'TM' ? 'AACS 150 mm²' : 'TIC 3x70+1x50',
           lengthMeters: Math.round(dist),
           clearanceMeters: minClearance,
+          treeDistanceMeters: minClearance,
+          buildingDistanceMeters: 5.0,
+          cableCondition: 'Baik',
           hasViolation: minClearance < 3.0,
           violationType: minClearance < 3.0 ? 'Pohon (<3m)' : undefined
         });

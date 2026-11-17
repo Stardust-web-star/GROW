@@ -89,7 +89,7 @@ function buildDeterministicAnalysis(
   const total = poles.length || 1;
   const criticalRatio = criticalPoles.length / total;
   const rowRatio = rowViolations.length / total;
-  const health = Math.max(15, Math.min(95, Math.round(100 - criticalRatio * 120 - rowRatio * 65)));
+  const health = Math.max(15, Math.min(100, Math.round(100 - criticalRatio * 120 - rowRatio * 65)));
 
   const sortedAtRisk = poles
     .filter((p) => p.clearanceDistanceMeters < 3.0 || p.physicalCondition !== "Baik")

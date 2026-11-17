@@ -50,14 +50,8 @@ export function generateFullMasterPolesAndSpans(): { poles: PoleData[]; spans: C
       currLat += spec.latStep + waveLat;
       currLng += spec.lngStep + waveLng;
 
-      // Realistic clearance calculation (~35% chance of ROW violation < 3.0m)
-      const isViolation = (i * 17 + spec.count) % 3 === 0;
-      let clearance = 4.2;
-      if (isViolation) {
-        clearance = Number((1.1 + ((i * 13) % 18) * 0.1).toFixed(1)); // 1.1m - 2.8m
-      } else {
-        clearance = Number((3.2 + ((i * 7) % 25) * 0.1).toFixed(1)); // 3.2m - 5.6m
-      }
+      // Initial baseline condition: all poles & cables start in Good/Safe (Hijau) state
+      const clearance = 5.0;
 
       const poleType = i % 10 === 0 ? 'Gardu Trafo' : i % 3 === 0 ? 'TR' : 'TM';
       const clearanceStatus = getClearanceStatus(clearance, poleType);
@@ -75,13 +69,13 @@ export function generateFullMasterPolesAndSpans(): { poles: PoleData[]; spans: C
         locationName: `Jalur Utama ${spec.name}, ULP Baguala`,
         material: 'Beton',
         heightMeters: poleType === 'TR' ? 11 : 12,
-        physicalCondition: clearance < 1.5 ? 'Korosi Kritis' : clearance < 3.0 ? 'Perlu Perbaikan' : 'Baik',
+        physicalCondition: 'Baik',
         installationYear: 2021,
-        lastInspectionDate: '2026-10-01',
+        lastInspectionDate: new Date().toISOString().split('T')[0],
         clearanceDistanceMeters: clearance,
         clearanceStatus: clearanceStatus,
-        clearanceObject: clearance < 3.0 ? 'Pohon Pohon/Bangunan' : 'Bebas',
-        spkStatus: clearance < 3.0 ? 'SPK Diterbitkan' : 'Belum SPK',
+        clearanceObject: 'Bebas',
+        spkStatus: 'Belum SPK',
         notes: `Tiang Master Data ${spec.name} titik ke-${i}.`,
         kmlSource: 'TITIK TIANG BGL.kml',
         inspectionHistory: []

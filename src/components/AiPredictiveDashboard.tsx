@@ -38,13 +38,25 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
   onAutoGenerateSpks
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
+  const datasetSignature = useMemo(() => {
+    const rowCount = poles.filter(p => p.clearanceDistanceMeters < 3.0).length;
+    const critCount = poles.filter(p => p.physicalCondition !== 'Baik').length;
+    return `${poles.length}:${rowCount}:${critCount}`;
+  }, [poles]);
+
   const [analysis, setAnalysis] = useState<AiAnalysisResult | null>(() => {
     try {
       const cached = sessionStorage.getItem('pln_ai_analysis_cache');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed._signature === datasetSignature && parsed.result) {
+          return parsed.result;
+        }
+      }
     } catch (e) {}
     return null;
   });
+  const fetchedSigRef = React.useRef<string | null>(analysis ? datasetSignature : null);
   const [error, setError] = useState<string | null>(null);
 
   // ENS Interactive Parameters State
@@ -71,6 +83,7 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
   const fetchAiAnalysis = async () => {
     setLoading(true);
     setError(null);
+    fetchedSigRef.current = datasetSignature;
     try {
       const res = await fetch(getApiUrl('/api/ai/analyze'), {
         method: 'POST',
@@ -82,7 +95,7 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
         if (data && data.gridHealthScore !== undefined) {
           setAnalysis(data);
           try {
-            sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify(data));
+            sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify({ _signature: datasetSignature, result: data }));
           } catch (e) {}
           setLoading(false);
           return;
@@ -97,7 +110,7 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
       const localData = generateLocalAiAnalysis(poles, outageHours, tariffPerKwh);
       setAnalysis(localData);
       try {
-        sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify(localData));
+        sessionStorage.setItem('pln_ai_analysis_cache', JSON.stringify({ _signature: datasetSignature, result: localData }));
       } catch (e) {}
     } catch (fallbackErr: any) {
       setError(fallbackErr.message || 'Gagal menghitung analisis GROW AI');
@@ -107,10 +120,10 @@ export const AiPredictiveDashboard: React.FC<AiPredictiveDashboardProps> = ({
   };
 
   useEffect(() => {
-    if (!analysis) {
+    if (!analysis || fetchedSigRef.current !== datasetSignature) {
       fetchAiAnalysis();
     }
-  }, [poles.length]);
+  }, [datasetSignature]);
 
   return (
     <div className="max-w-7xl mx-auto p-3 sm:p-6 space-y-6 sm:space-y-8 text-slate-900 dark:text-slate-100 pb-28 md:pb-8 transition-colors duration-200">

@@ -88,6 +88,9 @@ export function buildAdjacentCableSpans(
             conductorType: pA.type === 'TR' || pB.type === 'TR' ? 'TIC 3x70+1x50 mm²' : 'AACS 150 mm²',
             lengthMeters: Math.round(minDistance),
             clearanceMeters: Number(minClearance.toFixed(1)),
+            treeDistanceMeters: Number(minClearance.toFixed(1)),
+            buildingDistanceMeters: 5.0,
+            cableCondition: 'Baik',
             hasViolation: hasViolation,
             violationType: hasViolation ? (minClearance < 1.5 ? 'Bahaya Kritis (<1.5m)' : 'ROW Pohon/Bangunan (<3m)') : undefined
           });

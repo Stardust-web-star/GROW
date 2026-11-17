@@ -112,7 +112,9 @@ export function calculatePlnEnsAnalysis(
 
     // Hitung faktor risiko berdasarkan persentase pelanggaran ROW dan tiang kritis
     const violationRatio = rowViolations / Math.max(feederPoles.length, 1);
-    const riskFactor = Math.min(2.5, Math.max(0.5, (rowViolations * 0.08) + (criticalPoles * 0.15)));
+    const riskFactor = (rowViolations === 0 && criticalPoles === 0)
+      ? 0
+      : Math.min(2.5, Math.max(0.5, (rowViolations * 0.08) + (criticalPoles * 0.15)));
 
     // Estimasi potensi durasi gangguan (jam)
     const outageHours = customOutageHours;

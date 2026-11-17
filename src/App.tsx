@@ -31,6 +31,7 @@ import {
   subscribeToSpks,
   subscribeToRowTrees,
   subscribeToAppState,
+  ensureAllGreenBaselineInCloud,
   mergePolesWithCloud,
   mergeSpansWithCloud
 } from './lib/syncManager';
@@ -378,7 +379,7 @@ export default function App() {
   const [newPoleLat, setNewPoleLat] = useState(-3.6285);
   const [newPoleLng, setNewPoleLng] = useState(128.2321);
   const [newPoleLocation, setNewPoleLocation] = useState('Jl. Syaranualo, Passo, Ambon');
-  const [newPoleClearance, setNewPoleClearance] = useState(3.5);
+  const [newPoleClearance, setNewPoleClearance] = useState(5);
 
   const fetchPoles = async () => {
     try {
@@ -412,6 +413,9 @@ export default function App() {
 
   // Two-Way Real-Time Synchronization Listener Setup
   useEffect(() => {
+    ensureAllGreenBaselineInCloud().catch((err) => {
+      console.warn('[Baseline] Skip/retry:', err);
+    });
     fetchPoles();
     fetchSpks();
 
@@ -457,9 +461,7 @@ export default function App() {
 
     // 4. Subscribe to Real-Time Work Orders (SPK)
     const unsubSpks = subscribeToSpks((cloudSpks) => {
-      if (cloudSpks && cloudSpks.length > 0) {
-        setSpks(cloudSpks);
-      }
+      setSpks(cloudSpks || []);
     });
 
     // 5. Subscribe to Real-Time ROW Tree Inspections (Form Peta Pohon)
@@ -515,13 +517,20 @@ export default function App() {
     try {
       deletedPoleIdsRef.current.clear();
       deletedSpanIdsRef.current.clear();
+      basePolesRef.current = [...INITIAL_POLES];
+      baseSpansRef.current = [...INITIAL_SPANS];
+      cloudPolesRef.current = [];
+      cloudSpansRef.current = [];
+
       await saveAppStateToCloud({
         deletedPoleIds: [],
         deletedSpanIds: []
       });
+      await ensureAllGreenBaselineInCloud(true);
 
       setPoles([...INITIAL_POLES]);
       setSpans([...INITIAL_SPANS]);
+      setSpks([]);
 
       try {
         await fetch('/api/master/restore', { method: 'POST' });
@@ -659,7 +668,10 @@ export default function App() {
   const handleUpdateSpan = async (updatedSpan: CableSpan) => {
     // 1. Synchronize in-memory refs immediately
     baseSpansRef.current = baseSpansRef.current.map(s => s.id === updatedSpan.id ? updatedSpan : s);
-    cloudSpansRef.current = cloudSpansRef.current.map(s => s.id === updatedSpan.id ? updatedSpan : s);
+    const existsInCloud = cloudSpansRef.current.some(s => s.id === updatedSpan.id);
+    cloudSpansRef.current = existsInCloud
+      ? cloudSpansRef.current.map(s => s.id === updatedSpan.id ? updatedSpan : s)
+      : [updatedSpan, ...cloudSpansRef.current];
 
     // 2. Optimistic state update
     setSpans(mergeSpansWithCloud(baseSpansRef.current, cloudSpansRef.current, deletedSpanIdsRef.current));
@@ -813,9 +825,18 @@ export default function App() {
     } catch (err) {}
   };
 
+  const syncPoleInRefs = (updatedPole: PoleData) => {
+    basePolesRef.current = basePolesRef.current.map(p => p.id === updatedPole.id ? updatedPole : p);
+    const existsInCloud = cloudPolesRef.current.some(p => p.id === updatedPole.id);
+    cloudPolesRef.current = existsInCloud
+      ? cloudPolesRef.current.map(p => p.id === updatedPole.id ? updatedPole : p)
+      : [updatedPole, ...cloudPolesRef.current];
+  };
+
   const handleUpdatePole = async (updatedPole: PoleData) => {
-    // 1. Optimistic state update
-    setPoles(prev => prev.map(p => p.id === updatedPole.id ? updatedPole : p));
+    // 1. Sync refs & optimistic state update
+    syncPoleInRefs(updatedPole);
+    setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
 
     // 2. Persist to Cloud Firestore
     try {
@@ -850,7 +871,8 @@ export default function App() {
       clearanceStatus: updatedStatus
     };
 
-    setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
+    syncPoleInRefs(updatedPole);
+    setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
 
     try {
       await savePoleToCloud(updatedPole);
@@ -886,7 +908,8 @@ export default function App() {
       inspectionHistory: [inspection, ...(pole.inspectionHistory || [])]
     };
 
-    setPoles(prev => prev.map(p => p.id === poleId ? updatedPole : p));
+    syncPoleInRefs(updatedPole);
+    setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
 
     try {
       await savePoleToCloud(updatedPole);
@@ -908,14 +931,13 @@ export default function App() {
 
     // Update target pole spkStatus
     if (newSpk.poleId) {
-      setPoles(prev => prev.map(p => {
-        if (p.id === newSpk.poleId) {
-          const updated = { ...p, spkStatus: 'SPK Diterbitkan' as const };
-          savePoleToCloud(updated).catch(() => {});
-          return updated;
-        }
-        return p;
-      }));
+      const targetPole = poles.find(p => p.id === newSpk.poleId);
+      if (targetPole) {
+        const updated = { ...targetPole, spkStatus: 'SPK Diterbitkan' as const };
+        syncPoleInRefs(updated);
+        setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
+        savePoleToCloud(updated).catch(() => {});
+      }
     }
 
     try {
@@ -979,7 +1001,9 @@ export default function App() {
       inspectionHistory: []
     };
 
-    setPoles(prev => [newPole, ...prev]);
+    basePolesRef.current = [newPole, ...basePolesRef.current];
+    cloudPolesRef.current = [newPole, ...cloudPolesRef.current];
+    setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
 
     try {
       await savePoleToCloud(newPole);

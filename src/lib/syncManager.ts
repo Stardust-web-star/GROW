@@ -16,6 +16,7 @@ import {
   subscribeToUsers,
   subscribeToRowTrees,
   subscribeToAppState,
+  ensureAllGreenBaselineInCloud,
   AppSyncState
 } from './firebase';
 import { INITIAL_USERS } from '../data/initialUsers';
@@ -36,7 +37,8 @@ export {
   subscribeToSpks,
   subscribeToUsers,
   subscribeToRowTrees,
-  subscribeToAppState
+  subscribeToAppState,
+  ensureAllGreenBaselineInCloud
 };
 
 /**

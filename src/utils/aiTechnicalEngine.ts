@@ -29,7 +29,7 @@ export function generateLocalAiAnalysis(
   // Grid health score (0 - 100%)
   const healthScore = Math.max(
     15,
-    Math.min(95, Math.round(100 - (criticalRatio * 120) - (rowRatio * 65)))
+    Math.min(100, Math.round(100 - (criticalRatio * 120) - (rowRatio * 65)))
   );
 
   return {

@@ -97,7 +97,8 @@
         "lastUpdated": { "type": "string", "maxLength": 64, "description": "Last synchronization timestamp" },
         "deletedPoleIds": { "type": "array", "description": "List of deleted pole IDs" },
         "deletedSpanIds": { "type": "array", "description": "List of deleted span IDs" },
-        "feederColors": { "type": "string", "maxLength": 5000, "description": "JSON stringified feeder color map" }
+        "feederColors": { "type": "string", "maxLength": 5000, "description": "JSON stringified feeder color map" },
+        "baselineAllGreenV1": { "type": "boolean", "description": "Whether initial all-green baseline normalization has been applied" }
       },
       "required": ["id", "lastUpdated"]
     },
