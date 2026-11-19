@@ -332,7 +332,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [measuredDistance, setMeasuredDistance] = useState<number | null>(null);
 
   // Photo Lightbox Preview state
-  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{
+    url: string;
+    urls?: string[];
+    activeIndex?: number;
+    title: string;
+    subtitle?: string;
+  } | null>(null);
 
   // Extract all available feeders
   const allFeeders = Array.from(new Set(poles.map(p => p.feeder)));
@@ -2382,17 +2388,33 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         popupEl.style.maxWidth = 'min(290px, 85vw)';
         popupEl.style.boxSizing = 'border-box';
 
-        const beforeImgHtml = tree.evidenSebelum
+        const beforePhotos = (
+          Array.isArray(tree.evidenSebelumList) && tree.evidenSebelumList.length > 0
+            ? tree.evidenSebelumList
+            : tree.evidenSebelum
+              ? [tree.evidenSebelum]
+              : []
+        ).filter(Boolean).slice(0, 5);
+
+        const afterPhotos = (
+          Array.isArray(tree.evidenSesudahList) && tree.evidenSesudahList.length > 0
+            ? tree.evidenSesudahList
+            : tree.evidenSesudah
+              ? [tree.evidenSesudah]
+              : []
+        ).filter(Boolean).slice(0, 5);
+
+        const beforeImgHtml = beforePhotos.length > 0
           ? `<div class="btn-zoom-tree-before" style="cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; position:relative; height:76px; background:#0f172a;">
-               <img src="${tree.evidenSebelum}" alt="Sebelum" style="width:100%; height:100%; object-fit:cover;" />
-               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#fde68a; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sebelum 🔍</span>
+               <img src="${beforePhotos[0]}" alt="Sebelum" style="width:100%; height:100%; object-fit:cover;" />
+               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#fde68a; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sebelum${beforePhotos.length > 1 ? ` (${beforePhotos.length} foto)` : ''} 🔍</span>
              </div>`
           : `<div style="height:76px; border-radius:6px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#94a3b8; font-weight:600;">Belum ada foto</div>`;
 
-        const afterImgHtml = tree.evidenSesudah
+        const afterImgHtml = afterPhotos.length > 0
           ? `<div class="btn-zoom-tree-after" style="cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; position:relative; height:76px; background:#0f172a;">
-               <img src="${tree.evidenSesudah}" alt="Sesudah" style="width:100%; height:100%; object-fit:cover;" />
-               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#6ee7b7; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sesudah 🔍</span>
+               <img src="${afterPhotos[0]}" alt="Sesudah" style="width:100%; height:100%; object-fit:cover;" />
+               <span style="position:absolute; bottom:2px; left:2px; right:2px; background:rgba(0,0,0,0.72); color:#6ee7b7; font-size:9px; font-weight:800; padding:1px 4px; border-radius:3px; text-align:center;">Sesudah${afterPhotos.length > 1 ? ` (${afterPhotos.length} foto)` : ''} 🔍</span>
              </div>`
           : `<div style="height:76px; border-radius:6px; border:1px dashed #cbd5e1; background:#f8fafc; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#94a3b8; font-weight:600; text-align:center; padding:4px;">Belum ada foto</div>`;
 
@@ -2447,11 +2469,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         `;
 
         const zoomBefore = popupEl.querySelector('.btn-zoom-tree-before');
-        if (zoomBefore && tree.evidenSebelum) {
+        if (zoomBefore && beforePhotos.length > 0) {
           zoomBefore.addEventListener('click', (ev) => {
             ev.stopPropagation();
             setPreviewPhoto({
-              url: tree.evidenSebelum!,
+              url: beforePhotos[0],
+              urls: beforePhotos,
+              activeIndex: 0,
               title: `Eviden Sebelum - ${tree.pohon}`,
               subtitle: `${tree.penyulang} · ${tree.section}`
             });
@@ -2459,11 +2483,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         }
 
         const zoomAfter = popupEl.querySelector('.btn-zoom-tree-after');
-        if (zoomAfter && tree.evidenSesudah) {
+        if (zoomAfter && afterPhotos.length > 0) {
           zoomAfter.addEventListener('click', (ev) => {
             ev.stopPropagation();
             setPreviewPhoto({
-              url: tree.evidenSesudah!,
+              url: afterPhotos[0],
+              urls: afterPhotos,
+              activeIndex: 0,
               title: `Eviden Sesudah - ${tree.pohon}`,
               subtitle: `${tree.penyulang} · ${tree.section}`
             });
@@ -3872,55 +3898,119 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         />
       )}
 
-      {/* Lightbox / High-Res Image Preview Modal */}
-      {previewPhoto && (
-        <div
-          className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
-          onClick={() => setPreviewPhoto(null)}
-        >
+      {/* Lightbox / High-Res Image Preview Modal (supports multi-photo navigation) */}
+      {previewPhoto && (() => {
+        const photoList = previewPhoto.urls && previewPhoto.urls.length > 0 ? previewPhoto.urls : [previewPhoto.url];
+        const currentIndex = Math.min(Math.max(previewPhoto.activeIndex ?? 0, 0), photoList.length - 1);
+        const currentUrl = photoList[currentIndex] || previewPhoto.url;
+        return (
           <div
-            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
+            onClick={() => setPreviewPhoto(null)}
           >
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/80">
-              <div>
-                <h3 className="font-black text-white text-base flex items-center gap-2">
-                  <span>📸</span>
-                  <span>{previewPhoto.title}</span>
-                </h3>
-                {previewPhoto.subtitle && (
-                  <p className="text-xs text-slate-400 mt-0.5">{previewPhoto.subtitle}</p>
+            <div
+              className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/80">
+                <div>
+                  <h3 className="font-black text-white text-base flex items-center gap-2">
+                    <span>📸</span>
+                    <span>{previewPhoto.title}</span>
+                    {photoList.length > 1 && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Foto {currentIndex + 1} / {photoList.length}
+                      </span>
+                    )}
+                  </h3>
+                  {previewPhoto.subtitle && (
+                    <p className="text-xs text-slate-400 mt-0.5">{previewPhoto.subtitle}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={currentUrl}
+                    download={`foto-kondisi-${currentIndex + 1}-${Date.now()}.jpg`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-colors cursor-pointer"
+                    title="Unduh foto"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Unduh</span>
+                  </a>
+                  <button
+                    onClick={() => setPreviewPhoto(null)}
+                    className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                    title="Tutup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="relative p-4 bg-slate-950/50 flex items-center justify-center max-h-[70vh] overflow-auto">
+                {photoList.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhoto((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              activeIndex: (currentIndex - 1 + photoList.length) % photoList.length
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer font-bold"
+                    title="Foto sebelumnya"
+                  >
+                    ‹
+                  </button>
+                )}
+                <img
+                  src={currentUrl}
+                  alt={previewPhoto.title}
+                  className="max-h-[65vh] w-auto max-w-full rounded-xl object-contain shadow-lg border border-slate-800"
+                />
+                {photoList.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhoto((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              activeIndex: (currentIndex + 1) % photoList.length
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer font-bold"
+                    title="Foto berikutnya"
+                  >
+                    ›
+                  </button>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewPhoto.url}
-                  download={`foto-kondisi-${Date.now()}.jpg`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-colors cursor-pointer"
-                  title="Unduh foto"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Unduh</span>
-                </a>
-                <button
-                  onClick={() => setPreviewPhoto(null)}
-                  className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                  title="Tutup"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-4 bg-slate-950/50 flex items-center justify-center max-h-[75vh] overflow-auto">
-              <img
-                src={previewPhoto.url}
-                alt={previewPhoto.title}
-                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-lg border border-slate-800"
-              />
+              {photoList.length > 1 && (
+                <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {photoList.map((u, i) => (
+                    <button
+                      key={`map-thumb-${i}`}
+                      type="button"
+                      onClick={() => setPreviewPhoto((prev) => (prev ? { ...prev, activeIndex: i } : null))}
+                      className={`w-12 h-10 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                        i === currentIndex ? 'border-emerald-400 scale-105' : 'border-slate-700 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={u} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* In-App Geographic Location Access Request Modal (matching user specification) */}
       <GeoLocationPermissionModal

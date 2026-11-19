@@ -146,19 +146,19 @@ html, body, input, button, select, textarea {
 }
 
 .animate-tab-enter-forward {
-  animation: tabEnterForward 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tabEnterForward 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .animate-tab-enter-backward {
-  animation: tabEnterBackward 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tabEnterBackward 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .animate-tab-map-reveal {
-  animation: tabMapReveal 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tabMapReveal 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 .animate-tab-title {
-  animation: tabTitleSwap 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: tabTitleSwap 200ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1141,7 +1141,7 @@ export default function App() {
           <div
             ref={(el) => { tabPanelRefs.current['rowTrees'] = el; }}
             aria-hidden={activeTab !== 'rowTrees'}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+            className={`absolute inset-0 w-full h-full overflow-hidden ${
               activeTab === 'rowTrees'
                 ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
                 : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'

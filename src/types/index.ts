@@ -161,6 +161,8 @@ export interface RowTreeInspection {
   lng: number;
   evidenSebelum?: string;
   evidenSesudah?: string;
+  evidenSebelumList?: string[];
+  evidenSesudahList?: string[];
   inspektor: 'Inspektor 1' | 'Inspektor 2' | string;
   eksekutor: 'Tim Putih' | 'Tim Hitam' | string;
   keteranganEksekusi: 'Belum Eksekusi' | 'Sudah Eksekusi';

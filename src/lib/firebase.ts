@@ -353,8 +353,29 @@ export async function saveRowTreeToCloud(tree: RowTreeInspection) {
   const path = `row_trees/${cleanId}`;
   try {
     const nowIso = new Date().toISOString();
-    const dataToSave = sanitizeForFirestore({
-      ...tree,
+    const beforeList = (
+      Array.isArray(tree.evidenSebelumList) && tree.evidenSebelumList.length > 0
+        ? tree.evidenSebelumList
+        : tree.evidenSebelum
+          ? [tree.evidenSebelum]
+          : []
+    )
+      .filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= 160000)
+      .slice(0, 5);
+
+    const afterList = (
+      Array.isArray(tree.evidenSesudahList) && tree.evidenSesudahList.length > 0
+        ? tree.evidenSesudahList
+        : tree.evidenSesudah
+          ? [tree.evidenSesudah]
+          : []
+    )
+      .filter((item): item is string => typeof item === 'string' && item.length > 0 && item.length <= 160000)
+      .slice(0, 5);
+
+    const { evidenSebelum: _legacyBefore, evidenSesudah: _legacyAfter, ...restTree } = tree;
+    const dataToSave: Record<string, any> = sanitizeForFirestore({
+      ...restTree,
       id: cleanId,
       waktu: String(tree.waktu || nowIso).slice(0, 64),
       penyulang: String(tree.penyulang || '-').slice(0, 128),
@@ -362,14 +383,19 @@ export async function saveRowTreeToCloud(tree: RowTreeInspection) {
       pohon: String(tree.pohon || '-').slice(0, 128),
       lat: Number(tree.lat),
       lng: Number(tree.lng),
+      evidenSebelumList: beforeList,
+      evidenSesudahList: afterList,
       inspektor: String(tree.inspektor || 'Inspektor 1').slice(0, 64),
       eksekutor: String(tree.eksekutor || 'Tim Putih').slice(0, 64),
       keteranganEksekusi: tree.keteranganEksekusi === 'Sudah Eksekusi' ? 'Sudah Eksekusi' : 'Belum Eksekusi',
       createdAt: tree.createdAt || nowIso,
       updatedAt: nowIso
     });
+    // Remove legacy single-string duplicates so 5+5 photos fit comfortably under Firestore's 1MB doc ceiling
+    dataToSave.evidenSebelum = deleteField();
+    dataToSave.evidenSesudah = deleteField();
     await setDoc(doc(db, 'row_trees', cleanId), dataToSave, { merge: true });
-    console.log(`[Firestore Sync] 🌳 RowTree ${cleanId} saved to cloud.`);
+    console.log(`[Firestore Sync] 🌳 RowTree ${cleanId} saved to cloud (${beforeList.length} before, ${afterList.length} after).`);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }

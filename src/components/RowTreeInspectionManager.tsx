@@ -20,6 +20,8 @@ import {
   Users,
   ShieldCheck,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   ZoomIn,
   Upload,
@@ -95,8 +97,24 @@ function formatReadableDateTime(val?: string): string {
   });
 }
 
-// Compress image to max 900px and JPEG quality 0.72 so Base64 size stays ~80-150KB (< 450KB Firestore rule limit)
-function compressTreeEvidenceImage(file: File, maxDim = 900, quality = 0.72): Promise<string> {
+const MAX_EVIDENCE_PHOTOS = 5;
+
+function getTreeBeforePhotos(tree: RowTreeInspection): string[] {
+  if (Array.isArray(tree.evidenSebelumList) && tree.evidenSebelumList.length > 0) {
+    return tree.evidenSebelumList.filter(Boolean).slice(0, MAX_EVIDENCE_PHOTOS);
+  }
+  return tree.evidenSebelum ? [tree.evidenSebelum] : [];
+}
+
+function getTreeAfterPhotos(tree: RowTreeInspection): string[] {
+  if (Array.isArray(tree.evidenSesudahList) && tree.evidenSesudahList.length > 0) {
+    return tree.evidenSesudahList.filter(Boolean).slice(0, MAX_EVIDENCE_PHOTOS);
+  }
+  return tree.evidenSesudah ? [tree.evidenSesudah] : [];
+}
+
+// Compress image to max 760px JPEG (~45-75KB Base64) so up to 10 photos (5 before + 5 after) fit safely in Firestore 1MB limit
+function compressTreeEvidenceImage(file: File, maxDim = 760, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
@@ -104,30 +122,33 @@ function compressTreeEvidenceImage(file: File, maxDim = 900, quality = 0.72): Pr
       const img = new Image();
       img.onerror = reject;
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
+        const renderAt = (dim: number, q: number): string => {
+          let width = img.width;
+          let height = img.height;
+          if (width > dim || height > dim) {
+            if (width > height) {
+              height = Math.round((height * dim) / width);
+              width = dim;
+            } else {
+              width = Math.round((width * dim) / height);
+              height = dim;
+            }
           }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return String(e.target?.result || '');
+          ctx.drawImage(img, 0, 0, width, height);
+          return canvas.toDataURL('image/jpeg', q);
+        };
+
+        let output = renderAt(maxDim, quality);
+        if (output.length > 78000) {
+          output = renderAt(maxDim, 0.5);
         }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(String(e.target?.result || ''));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        let output = canvas.toDataURL('image/jpeg', quality);
-        // Double-check against Firestore 450,000 char safety limit
-        if (output.length > 420000) {
-          output = canvas.toDataURL('image/jpeg', 0.55);
+        if (output.length > 78000) {
+          output = renderAt(580, 0.45);
         }
         resolve(output);
       };
@@ -405,8 +426,13 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
   // Confirm delete inline id
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Photo lightbox state
-  const [lightboxPhoto, setLightboxPhoto] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
+  // Photo lightbox state (supports multi-photo carousel)
+  const [lightboxPhoto, setLightboxPhoto] = useState<{
+    urls: string[];
+    activeIndex: number;
+    title: string;
+    subtitle?: string;
+  } | null>(null);
 
   // Form Fields (matching the uploaded Form Peta Pohon screenshots)
   const [waktu, setWaktu] = useState<string>(getNowLocalDateTimeInput());
@@ -416,8 +442,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
   const [section, setSection] = useState<string>('');
   const [pohon, setPohon] = useState<string>('');
   const [coordText, setCoordText] = useState<string>('-3.628500, 128.232100');
-  const [evidenSebelum, setEvidenSebelum] = useState<string | undefined>(undefined);
-  const [evidenSesudah, setEvidenSesudah] = useState<string | undefined>(undefined);
+  const [evidenSebelumList, setEvidenSebelumList] = useState<string[]>([]);
+  const [evidenSesudahList, setEvidenSesudahList] = useState<string[]>([]);
   const [inspektor, setInspektor] = useState<string>('Inspektor 1');
   const [eksekutor, setEksekutor] = useState<string>('Tim Putih');
   const [keteranganEksekusi, setKeteranganEksekusi] = useState<'Belum Eksekusi' | 'Sudah Eksekusi'>('Belum Eksekusi');
@@ -460,8 +486,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
     setSection('');
     setPohon('');
     setCoordText('-3.628500, 128.232100');
-    setEvidenSebelum(undefined);
-    setEvidenSesudah(undefined);
+    setEvidenSebelumList([]);
+    setEvidenSesudahList([]);
     setInspektor('Inspektor 1');
     setEksekutor('Tim Putih');
     setKeteranganEksekusi('Belum Eksekusi');
@@ -483,8 +509,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
     setSection(tree.section || '');
     setPohon(tree.pohon || '');
     setCoordText(`${Number(tree.lat).toFixed(6)}, ${Number(tree.lng).toFixed(6)}`);
-    setEvidenSebelum(tree.evidenSebelum);
-    setEvidenSesudah(tree.evidenSesudah);
+    setEvidenSebelumList(getTreeBeforePhotos(tree));
+    setEvidenSesudahList(getTreeAfterPhotos(tree));
     setInspektor(tree.inspektor || 'Inspektor 1');
     setEksekutor(tree.eksekutor || 'Tim Putih');
     setKeteranganEksekusi(tree.keteranganEksekusi || 'Belum Eksekusi');
@@ -540,18 +566,42 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
     e: React.ChangeEvent<HTMLInputElement>,
     target: 'sebelum' | 'sesudah'
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
     setFormError(null);
+
+    const currentList = target === 'sebelum' ? evidenSebelumList : evidenSesudahList;
+    const remainingSlots = MAX_EVIDENCE_PHOTOS - currentList.length;
+    if (remainingSlots <= 0) {
+      setFormError(`Maksimal ${MAX_EVIDENCE_PHOTOS} foto untuk Eviden ${target === 'sebelum' ? 'Sebelum' : 'Sesudah'}.`);
+      return;
+    }
+
+    const selectedFiles = files.slice(0, remainingSlots);
     try {
-      const base64 = await compressTreeEvidenceImage(file);
+      const compressed = await Promise.all(selectedFiles.map((f) => compressTreeEvidenceImage(f)));
+      const validPhotos = compressed.filter(Boolean);
       if (target === 'sebelum') {
-        setEvidenSebelum(base64);
+        setEvidenSebelumList((prev) => [...prev, ...validPhotos].slice(0, MAX_EVIDENCE_PHOTOS));
       } else {
-        setEvidenSesudah(base64);
+        setEvidenSesudahList((prev) => [...prev, ...validPhotos].slice(0, MAX_EVIDENCE_PHOTOS));
+      }
+      if (files.length > remainingSlots) {
+        setFormError(
+          `Maksimal ${MAX_EVIDENCE_PHOTOS} foto per kategori; ${remainingSlots} foto pertama telah ditambahkan.`
+        );
       }
     } catch {
       setFormError('Gagal memproses file foto eviden. Pastikan file berformat gambar (JPG/PNG).');
+    }
+  };
+
+  const handleRemoveEvidencePhoto = (target: 'sebelum' | 'sesudah', index: number) => {
+    if (target === 'sebelum') {
+      setEvidenSebelumList((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setEvidenSesudahList((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -590,6 +640,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
     setIsSaving(true);
     try {
       const nowIso = new Date().toISOString();
+      const normalizedBefore = evidenSebelumList.slice(0, MAX_EVIDENCE_PHOTOS);
+      const normalizedAfter = evidenSesudahList.slice(0, MAX_EVIDENCE_PHOTOS);
       const record: RowTreeInspection = {
         id:
           editingTree?.id ||
@@ -600,8 +652,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
         pohon: pohon.trim(),
         lat: parsedCoords.lat,
         lng: parsedCoords.lng,
-        evidenSebelum: evidenSebelum || undefined,
-        evidenSesudah: evidenSesudah || undefined,
+        evidenSebelumList: normalizedBefore,
+        evidenSesudahList: normalizedAfter,
         inspektor,
         eksekutor,
         keteranganEksekusi,
@@ -650,9 +702,9 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
   // =========================================================================
   if (isFormOpen) {
     return (
-      <div className="min-h-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col animate-tab-fade-slide">
-        {/* Clean Form Top Header Bar (with Back Button like Reference) */}
-        <div className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs">
+      <div className="h-full w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-hidden animate-tab-fade-slide">
+        {/* Clean Form Top Header Bar (pinned at top of flex column) */}
+        <div className="shrink-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 shadow-xs">
           <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
@@ -684,8 +736,10 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
           </div>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSaveForm} className="flex-1 w-full max-w-2xl mx-auto px-4 py-5 pb-28 space-y-5">
+        {/* Form Shell: Scrollable Body + Always-Bottom Cancel | Save Footer */}
+        <form onSubmit={handleSaveForm} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
+            <div className="w-full max-w-2xl mx-auto px-4 py-5 pb-8 space-y-5">
           {formError && (
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs font-semibold flex items-start gap-2.5 animate-modal-pop">
               <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
@@ -867,73 +921,121 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
             </p>
           </div>
 
-          {/* 6 & 7. Eviden Sebelum & Eviden Sesudah */}
+          {/* 6 & 7. Eviden Sebelum & Eviden Sesudah (Masing-masing maksimal 5 foto) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Eviden Sebelum */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                  Eviden Sebelum
-                </label>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5 flex flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    Eviden Sebelum
+                  </label>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    {evidenSebelumList.length}/{MAX_EVIDENCE_PHOTOS}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
                   Sebelum Rabas
                 </span>
               </div>
 
-              {evidenSebelum ? (
-                <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950">
-                  <div
-                    onClick={() =>
-                      setLightboxPhoto({
-                        url: evidenSebelum,
-                        title: `Eviden Sebelum - ${pohon || 'Pohon ROW'}`,
-                        subtitle: `${penyulang} · ${section}`
-                      })
-                    }
-                    className="relative h-40 w-full cursor-pointer group"
-                  >
-                    <img
-                      src={evidenSebelum}
-                      alt="Eviden Sebelum"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                        <ZoomIn className="w-3.5 h-3.5" /> Perbesar
-                      </span>
-                    </div>
+              {evidenSebelumList.length > 0 ? (
+                <div className="space-y-2.5 flex-1 flex flex-col justify-between">
+                  <div className="grid grid-cols-2 gap-2">
+                    {evidenSebelumList.map((photoUrl, idx) => (
+                      <div
+                        key={`before-${idx}`}
+                        onClick={() =>
+                          setLightboxPhoto({
+                            urls: evidenSebelumList,
+                            activeIndex: idx,
+                            title: `Eviden Sebelum - ${pohon || 'Pohon ROW'}`,
+                            subtitle: `${penyulang} · ${section}`
+                          })
+                        }
+                        className="relative aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 cursor-pointer group"
+                      >
+                        <img
+                          src={photoUrl}
+                          alt={`Eviden Sebelum ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-slate-950/80 text-amber-300 text-[10px] font-black border border-amber-400/30">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveEvidencePhoto('sebelum', idx);
+                          }}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform active:scale-90"
+                          title={`Hapus foto #${idx + 1}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {evidenSebelumList.length < MAX_EVIDENCE_PHOTOS && (
+                      <label className="aspect-[4/3] rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 dark:hover:border-amber-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors group p-2 text-center">
+                        <Plus className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                          Tambah Foto
+                        </span>
+                        <span className="text-[9.5px] text-slate-400">
+                          Sisa {MAX_EVIDENCE_PHOTOS - evidenSebelumList.length} slot
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleEvidenceFileChange(e, 'sebelum')}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs font-bold">
-                    <label className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer flex items-center gap-1">
-                      <Upload className="w-3.5 h-3.5" /> Ganti Foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleEvidenceFileChange(e, 'sebelum')}
-                        className="hidden"
-                      />
-                    </label>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold">
+                    {evidenSebelumList.length < MAX_EVIDENCE_PHOTOS ? (
+                      <label className="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" /> Pilih Foto ({evidenSebelumList.length}/{MAX_EVIDENCE_PHOTOS})
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleEvidenceFileChange(e, 'sebelum')}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400">Maksimal 5 foto tercapai</span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setEvidenSebelum(undefined)}
+                      onClick={() => setEvidenSebelumList([])}
                       className="text-rose-600 dark:text-rose-400 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Hapus
+                      <Trash2 className="w-3.5 h-3.5" /> Hapus Semua
                     </button>
                   </div>
                 </div>
               ) : (
-                <label className="h-32 w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:text-emerald-500 flex items-center justify-center transition-colors">
+                <label className="h-36 w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-amber-500 dark:hover:border-amber-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group px-3 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:text-amber-500 flex items-center justify-center transition-colors">
                     <Camera className="w-5 h-5" />
                   </div>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Unggah / Foto Kondisi Sebelum
                   </span>
-                  <span className="text-[10px] text-slate-400">Ketuk untuk kamera atau galeri</span>
+                  <span className="text-[10px] text-slate-400">
+                    Ketuk untuk kamera atau galeri (maks. 5 foto)
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={(e) => handleEvidenceFileChange(e, 'sebelum')}
                     className="hidden"
                   />
@@ -942,70 +1044,118 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
             </div>
 
             {/* Eviden Sesudah */}
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                  Eviden Sesudah
-                </label>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5 flex flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    Eviden Sesudah
+                  </label>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    {evidenSesudahList.length}/{MAX_EVIDENCE_PHOTOS}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
                   Sesudah Rabas
                 </span>
               </div>
 
-              {evidenSesudah ? (
-                <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950">
-                  <div
-                    onClick={() =>
-                      setLightboxPhoto({
-                        url: evidenSesudah,
-                        title: `Eviden Sesudah - ${pohon || 'Pohon ROW'}`,
-                        subtitle: `${penyulang} · ${section}`
-                      })
-                    }
-                    className="relative h-40 w-full cursor-pointer group"
-                  >
-                    <img
-                      src={evidenSesudah}
-                      alt="Eviden Sesudah"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/80 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                        <ZoomIn className="w-3.5 h-3.5" /> Perbesar
-                      </span>
-                    </div>
+              {evidenSesudahList.length > 0 ? (
+                <div className="space-y-2.5 flex-1 flex flex-col justify-between">
+                  <div className="grid grid-cols-2 gap-2">
+                    {evidenSesudahList.map((photoUrl, idx) => (
+                      <div
+                        key={`after-${idx}`}
+                        onClick={() =>
+                          setLightboxPhoto({
+                            urls: evidenSesudahList,
+                            activeIndex: idx,
+                            title: `Eviden Sesudah - ${pohon || 'Pohon ROW'}`,
+                            subtitle: `${penyulang} · ${section}`
+                          })
+                        }
+                        className="relative aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 cursor-pointer group"
+                      >
+                        <img
+                          src={photoUrl}
+                          alt={`Eviden Sesudah ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-slate-950/80 text-emerald-300 text-[10px] font-black border border-emerald-400/30">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveEvidencePhoto('sesudah', idx);
+                          }}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform active:scale-90"
+                          title={`Hapus foto #${idx + 1}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {evidenSesudahList.length < MAX_EVIDENCE_PHOTOS && (
+                      <label className="aspect-[4/3] rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors group p-2 text-center">
+                        <Plus className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                          Tambah Foto
+                        </span>
+                        <span className="text-[9.5px] text-slate-400">
+                          Sisa {MAX_EVIDENCE_PHOTOS - evidenSesudahList.length} slot
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleEvidenceFileChange(e, 'sesudah')}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs font-bold">
-                    <label className="text-sky-600 dark:text-sky-400 hover:underline cursor-pointer flex items-center gap-1">
-                      <Upload className="w-3.5 h-3.5" /> Ganti Foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleEvidenceFileChange(e, 'sesudah')}
-                        className="hidden"
-                      />
-                    </label>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold">
+                    {evidenSesudahList.length < MAX_EVIDENCE_PHOTOS ? (
+                      <label className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1">
+                        <Upload className="w-3.5 h-3.5" /> Pilih Foto ({evidenSesudahList.length}/{MAX_EVIDENCE_PHOTOS})
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => handleEvidenceFileChange(e, 'sesudah')}
+                          className="hidden"
+                        />
+                      </label>
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400">Maksimal 5 foto tercapai</span>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setEvidenSesudah(undefined)}
+                      onClick={() => setEvidenSesudahList([])}
                       className="text-rose-600 dark:text-rose-400 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Hapus
+                      <Trash2 className="w-3.5 h-3.5" /> Hapus Semua
                     </button>
                   </div>
                 </div>
               ) : (
-                <label className="h-32 w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group">
+                <label className="h-36 w-full rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 bg-slate-50 dark:bg-slate-950/50 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors group px-3 text-center">
                   <div className="w-10 h-10 rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:text-emerald-500 flex items-center justify-center transition-colors">
                     <Camera className="w-5 h-5" />
                   </div>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     Unggah / Foto Kondisi Sesudah
                   </span>
-                  <span className="text-[10px] text-slate-400">Ketuk untuk kamera atau galeri</span>
+                  <span className="text-[10px] text-slate-400">
+                    Ketuk untuk kamera atau galeri (maks. 5 foto)
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={(e) => handleEvidenceFileChange(e, 'sesudah')}
                     className="hidden"
                   />
@@ -1118,8 +1268,11 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
             />
           </div>
 
-          {/* Sticky Bottom Cancel | Save Action Bar matching Screenshot */}
-          <div className="fixed bottom-14 md:bottom-0 inset-x-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-6px_24px_rgba(0,0,0,0.08)]">
+            </div>
+          </div>
+
+          {/* Pinned Bottom Cancel | Save Action Bar */}
+          <div className="shrink-0 z-20 mb-14 md:mb-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-6px_24px_rgba(0,0,0,0.08)]">
             <div className="max-w-2xl mx-auto grid grid-cols-2 divide-x divide-slate-200 dark:divide-slate-800">
               <button
                 type="button"
@@ -1157,7 +1310,7 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
           />
         )}
 
-        {/* Photo Lightbox */}
+        {/* Multi-Photo Lightbox (Form View) */}
         {lightboxPhoto && (
           <div
             className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
@@ -1169,7 +1322,14 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                 <div>
-                  <h4 className="text-sm font-black text-white">{lightboxPhoto.title}</h4>
+                  <h4 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>{lightboxPhoto.title}</span>
+                    {lightboxPhoto.urls.length > 1 && (
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        Foto {lightboxPhoto.activeIndex + 1} / {lightboxPhoto.urls.length}
+                      </span>
+                    )}
+                  </h4>
                   {lightboxPhoto.subtitle && (
                     <p className="text-[11px] text-slate-400">{lightboxPhoto.subtitle}</p>
                   )}
@@ -1182,13 +1342,69 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div className="p-4 flex items-center justify-center max-h-[75vh] overflow-auto bg-slate-950/70">
+              <div className="relative p-4 flex items-center justify-center max-h-[70vh] overflow-auto bg-slate-950/70">
+                {lightboxPhoto.urls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxPhoto((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              activeIndex: (prev.activeIndex - 1 + prev.urls.length) % prev.urls.length
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer"
+                    title="Foto sebelumnya"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                )}
                 <img
-                  src={lightboxPhoto.url}
+                  src={lightboxPhoto.urls[lightboxPhoto.activeIndex]}
                   alt={lightboxPhoto.title}
-                  className="max-h-[68vh] w-auto rounded-xl object-contain"
+                  className="max-h-[64vh] w-auto rounded-xl object-contain"
                 />
+                {lightboxPhoto.urls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxPhoto((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              activeIndex: (prev.activeIndex + 1) % prev.urls.length
+                            }
+                          : null
+                      )
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer"
+                    title="Foto berikutnya"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                )}
               </div>
+              {lightboxPhoto.urls.length > 1 && (
+                <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  {lightboxPhoto.urls.map((u, i) => (
+                    <button
+                      key={`thumb-form-${i}`}
+                      type="button"
+                      onClick={() => setLightboxPhoto((prev) => (prev ? { ...prev, activeIndex: i } : null))}
+                      className={`w-12 h-10 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                        i === lightboxPhoto.activeIndex
+                          ? 'border-emerald-400 scale-105'
+                          : 'border-slate-700 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={u} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1200,7 +1416,8 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
   // LIST / DASHBOARD VIEW
   // =========================================================================
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5 text-slate-900 dark:text-slate-100">
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5 text-slate-900 dark:text-slate-100">
       {/* Header Banner */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
@@ -1431,66 +1648,98 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
                     </span>
                   </div>
 
-                  {/* Side-by-side Before / After Photos */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">
-                        Eviden Sebelum
-                      </span>
-                      {tree.evidenSebelum ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setLightboxPhoto({
-                              url: tree.evidenSebelum!,
-                              title: `Eviden Sebelum - ${tree.pohon}`,
-                              subtitle: `${tree.penyulang} · ${tree.section}`
-                            })
-                          }
-                          className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer relative group block"
-                        >
-                          <img
-                            src={tree.evidenSebelum}
-                            alt="Eviden Sebelum"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                        </button>
-                      ) : (
-                        <div className="h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 flex items-center justify-center text-[10px] text-slate-400 font-medium">
-                          Belum ada foto
+                  {/* Side-by-side Before / After Photos (up to 5 each) */}
+                  {(() => {
+                    const beforePhotos = getTreeBeforePhotos(tree);
+                    const afterPhotos = getTreeAfterPhotos(tree);
+                    return (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                              Eviden Sebelum
+                            </span>
+                            {beforePhotos.length > 0 && (
+                              <span className="text-[9.5px] font-black text-amber-600 dark:text-amber-300">
+                                {beforePhotos.length} Foto
+                              </span>
+                            )}
+                          </div>
+                          {beforePhotos.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLightboxPhoto({
+                                  urls: beforePhotos,
+                                  activeIndex: 0,
+                                  title: `Eviden Sebelum - ${tree.pohon}`,
+                                  subtitle: `${tree.penyulang} · ${tree.section}`
+                                })
+                              }
+                              className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer relative group block"
+                            >
+                              <img
+                                src={beforePhotos[0]}
+                                alt="Eviden Sebelum"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              {beforePhotos.length > 1 && (
+                                <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-slate-950/85 text-amber-300 text-[9.5px] font-black border border-amber-400/40">
+                                  +{beforePhotos.length - 1} foto
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 flex items-center justify-center text-[10px] text-slate-400 font-medium">
+                              Belum ada foto
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
-                        Eviden Sesudah
-                      </span>
-                      {tree.evidenSesudah ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setLightboxPhoto({
-                              url: tree.evidenSesudah!,
-                              title: `Eviden Sesudah - ${tree.pohon}`,
-                              subtitle: `${tree.penyulang} · ${tree.section}`
-                            })
-                          }
-                          className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer relative group block"
-                        >
-                          <img
-                            src={tree.evidenSesudah}
-                            alt="Eviden Sesudah"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                        </button>
-                      ) : (
-                        <div className="h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 flex items-center justify-center text-[10px] text-slate-400 font-medium text-center px-1">
-                          {isDone ? 'Tidak ada foto' : 'Menunggu eksekusi'}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                              Eviden Sesudah
+                            </span>
+                            {afterPhotos.length > 0 && (
+                              <span className="text-[9.5px] font-black text-emerald-600 dark:text-emerald-300">
+                                {afterPhotos.length} Foto
+                              </span>
+                            )}
+                          </div>
+                          {afterPhotos.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLightboxPhoto({
+                                  urls: afterPhotos,
+                                  activeIndex: 0,
+                                  title: `Eviden Sesudah - ${tree.pohon}`,
+                                  subtitle: `${tree.penyulang} · ${tree.section}`
+                                })
+                              }
+                              className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer relative group block"
+                            >
+                              <img
+                                src={afterPhotos[0]}
+                                alt="Eviden Sesudah"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              {afterPhotos.length > 1 && (
+                                <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-slate-950/85 text-emerald-300 text-[9.5px] font-black border border-emerald-400/40">
+                                  +{afterPhotos.length - 1} foto
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <div className="h-24 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40 flex items-center justify-center text-[10px] text-slate-400 font-medium text-center px-1">
+                              {isDone ? 'Tidak ada foto' : 'Menunggu eksekusi'}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
+                    );
+                  })()}
 
                   {tree.catatan && (
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800">
@@ -1563,7 +1812,7 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
         </div>
       )}
 
-      {/* Photo Lightbox */}
+      {/* Multi-Photo Lightbox (List View) */}
       {lightboxPhoto && (
         <div
           className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
@@ -1575,7 +1824,14 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
               <div>
-                <h4 className="text-sm font-black text-white">{lightboxPhoto.title}</h4>
+                <h4 className="text-sm font-black text-white flex items-center gap-2">
+                  <span>{lightboxPhoto.title}</span>
+                  {lightboxPhoto.urls.length > 1 && (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      Foto {lightboxPhoto.activeIndex + 1} / {lightboxPhoto.urls.length}
+                    </span>
+                  )}
+                </h4>
                 {lightboxPhoto.subtitle && (
                   <p className="text-[11px] text-slate-400">{lightboxPhoto.subtitle}</p>
                 )}
@@ -1588,16 +1844,73 @@ export const RowTreeInspectionManager: React.FC<RowTreeInspectionManagerProps> =
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-4 flex items-center justify-center max-h-[75vh] overflow-auto bg-slate-950/70">
+            <div className="relative p-4 flex items-center justify-center max-h-[70vh] overflow-auto bg-slate-950/70">
+              {lightboxPhoto.urls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxPhoto((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            activeIndex: (prev.activeIndex - 1 + prev.urls.length) % prev.urls.length
+                          }
+                        : null
+                    )
+                  }
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer"
+                  title="Foto sebelumnya"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              )}
               <img
-                src={lightboxPhoto.url}
+                src={lightboxPhoto.urls[lightboxPhoto.activeIndex]}
                 alt={lightboxPhoto.title}
-                className="max-h-[68vh] w-auto rounded-xl object-contain"
+                className="max-h-[64vh] w-auto rounded-xl object-contain"
               />
+              {lightboxPhoto.urls.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLightboxPhoto((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            activeIndex: (prev.activeIndex + 1) % prev.urls.length
+                          }
+                        : null
+                    )
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/85 hover:bg-slate-800 text-white border border-slate-700 flex items-center justify-center shadow-lg cursor-pointer"
+                  title="Foto berikutnya"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              )}
             </div>
+            {lightboxPhoto.urls.length > 1 && (
+              <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {lightboxPhoto.urls.map((u, i) => (
+                  <button
+                    key={`thumb-list-${i}`}
+                    type="button"
+                    onClick={() => setLightboxPhoto((prev) => (prev ? { ...prev, activeIndex: i } : null))}
+                    className={`w-12 h-10 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
+                      i === lightboxPhoto.activeIndex
+                        ? 'border-emerald-400 scale-105'
+                        : 'border-slate-700 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={u} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

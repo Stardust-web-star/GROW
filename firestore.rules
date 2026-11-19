@@ -151,6 +151,8 @@ service cloud.firestore {
              data.keteranganEksekusi is string && data.keteranganEksekusi in ['Belum Eksekusi', 'Sudah Eksekusi'] &&
              (!('evidenSebelum' in data) || data.evidenSebelum == null || (data.evidenSebelum is string && data.evidenSebelum.size() <= 450000)) &&
              (!('evidenSesudah' in data) || data.evidenSesudah == null || (data.evidenSesudah is string && data.evidenSesudah.size() <= 450000)) &&
+             (!('evidenSebelumList' in data) || data.evidenSebelumList == null || (data.evidenSebelumList is list && data.evidenSebelumList.size() <= 5 && (data.evidenSebelumList.size() == 0 || (data.evidenSebelumList[0] is string && data.evidenSebelumList[0].size() <= 160000)))) &&
+             (!('evidenSesudahList' in data) || data.evidenSesudahList == null || (data.evidenSesudahList is list && data.evidenSesudahList.size() <= 5 && (data.evidenSesudahList.size() == 0 || (data.evidenSesudahList[0] is string && data.evidenSesudahList[0].size() <= 160000)))) &&
              (!('catatan' in data) || data.catatan == null || (data.catatan is string && data.catatan.size() <= 1000)) &&
              (!('createdByUserId' in data) || data.createdByUserId == null || (data.createdByUserId is string && data.createdByUserId.size() <= 64)) &&
              (!('createdAt' in data) || data.createdAt == null || (data.createdAt is string && data.createdAt.size() <= 64)) &&
