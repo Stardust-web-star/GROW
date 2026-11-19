@@ -127,11 +127,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
             <p className="text-[11px] font-semibold text-cyan-200/90 mt-1 tracking-wide">
               Pemetaan Lokasi dan Maintenance ROW PLN
             </p>
-
-            {/* Description */}
-            <p className="text-xs text-slate-300 mt-3 leading-relaxed font-normal">
-              Sistem Terpadu Pemantauan Right of Way (ROW) & Manajemen Aset Jaringan Tiang Listrik ULP Baguala PT PLN (Persero).
-            </p>
           </div>
 
           {/* Bottom: Version & Unit */}
@@ -302,7 +297,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, sessio
               <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
               <span>Enkripsi Terproteksi</span>
             </div>
-            <div>PLN ULP Baguala • 2026</div>
+            <div>PT PLN (Persero) • 2026</div>
           </div>
 
         </div>
