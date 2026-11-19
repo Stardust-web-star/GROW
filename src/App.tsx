@@ -37,8 +37,19 @@ import {
 } from './lib/syncManager';
 import { SystemMetaState } from './lib/firebase';
 
+const TAB_ORDER: Array<'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'> = [
+  'map',
+  'rowTrees',
+  'clearance',
+  'ai',
+  'spk',
+  'kmz',
+  'users'
+];
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users'>('map');
+  const [tabDirection, setTabDirection] = useState<'forward' | 'backward'>('forward');
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({ map: true });
 
   // 7 Menit Inactivity Timeout (7 * 60 * 1000 = 420,000 ms)
@@ -216,6 +227,10 @@ export default function App() {
   const handleSelectTab = (tab: 'map' | 'rowTrees' | 'clearance' | 'ai' | 'spk' | 'kmz' | 'users') => {
     if (tab === 'rowTrees' && !canAccessRowTreeMenu) return;
     if (isPetugasRow && tab !== 'map' && !(canAccessRowTreeMenu && tab === 'rowTrees')) return;
+    if (tab === activeTab) return;
+    const prevIdx = TAB_ORDER.indexOf(activeTab);
+    const nextIdx = TAB_ORDER.indexOf(tab);
+    setTabDirection(nextIdx >= prevIdx ? 'forward' : 'backward');
     setVisitedTabs(prev => prev[tab] ? prev : { ...prev, [tab]: true });
     setActiveTab(tab);
   };
@@ -536,7 +551,7 @@ export default function App() {
         await fetch('/api/master/restore', { method: 'POST' });
       } catch (e) {}
 
-      setActiveTab('map');
+      handleSelectTab('map');
     } catch (err) {
       console.error('Error restoring master data:', err);
     }
@@ -572,7 +587,7 @@ export default function App() {
         });
       } catch (e) {}
 
-      setActiveTab('map');
+      handleSelectTab('map');
     } catch (err) {
       console.error('Error importing KMZ poles:', err);
     }
@@ -954,7 +969,7 @@ export default function App() {
       });
     } catch (err) {}
 
-    setActiveTab('spk');
+    handleSelectTab('spk');
   };
 
   const handleAutoGenerateSpksFromAi = async (spkDrafts: Partial<MaintenanceWorkOrder>[]) => {
@@ -1020,7 +1035,7 @@ export default function App() {
     } catch (err) {}
 
     setShowAddPoleModal(false);
-    setActiveTab('map');
+    handleSelectTab('map');
   };
 
   const rowViolations = poles.filter(p => p.clearanceDistanceMeters < 3.0).length;
@@ -1068,10 +1083,17 @@ export default function App() {
         onAddCustomPole={() => setShowAddPoleModal(true)}
       />
 
-      {/* Main Content Area - Locked flex height (min-h-0), zero outer scroll jump */}
+      {/* Main Content Area - Locked flex height (min-h-0), directional smooth transitions */}
       <main className="flex-1 min-h-0 w-full relative overflow-hidden">
         {/* Map Tab - Kept mounted to preserve Leaflet instance & prevent reinitialization freeze */}
-        <div className={`absolute inset-0 w-full h-full overflow-hidden ${activeTab === 'map' ? 'block' : 'hidden'}`}>
+        <div
+          aria-hidden={activeTab !== 'map'}
+          className={`absolute inset-0 w-full h-full overflow-hidden ${
+            activeTab === 'map'
+              ? 'opacity-100 visible pointer-events-auto z-10 animate-tab-map-reveal'
+              : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+          }`}
+        >
           <MapViewer
             poles={poles}
             spans={spans}
@@ -1118,7 +1140,12 @@ export default function App() {
         {canAccessRowTreeMenu && visitedTabs['rowTrees'] && (
           <div
             ref={(el) => { tabPanelRefs.current['rowTrees'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'rowTrees' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'rowTrees'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'rowTrees'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <RowTreeInspectionManager
               rowTrees={rowTrees}
@@ -1139,7 +1166,12 @@ export default function App() {
         {visitedTabs['clearance'] && (
           <div
             ref={(el) => { tabPanelRefs.current['clearance'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'clearance' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'clearance'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'clearance'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <CableClearanceManager
               poles={poles}
@@ -1170,7 +1202,12 @@ export default function App() {
         {visitedTabs['ai'] && (
           <div
             ref={(el) => { tabPanelRefs.current['ai'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'ai' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'ai'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'ai'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <AiPredictiveDashboard
               poles={poles}
@@ -1182,7 +1219,12 @@ export default function App() {
         {visitedTabs['spk'] && (
           <div
             ref={(el) => { tabPanelRefs.current['spk'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'spk' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'spk'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'spk'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <SpkManager
               spks={spks}
@@ -1196,7 +1238,12 @@ export default function App() {
         {visitedTabs['kmz'] && (
           <div
             ref={(el) => { tabPanelRefs.current['kmz'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'kmz' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'kmz'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'kmz'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <KmzUploader
               onImportSuccess={handleImportKmzPoles}
@@ -1214,7 +1261,12 @@ export default function App() {
         {visitedTabs['users'] && (
           <div
             ref={(el) => { tabPanelRefs.current['users'] = el; }}
-            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${activeTab === 'users' ? 'block animate-tab-fade-slide' : 'hidden'}`}
+            aria-hidden={activeTab !== 'users'}
+            className={`absolute inset-0 w-full h-full overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable] pb-20 md:pb-6 ${
+              activeTab === 'users'
+                ? `opacity-100 visible pointer-events-auto z-10 ${tabDirection === 'forward' ? 'animate-tab-enter-forward' : 'animate-tab-enter-backward'}`
+                : 'opacity-0 invisible pointer-events-none z-0 transition-[opacity,visibility] duration-150 ease-out'
+            }`}
           >
             <UserManagement currentUser={currentUser} />
           </div>

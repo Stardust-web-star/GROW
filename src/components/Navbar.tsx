@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { 
   Map, BarChart3, AlertTriangle, FileText, Upload, Zap, Users, LogOut, 
   ChevronLeft, Grid, X, ShieldCheck, Plus, Smartphone, Sun, Moon, TreePine
@@ -53,6 +53,52 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showPwaModal, setShowPwaModal] = useState(false);
   const isPetugasRow = currentUser?.role === 'Petugas ROW';
 
+  const navRef = useRef<HTMLElement | null>(null);
+  const tabBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number; ready: boolean }>({
+    left: 0,
+    width: 0,
+    ready: false
+  });
+
+  const updateNavIndicator = useCallback(() => {
+    const activeBtn = tabBtnRefs.current[activeTab];
+    const navEl = navRef.current;
+    if (activeBtn && navEl) {
+      const left = activeBtn.offsetLeft;
+      const width = activeBtn.offsetWidth;
+      setIndicator((prev) =>
+        prev.left === left && prev.width === width && prev.ready
+          ? prev
+          : { left, width, ready: width > 0 }
+      );
+    }
+  }, [activeTab]);
+
+  useLayoutEffect(() => {
+    updateNavIndicator();
+    const navEl = navRef.current;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => updateNavIndicator()) : null;
+    if (ro && navEl) {
+      ro.observe(navEl);
+      Object.values(tabBtnRefs.current).forEach((btn) => {
+        if (btn) ro.observe(btn);
+      });
+    }
+    window.addEventListener('resize', updateNavIndicator);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', updateNavIndicator);
+    };
+  }, [updateNavIndicator, canAccessRowTreeMenu, isPetugasRow, pendingRowTreesCount, rowViolations]);
+
+  useEffect(() => {
+    const activeBtn = tabBtnRefs.current[activeTab];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeTab]);
+
   return (
     <>
       {/* ========================================================
@@ -83,136 +129,165 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            {/* Sharp High-Contrast Navigation Tabs (Zero Width Jump, Scroll-Safe on Compact Screens) */}
-            <nav className="flex items-center bg-slate-950/70 backdrop-blur-md p-1 rounded-xl border border-teal-500/30 shadow-md min-w-0 overflow-x-auto no-scrollbar gap-1">
-              <button
-                onClick={() => setActiveTab('map')}
-                className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                  activeTab === 'map'
-                    ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                    : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                }`}
+            {/* Sharp High-Contrast Navigation Tabs with Smooth Sliding Active Pill */}
+            <div className="flex-1 min-w-0 flex justify-center">
+              <nav
+                ref={navRef}
+                className="relative flex items-center bg-slate-950/70 backdrop-blur-md p-1 rounded-xl border border-teal-500/30 shadow-md max-w-full overflow-x-auto no-scrollbar gap-1"
               >
-                <Map className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'map' ? 'text-slate-950' : 'text-amber-400'}`} />
-                <span>Peta GIS</span>
-              </button>
-
-              {canAccessRowTreeMenu && (
-                <button
-                  onClick={() => setActiveTab('rowTrees')}
-                  className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                    activeTab === 'rowTrees'
-                      ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-400/25 border border-emerald-300'
-                      : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                  }`}
-                  title="Form Peta Pohon (Inspeksi ROW Sebelum & Sesudah Rabas Pohon)"
-                >
-                  <TreePine className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'rowTrees' ? 'text-slate-950' : 'text-emerald-400'}`} />
-                  <span>Form Peta Pohon</span>
-                  {pendingRowTreesCount > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                      activeTab === 'rowTrees' ? 'bg-slate-950 text-emerald-300' : 'bg-amber-500 text-slate-950 shadow-xs'
-                    }`}>
-                      {pendingRowTreesCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {!isPetugasRow && (
-                <>
-                  <button
-                    onClick={() => setActiveTab('clearance')}
-                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                      activeTab === 'clearance'
-                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                        : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
+                {indicator.ready && (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute top-1 bottom-1 left-0 rounded-lg pointer-events-none z-0 ${
+                      activeTab === 'rowTrees'
+                        ? 'bg-emerald-400 border border-emerald-300 shadow-md shadow-emerald-400/25'
+                        : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'
                     }`}
+                    style={{
+                      width: `${indicator.width}px`,
+                      transform: `translate3d(${indicator.left}px, 0, 0)`,
+                      transition:
+                        'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), width 280ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease'
+                    }}
+                  />
+                )}
+
+                <button
+                  ref={(el) => { tabBtnRefs.current['map'] = el; }}
+                  onClick={() => setActiveTab('map')}
+                  className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                    activeTab === 'map'
+                      ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                      : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                  }`}
+                >
+                  <Map className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'map' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                  <span>Peta GIS</span>
+                </button>
+
+                {canAccessRowTreeMenu && (
+                  <button
+                    ref={(el) => { tabBtnRefs.current['rowTrees'] = el; }}
+                    onClick={() => setActiveTab('rowTrees')}
+                    className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                      activeTab === 'rowTrees'
+                        ? `${indicator.ready ? 'bg-transparent' : 'bg-emerald-400 border border-emerald-300 shadow-md shadow-emerald-400/25'} text-slate-950`
+                        : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                    }`}
+                    title="Form Peta Pohon (Inspeksi ROW Sebelum & Sesudah Rabas Pohon)"
                   >
-                    <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'clearance' ? 'text-slate-950' : 'text-amber-400'}`} />
-                    <span>Jarak ROW</span>
-                    <span className="hidden 2xl:inline">& Kabel</span>
-                    {rowViolations > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                        activeTab === 'clearance' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
+                    <TreePine className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'rowTrees' ? 'text-slate-950 scale-110' : 'text-emerald-400'}`} />
+                    <span>Form Peta Pohon</span>
+                    {pendingRowTreesCount > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black transition-colors duration-200 ${
+                        activeTab === 'rowTrees' ? 'bg-slate-950 text-emerald-300' : 'bg-amber-500 text-slate-950 shadow-xs'
                       }`}>
-                        {rowViolations}
+                        {pendingRowTreesCount}
                       </span>
                     )}
                   </button>
+                )}
 
-                  <button
-                    onClick={() => setActiveTab('ai')}
-                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                      activeTab === 'ai'
-                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                        : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                    }`}
-                  >
-                    <BarChart3 className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'ai' ? 'text-slate-950' : 'text-amber-400'}`} />
-                    <span>GROW AI</span>
-                  </button>
+                {!isPetugasRow && (
+                  <>
+                    <button
+                      ref={(el) => { tabBtnRefs.current['clearance'] = el; }}
+                      onClick={() => setActiveTab('clearance')}
+                      className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                        activeTab === 'clearance'
+                          ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                          : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                      }`}
+                    >
+                      <AlertTriangle className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'clearance' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                      <span>Jarak ROW</span>
+                      <span className="hidden 2xl:inline">& Kabel</span>
+                      {rowViolations > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black transition-colors duration-200 ${
+                          activeTab === 'clearance' ? 'bg-slate-950 text-amber-300' : 'bg-rose-600 text-white shadow-xs'
+                        }`}>
+                          {rowViolations}
+                        </span>
+                      )}
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('spk')}
-                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                      activeTab === 'spk'
-                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                        : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                    }`}
-                  >
-                    <FileText className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'spk' ? 'text-slate-950' : 'text-amber-400'}`} />
-                    <span className="hidden 2xl:inline">Surat Kerja</span>
-                    <span>(SPK)</span>
-                  </button>
+                    <button
+                      ref={(el) => { tabBtnRefs.current['ai'] = el; }}
+                      onClick={() => setActiveTab('ai')}
+                      className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                        activeTab === 'ai'
+                          ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                          : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                      }`}
+                    >
+                      <BarChart3 className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'ai' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                      <span>GROW AI</span>
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('kmz')}
-                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                      activeTab === 'kmz'
-                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                        : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                    }`}
-                  >
-                    <Upload className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'kmz' ? 'text-slate-950' : 'text-amber-400'}`} />
-                    <span>Unggah KMZ</span>
-                  </button>
+                    <button
+                      ref={(el) => { tabBtnRefs.current['spk'] = el; }}
+                      onClick={() => setActiveTab('spk')}
+                      className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                        activeTab === 'spk'
+                          ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                          : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                      }`}
+                    >
+                      <FileText className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'spk' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                      <span className="hidden 2xl:inline">Surat Kerja</span>
+                      <span>(SPK)</span>
+                    </button>
 
-                  <button
-                    onClick={() => setActiveTab('users')}
-                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors ${
-                      activeTab === 'users'
-                        ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/20 border border-amber-300'
-                        : 'text-slate-100 hover:text-white hover:bg-slate-800/80 border border-transparent hover:border-slate-700/50'
-                    }`}
-                    title="Kelola Pengguna & Akun Akses Sistem"
-                  >
-                    <Users className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'users' ? 'text-slate-950' : 'text-amber-400'}`} />
-                    <span className="hidden 2xl:inline">Management</span>
-                    <span>User</span>
-                  </button>
-                </>
-              )}
-            </nav>
+                    <button
+                      ref={(el) => { tabBtnRefs.current['kmz'] = el; }}
+                      onClick={() => setActiveTab('kmz')}
+                      className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                        activeTab === 'kmz'
+                          ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                          : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                      }`}
+                    >
+                      <Upload className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'kmz' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                      <span>Unggah KMZ</span>
+                    </button>
+
+                    <button
+                      ref={(el) => { tabBtnRefs.current['users'] = el; }}
+                      onClick={() => setActiveTab('users')}
+                      className={`relative z-10 flex items-center gap-1.5 px-2.5 xl:px-3 h-8 text-xs rounded-lg whitespace-nowrap shrink-0 cursor-pointer font-bold transition-colors duration-200 active:scale-[0.97] ${
+                        activeTab === 'users'
+                          ? `${indicator.ready ? 'bg-transparent' : 'bg-amber-400 border border-amber-300 shadow-md shadow-amber-400/20'} text-slate-950`
+                          : 'text-slate-100 hover:text-white hover:bg-slate-800/60 border border-transparent hover:border-slate-700/50'
+                      }`}
+                      title="Kelola Pengguna & Akun Akses Sistem"
+                    >
+                      <Users className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${activeTab === 'users' ? 'text-slate-950 scale-110' : 'text-amber-400'}`} />
+                      <span className="hidden 2xl:inline">Management</span>
+                      <span>User</span>
+                    </button>
+                  </>
+                )}
+              </nav>
+            </div>
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
-              {/* Theme Toggle Button (Dark / Light Mode) */}
+              {/* Theme Toggle Button (Dark / Light Mode) - Fixed width on 2xl prevents horizontal nav shift */}
               <button
                 onClick={toggleTheme}
-                className="flex items-center gap-1.5 bg-slate-950/70 hover:bg-slate-900 text-teal-200 hover:text-white border border-teal-500/40 px-2.5 h-9 rounded-xl text-xs font-bold cursor-pointer transition shadow-xs whitespace-nowrap btn-tactile group"
+                className="flex items-center justify-center gap-1.5 bg-slate-950/70 hover:bg-slate-900 text-teal-200 hover:text-white border border-teal-500/40 px-2.5 2xl:px-3 2xl:w-[118px] h-9 rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-xs whitespace-nowrap btn-tactile group shrink-0"
                 title={isDark ? "Beralih ke Mode Terang (Light Mode)" : "Beralih ke Mode Gelap (Dark Mode)"}
                 aria-label="Toggle theme"
               >
                 {isDark ? (
                   <>
                     <Sun className="w-3.5 h-3.5 text-amber-300 shrink-0 transition-transform duration-300 group-hover:rotate-45" />
-                    <span className="hidden 2xl:inline">Mode Terang</span>
+                    <span className="hidden 2xl:inline-block w-[76px] text-center">Mode Terang</span>
                   </>
                 ) : (
                   <>
                     <Moon className="w-3.5 h-3.5 text-cyan-300 shrink-0 transition-transform duration-300 group-hover:-rotate-12" />
-                    <span className="hidden 2xl:inline">Mode Gelap</span>
+                    <span className="hidden 2xl:inline-block w-[76px] text-center">Mode Gelap</span>
                   </>
                 )}
               </button>
@@ -272,7 +347,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex flex-col">
+            <div key={activeTab} className="flex flex-col animate-tab-title">
               <h1 className="font-extrabold text-sm text-slate-900 dark:text-white tracking-tight leading-tight">
                 {activeTab === 'rowTrees' && 'Form Peta Pohon'}
                 {activeTab === 'clearance' && 'Jarak ROW & Kabel'}
@@ -323,8 +398,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
           }`}
         >
-          <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 ${
-            activeTab === 'map' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
+          <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out ${
+            activeTab === 'map' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
           }`}>
             <Map className="w-5 h-5" />
           </div>
@@ -343,8 +418,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
                 }`}
               >
-                <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 relative ${
-                  activeTab === 'rowTrees' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-xs' : ''
+                <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out relative ${
+                  activeTab === 'rowTrees' ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
                 }`}>
                   <TreePine className="w-5 h-5" />
                   {pendingRowTreesCount > 0 && (
@@ -381,8 +456,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
               }`}
             >
-              <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 relative ${
-                activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
+              <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out relative ${
+                activeTab === 'clearance' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
               }`}>
                 <AlertTriangle className="w-5 h-5" />
                 {rowViolations > 0 && (
@@ -403,8 +478,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
               }`}
             >
-              <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 ${
-                activeTab === 'ai' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs' : ''
+              <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out ${
+                activeTab === 'ai' ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
               }`}>
                 <BarChart3 className="w-5 h-5" />
               </div>
@@ -420,8 +495,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
               }`}
             >
-              <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 ${
-                activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
+              <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out ${
+                activeTab === 'spk' ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
               }`}>
                 <FileText className="w-5 h-5" />
               </div>
@@ -439,8 +514,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-bold'
           }`}
         >
-          <div className={`px-3.5 py-0.5 rounded-full transition-colors duration-200 ${
-            ['kmz', 'users', 'rowTrees'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs' : ''
+          <div className={`px-3.5 py-0.5 rounded-full transition-all duration-200 ease-out ${
+            ['kmz', 'users', 'rowTrees'].includes(activeTab) || showMobileMenu ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 shadow-xs scale-105 -translate-y-0.5' : 'scale-100'
           }`}>
             <Grid className="w-5 h-5" />
           </div>
@@ -506,35 +581,35 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Dedicated Theme Selector Card */}
             <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                   Pilihan Tema Tampilan
                 </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 min-w-[112px] text-center whitespace-nowrap">
                   {isDark ? 'Mode Gelap Aktif' : 'Mode Terang Aktif'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setTheme('dark')}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                     isDark
-                      ? 'bg-slate-900 text-cyan-300 border border-cyan-400/50 shadow-md font-black'
+                      ? 'bg-slate-900 text-cyan-300 border border-cyan-400/50 shadow-md'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Moon className="w-4 h-4 text-cyan-400" />
+                  <Moon className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>Mode Gelap</span>
                 </button>
                 <button
                   onClick={() => setTheme('light')}
-                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                     !isDark
-                      ? 'bg-amber-400 text-slate-950 border border-amber-300 shadow-md font-black'
+                      ? 'bg-amber-400 text-slate-950 border border-amber-300 shadow-md'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Sun className="w-4 h-4 text-amber-600" />
+                  <Sun className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>Mode Terang</span>
                 </button>
               </div>

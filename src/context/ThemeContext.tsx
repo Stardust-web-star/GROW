@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 export type Theme = 'dark' | 'light';
 
@@ -12,6 +12,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const transitionTimerRef = useRef<number | null>(null);
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem('grow_theme') as Theme | null;
@@ -25,6 +26,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const applyThemeToDom = useCallback((targetTheme: Theme, animate = true) => {
     const root = document.documentElement;
+
+    if (transitionTimerRef.current !== null) {
+      window.clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
+    }
 
     if (animate) {
       root.classList.add('theme-transitioning');
@@ -47,9 +53,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     if (animate) {
-      window.setTimeout(() => {
+      transitionTimerRef.current = window.setTimeout(() => {
         root.classList.remove('theme-transitioning');
-      }, 300);
+        transitionTimerRef.current = null;
+      }, 220);
     }
   }, []);
 
@@ -61,6 +68,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('Unable to persist theme in localStorage:', e);
     }
   }, [theme, applyThemeToDom]);
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current !== null) {
+        window.clearTimeout(transitionTimerRef.current);
+      }
+    };
+  }, []);
 
   const setTheme = (newTheme: Theme) => {
     applyThemeToDom(newTheme, true);

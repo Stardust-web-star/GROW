@@ -1,15 +1,20 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Smooth theme transition for backgrounds, borders, and surfaces without breaking layout */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition: background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
-              color 160ms cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+/* Smooth theme transition for UI surfaces without clobbering transforms, Leaflet map panes, or layout */
+html.theme-transitioning :where(body, header, nav, main, aside, section, article, div, span, p, h1, h2, h3, h4, label, input, select, textarea, table, th, td):not(.leaflet-container):not(.leaflet-container *) {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hide scrollbars on horizontal menus & chip strips while keeping touch/wheel scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Global Sharp Typography & Font Anti-Aliasing (Zero Blurriness) */
@@ -27,13 +32,57 @@ html, body, input, button, select, textarea {
   text-rendering: optimizeLegibility !important;
 }
 
-/* Pure-opacity tab transition: zero vertical/horizontal layout shift & safe for position:fixed children */
+/* Directional & compositor-safe tab transitions: resolve to transform:none so position:fixed children stay anchored */
 @keyframes tabFadeSmooth {
   0% {
     opacity: 0;
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes tabEnterForward {
+  0% {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0) scale(0.994);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabEnterBackward {
+  0% {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0) scale(0.994);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabMapReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabTitleSwap {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -92,9 +141,34 @@ html, body, input, button, select, textarea {
   }
 }
 
-/* Pure-opacity tab transition without transform stacking context side-effects */
 .animate-tab-fade-slide {
   animation: tabFadeSmooth 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-tab-enter-forward {
+  animation: tabEnterForward 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-tab-enter-backward {
+  animation: tabEnterBackward 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-tab-map-reveal {
+  animation: tabMapReveal 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-tab-title {
+  animation: tabTitleSwap 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tab-enter-forward,
+  .animate-tab-enter-backward,
+  .animate-tab-map-reveal,
+  .animate-tab-title,
+  .animate-tab-fade-slide {
+    animation-duration: 1ms !important;
+  }
 }
 
 /* Dashboard Entry & Exit */

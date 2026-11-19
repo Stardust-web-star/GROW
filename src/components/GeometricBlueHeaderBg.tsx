@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
 interface GeometricBlueHeaderBgProps {
@@ -18,6 +18,14 @@ export const GeometricBlueHeaderBg: React.FC<GeometricBlueHeaderBgProps> = ({
   className = '',
   variant = 'navbar'
 }) => {
+  const uid = useId().replace(/:/g, '');
+  const darkBaseId = `plnGreenBlackBase-${uid}`;
+  const lightBaseId = `plnLightExecutiveBase-${uid}`;
+  const tealGlowId = `plnTealAmbientGlow-${uid}`;
+  const emeraldGlowId = `plnEmeraldGlow-${uid}`;
+  const centerGlowId = `plnCenterSoftGlow-${uid}`;
+  const dotMatrixId = `plnLoginDotMatrix-${uid}`;
+
   const isToolbar = variant === 'toolbar';
   let isDark = true;
   try {
@@ -42,7 +50,7 @@ export const GeometricBlueHeaderBg: React.FC<GeometricBlueHeaderBgProps> = ({
       >
         <defs>
           {/* Dark Mode Gradient */}
-          <linearGradient id="plnGreenBlackBase" x1="0%" y1="15%" x2="100%" y2="85%">
+          <linearGradient id={darkBaseId} x1="0%" y1="15%" x2="100%" y2="85%">
             <stop offset="0%" stopColor="#064e43" />
             <stop offset="22%" stopColor="#09443c" />
             <stop offset="45%" stopColor="#0a3832" />
@@ -52,7 +60,7 @@ export const GeometricBlueHeaderBg: React.FC<GeometricBlueHeaderBgProps> = ({
           </linearGradient>
 
           {/* Light Mode Gradient: Executive PLN Royal Blue & Teal */}
-          <linearGradient id="plnLightExecutiveBase" x1="0%" y1="15%" x2="100%" y2="85%">
+          <linearGradient id={lightBaseId} x1="0%" y1="15%" x2="100%" y2="85%">
             <stop offset="0%" stopColor="#0284c7" />
             <stop offset="28%" stopColor="#0369a1" />
             <stop offset="60%" stopColor="#0e7490" />
@@ -61,26 +69,26 @@ export const GeometricBlueHeaderBg: React.FC<GeometricBlueHeaderBgProps> = ({
           </linearGradient>
 
           {/* Ambient Electrical Flares */}
-          <radialGradient id="plnTealAmbientGlow" cx="12%" cy="45%" r="50%">
+          <radialGradient id={tealGlowId} cx="12%" cy="45%" r="50%">
             <stop offset="0%" stopColor={isDark ? "#14b8a6" : "#38bdf8"} stopOpacity={isDark ? "0.25" : "0.35"} />
             <stop offset="50%" stopColor={isDark ? "#0d9488" : "#0284c7"} stopOpacity="0.10" />
             <stop offset="100%" stopColor={isDark ? "#064e43" : "#0369a1"} stopOpacity="0" />
           </radialGradient>
 
-          <radialGradient id="plnEmeraldGlow" cx="75%" cy="40%" r="45%">
+          <radialGradient id={emeraldGlowId} cx="75%" cy="40%" r="45%">
             <stop offset="0%" stopColor={isDark ? "#10b981" : "#2dd4bf"} stopOpacity={isDark ? "0.18" : "0.25"} />
             <stop offset="55%" stopColor={isDark ? "#042f2e" : "#0d9488"} stopOpacity="0.05" />
             <stop offset="100%" stopColor={isDark ? "#010b0d" : "#0f766e"} stopOpacity="0" />
           </radialGradient>
 
-          <radialGradient id="plnCenterSoftGlow" cx="45%" cy="30%" r="35%">
+          <radialGradient id={centerGlowId} cx="45%" cy="30%" r="35%">
             <stop offset="0%" stopColor={isDark ? "#2dd4bf" : "#7dd3fc"} stopOpacity={isDark ? "0.12" : "0.20"} />
             <stop offset="60%" stopColor={isDark ? "#064e43" : "#0369a1"} stopOpacity="0" />
           </radialGradient>
 
           {/* Clean Dot Matrix Motif */}
           <pattern
-            id="plnLoginDotMatrix"
+            id={dotMatrixId}
             width="18"
             height="18"
             patternUnits="userSpaceOnUse"
@@ -90,21 +98,21 @@ export const GeometricBlueHeaderBg: React.FC<GeometricBlueHeaderBgProps> = ({
         </defs>
 
         {/* --- LAYER 1: Base Gradient Canvas --- */}
-        <rect width="1920" height="120" fill={isDark ? "url(#plnGreenBlackBase)" : "url(#plnLightExecutiveBase)"} />
+        <rect width="1920" height="120" fill={isDark ? `url(#${darkBaseId})` : `url(#${lightBaseId})`} />
 
         {/* --- LAYER 2: Ambient Lighting Flares --- */}
-        <rect width="1920" height="120" fill="url(#plnTealAmbientGlow)" />
-        <rect width="1920" height="120" fill="url(#plnEmeraldGlow)" />
-        <rect width="1920" height="120" fill="url(#plnCenterSoftGlow)" />
+        <rect width="1920" height="120" fill={`url(#${tealGlowId})`} />
+        <rect width="1920" height="120" fill={`url(#${emeraldGlowId})`} />
+        <rect width="1920" height="120" fill={`url(#${centerGlowId})`} />
 
         {/* --- LAYER 3: Clean Dot Matrix Motif --- */}
-        <rect width="1920" height="120" fill="url(#plnLoginDotMatrix)" />
+        <rect width="1920" height="120" fill={`url(#${dotMatrixId})`} />
 
         {/* --- LAYER 4: Soft Contrast Overlay --- */}
         <rect
           width="1920"
           height="120"
-          fill={isDark ? "url(#plnGreenBlackBase)" : "url(#plnLightExecutiveBase)"}
+          fill={isDark ? `url(#${darkBaseId})` : `url(#${lightBaseId})`}
           opacity={isToolbar ? "0.18" : "0.08"}
         />
       </svg>
