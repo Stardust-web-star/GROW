@@ -23,6 +23,7 @@ import {
   saveSpanToCloud,
   deleteSpanFromCloud,
   saveSpkToCloud,
+  deleteSpkFromCloud,
   saveRowTreeToCloud,
   deleteRowTreeFromCloud,
   saveAppStateToCloud,
@@ -972,6 +973,35 @@ export default function App() {
     handleSelectTab('spk');
   };
 
+  const handleDeleteSpk = async (spk: MaintenanceWorkOrder) => {
+    setSpks(prev => prev.filter(s => s.id !== spk.id));
+
+    if (spk.poleId) {
+      const hasOtherSpk = spks.some(s => s.id !== spk.id && s.poleId === spk.poleId);
+      if (!hasOtherSpk) {
+        const targetPole = poles.find(p => p.id === spk.poleId);
+        if (targetPole && targetPole.spkStatus === 'SPK Diterbitkan') {
+          const updated = { ...targetPole, spkStatus: 'Belum SPK' as const };
+          syncPoleInRefs(updated);
+          setPoles(mergePolesWithCloud(basePolesRef.current, cloudPolesRef.current, deletedPoleIdsRef.current));
+          savePoleToCloud(updated).catch(() => {});
+        }
+      }
+    }
+
+    try {
+      await deleteSpkFromCloud(spk.id);
+    } catch (err) {
+      console.error('Error deleting SPK from Cloud Firestore:', err);
+    }
+
+    try {
+      await fetch(`/api/spk/${encodeURIComponent(spk.id)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {}
+  };
+
   const handleAutoGenerateSpksFromAi = async (spkDrafts: Partial<MaintenanceWorkOrder>[]) => {
     for (const draft of spkDrafts) {
       if (draft.poleId) {
@@ -1230,6 +1260,7 @@ export default function App() {
               spks={spks}
               poles={poles}
               onCreateSpk={handleCreateSpk}
+              onDeleteSpk={handleDeleteSpk}
               onOpenWhatsAppReport={(spk) => handleOpenWhatsAppReport('spk', spk?.id, spk?.poleId)}
             />
           </div>

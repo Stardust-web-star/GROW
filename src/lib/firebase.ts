@@ -325,6 +325,17 @@ export async function saveSpkToCloud(spk: MaintenanceWorkOrder) {
   }
 }
 
+export async function deleteSpkFromCloud(spkId: string) {
+  const cleanId = spkId.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+  const path = `spks/${cleanId}`;
+  try {
+    await deleteDoc(doc(db, 'spks', cleanId));
+    console.log(`[Firestore Sync] 🗑️ SPK ${cleanId} deleted from cloud.`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 export async function saveUserToCloud(user: UserAccount) {
   const cleanId = user.id.trim().replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const path = `users/${cleanId}`;

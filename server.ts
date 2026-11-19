@@ -351,8 +351,12 @@ app.post('/api/spk', (req, res) => {
   if (!newSpk.spkNumber) {
     newSpk.spkNumber = `SPK/ULP-BGL/2026/${String(spksDatabase.length + 101).padStart(3, '0')}`;
   }
-  newSpk.id = `SPK-${Date.now()}`;
-  newSpk.createdAt = new Date().toISOString().split('T')[0];
+  if (!newSpk.id) {
+    newSpk.id = `SPK-${Date.now()}`;
+  }
+  if (!newSpk.createdAt) {
+    newSpk.createdAt = new Date().toISOString().split('T')[0];
+  }
   spksDatabase.unshift(newSpk);
 
   // Update target pole spkStatus
@@ -364,6 +368,28 @@ app.post('/api/spk', (req, res) => {
   }
 
   res.status(201).json({ success: true, spk: newSpk });
+});
+
+app.delete('/api/spk/:id', (req, res) => {
+  const spkId = decodeURIComponent(req.params.id);
+  const index = spksDatabase.findIndex(s => s.id === spkId);
+  if (index === -1) {
+    return res.status(404).json({ error: 'SPK tidak ditemukan' });
+  }
+  const [removedSpk] = spksDatabase.splice(index, 1);
+
+  if (removedSpk?.poleId) {
+    const hasOtherSpk = spksDatabase.some(s => s.poleId === removedSpk.poleId);
+    if (!hasOtherSpk) {
+      const poleIndex = polesDatabase.findIndex(p => p.id === removedSpk.poleId);
+      if (poleIndex !== -1 && polesDatabase[poleIndex].spkStatus === 'SPK Diterbitkan') {
+        polesDatabase[poleIndex].spkStatus = 'Belum SPK';
+        saveMasterData();
+      }
+    }
+  }
+
+  res.json({ success: true, deletedId: spkId });
 });
 
 // Authentication Endpoint

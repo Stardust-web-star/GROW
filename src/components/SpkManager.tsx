@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MaintenanceWorkOrder, PoleData } from '../types';
-import { FileText, Plus, Printer, CheckCircle, Clock, Zap, Calendar, UserCheck, Edit3, RotateCcw, ArrowLeft, Search, ShieldCheck, MapPin, AlertTriangle, Layers, ChevronRight, Eye } from 'lucide-react';
+import { FileText, Plus, Printer, CheckCircle, Clock, Zap, Calendar, UserCheck, Edit3, RotateCcw, ArrowLeft, Search, ShieldCheck, MapPin, AlertTriangle, Layers, ChevronRight, Eye, Trash2 } from 'lucide-react';
 import plnOfficialLogo from '../assets/images/Logo_PLN.png';
 import { WhatsAppIcon } from './WhatsAppReportModal';
 
@@ -8,6 +8,7 @@ interface SpkManagerProps {
   spks: MaintenanceWorkOrder[];
   poles: PoleData[];
   onCreateSpk: (spk: MaintenanceWorkOrder) => void;
+  onDeleteSpk?: (spk: MaintenanceWorkOrder) => Promise<void> | void;
   onOpenWhatsAppReport?: (spk?: MaintenanceWorkOrder) => void;
 }
 
@@ -15,6 +16,7 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
   spks,
   poles,
   onCreateSpk,
+  onDeleteSpk,
   onOpenWhatsAppReport
 }) => {
   const [selectedSpk, setSelectedSpk] = useState<MaintenanceWorkOrder | null>(spks[0] || null);
@@ -23,7 +25,23 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
   const [mobileDocMode, setMobileDocMode] = useState<'card' | 'a4'>('card');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const activePole = selectedSpk ? poles.find(p => p.id === selectedSpk.poleId) : null;
+
+  useEffect(() => {
+    if (!selectedSpk) {
+      if (spks.length > 0) setSelectedSpk(spks[0]);
+      return;
+    }
+    const matching = spks.find(s => s.id === selectedSpk.id);
+    if (matching) {
+      if (matching !== selectedSpk) setSelectedSpk(matching);
+    } else {
+      setSelectedSpk(spks[0] || null);
+      if (spks.length === 0) setMobileTab('list');
+    }
+  }, [spks, selectedSpk]);
 
   // Signatory Officials State (Manager & Team Leader Teknik)
   const DEFAULT_MANAGER_NAME = 'M. Ridwan Pelupessy';
@@ -263,6 +281,8 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
             ) : (
               filteredSpks.map((spk) => {
                 const isSelected = selectedSpk?.id === spk.id;
+                const isConfirmingDelete = confirmDeleteId === spk.id;
+                const isDeleting = deletingId === spk.id;
                 return (
                   <div
                     key={spk.id}
@@ -278,17 +298,38 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                         : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[11px] mb-1.5">
-                      <span className="font-mono font-black text-amber-600 dark:text-amber-400">{spk.spkNumber}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        spk.priority === 'Kritis' 
-                          ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30' 
-                          : spk.priority === 'Tinggi'
-                          ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30'
-                          : 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
-                      }`}>
-                        {spk.priority}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 text-[11px] mb-1.5">
+                      <span className="font-mono font-black text-amber-600 dark:text-amber-400 truncate">{spk.spkNumber}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          spk.priority === 'Kritis' 
+                            ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30' 
+                            : spk.priority === 'Tinggi'
+                            ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30'
+                            : 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30'
+                        }`}>
+                          {spk.priority}
+                        </span>
+                        {onDeleteSpk && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(isConfirmingDelete ? null : spk.id);
+                            }}
+                            disabled={isDeleting}
+                            title="Hapus SPK"
+                            aria-label={`Hapus SPK ${spk.spkNumber}`}
+                            className={`p-1 rounded-md border transition-all cursor-pointer active:scale-95 ${
+                              isConfirmingDelete
+                                ? 'bg-rose-500/25 text-rose-600 dark:text-rose-300 border-rose-500/50'
+                                : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20 hover:border-rose-500/40'
+                            }`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
@@ -304,6 +345,43 @@ export const SpkManager: React.FC<SpkManagerProps> = ({
                       <span className="font-medium text-slate-700 dark:text-slate-300">{spk.assignedTeam}</span>
                       <span className="font-mono text-slate-500 dark:text-slate-400">{spk.scheduledDate}</span>
                     </div>
+
+                    {isConfirmingDelete && onDeleteSpk && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 pt-2 border-t border-rose-500/25 flex items-center justify-between gap-2"
+                      >
+                        <span className="text-[10px] font-bold text-rose-600 dark:text-rose-300">
+                          Hapus SPK ini?
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            disabled={isDeleting}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setDeletingId(spk.id);
+                              try {
+                                await onDeleteSpk(spk);
+                              } finally {
+                                setDeletingId(null);
+                                setConfirmDeleteId(null);
+                              }
+                            }}
+                            disabled={isDeleting}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-colors cursor-pointer disabled:opacity-60"
+                          >
+                            {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Mobile Tap Prompt */}
                     <div className="lg:hidden flex items-center justify-end gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold pt-1.5 mt-1 border-t border-amber-500/10">
